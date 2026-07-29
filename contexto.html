@@ -323,6 +323,58 @@
     color: var(--muted);
   }
 
+  /* ---------- multiplayer ---------- */
+  .names { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .turnstrip { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+  .pawn {
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    color: var(--muted);
+  }
+  .pawn.is-turn { color: var(--ground); background: var(--ink); border-color: var(--ink); }
+
+  .code {
+    font-family: var(--mono);
+    font-size: var(--step-3);
+    letter-spacing: 0.24em;
+    color: var(--ink);
+  }
+
+  input.code-input {
+    font-family: var(--mono);
+    font-size: var(--step-2);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .tally { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.375rem; }
+  .tally li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    border-top: 1px solid var(--rule);
+    padding-top: 0.375rem;
+  }
+
+  .result {
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    padding: 0.75rem;
+    min-height: 0;
+    resize: none;
+  }
+
   .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
   .chip {
@@ -377,15 +429,59 @@
   <section class="panel" id="panel-play" role="tabpanel" aria-labelledby="tab-play">
     <div id="play-setup" class="panel">
       <div class="field">
+        <span class="key">how you're playing</span>
+        <div class="segmented" id="modes">
+          <button type="button" aria-pressed="true" data-mode="offline">offline</button>
+          <button type="button" aria-pressed="false" data-mode="online">online</button>
+        </div>
+        <p class="gloss" id="mode-note">Up to four of you on this phone, taking turns at one hidden word.</p>
+      </div>
+
+      <div class="field">
         <span class="key">difficulty</span>
         <div class="segmented" id="levels">
-          <button aria-pressed="false" data-level="easy">easy</button>
-          <button aria-pressed="true" data-level="normal">normal</button>
-          <button aria-pressed="false" data-level="hard">hard</button>
+          <button type="button" aria-pressed="false" data-level="easy">easy</button>
+          <button type="button" aria-pressed="true" data-level="normal">normal</button>
+          <button type="button" aria-pressed="false" data-level="hard">hard</button>
         </div>
+        <p class="gloss">Easy words are things you can hold. Hard ones are ideas.</p>
       </div>
-      <button class="wide" id="start">Hide a word</button>
-      <p class="gloss">Easy words are things you can hold. Hard ones are ideas.</p>
+
+      <div id="offline-only" class="panel">
+        <div class="field">
+          <span class="key">players</span>
+          <div class="segmented" id="counts">
+            <button type="button" aria-pressed="true" data-count="1">1</button>
+            <button type="button" aria-pressed="false" data-count="2">2</button>
+            <button type="button" aria-pressed="false" data-count="3">3</button>
+            <button type="button" aria-pressed="false" data-count="4">4</button>
+          </div>
+        </div>
+
+        <div class="field" id="names-field" hidden>
+          <span class="key">names</span>
+          <div class="names" id="names"></div>
+        </div>
+
+        <button class="wide" id="start">Hide a word</button>
+      </div>
+
+      <div id="online-only" class="panel" hidden>
+        <button class="wide" id="make-code">Hide a word and get a code</button>
+        <div id="code-out"></div>
+
+        <div class="field">
+          <label class="key" for="code-in">or open a friend's code</label>
+          <div class="row">
+            <input class="grow code-input" id="code-in" placeholder="K7P2" maxlength="5"
+                   autocapitalize="characters" autocorrect="off" spellcheck="false" />
+            <button type="button" class="ghost" id="use-code">Open</button>
+          </div>
+        </div>
+
+        <p class="notice" id="code-notice" hidden></p>
+        <p class="gloss">Everyone who opens the same code gets the same hidden word. Play it apart on your own phones, then send each other your results.</p>
+      </div>
     </div>
 
     <div id="play-live" hidden class="panel">
@@ -393,6 +489,8 @@
         <span id="play-count">0 guesses</span>
         <span id="play-best"></span>
       </div>
+
+      <div class="turnstrip" id="turnstrip" hidden></div>
 
       <div id="play-verdict"></div>
 
@@ -1311,23 +1409,141 @@ wake|sleep4 morning3 begin2
            "belief", "beauty", "peace", "logic", "knowledge", "pride", "spirit", "future"]
   };
 
-  var play = { secret: null, rows: [], level: "normal", done: false };
+  var play = {
+    mode: "offline",
+    level: "normal",
+    secret: null,
+    code: null,
+    rows: [],
+    players: ["You"],
+    turn: 0,
+    done: false
+  };
 
-  Array.prototype.forEach.call($("levels").children, function (button) {
-    button.addEventListener("click", function () {
-      play.level = button.dataset.level;
-      Array.prototype.forEach.call($("levels").children, function (other) {
-        other.setAttribute("aria-pressed", other === button ? "true" : "false");
+  // Wire a segmented control: press one, release the others.
+  function pressGroup(container, key, onPick) {
+    Array.prototype.forEach.call(container.children, function (button) {
+      button.addEventListener("click", function () {
+        Array.prototype.forEach.call(container.children, function (other) {
+          other.setAttribute("aria-pressed", other === button ? "true" : "false");
+        });
+        onPick(button.dataset[key]);
       });
     });
+  }
+
+  var nameInputs = [];
+
+  function buildNames(total) {
+    var typed = nameInputs.map(function (input) { return input.value; });
+    $("names").textContent = "";
+    nameInputs = [];
+    for (var i = 0; i < total; i++) {
+      var input = document.createElement("input");
+      input.placeholder = "Player " + (i + 1);
+      input.value = typed[i] || "";
+      input.setAttribute("aria-label", "Name of player " + (i + 1));
+      input.setAttribute("autocapitalize", "words");
+      input.spellcheck = false;
+      $("names").appendChild(input);
+      nameInputs.push(input);
+    }
+    $("names-field").hidden = total < 2;
+  }
+
+  function roster() {
+    if (nameInputs.length < 2) {
+      return [(nameInputs[0] && nameInputs[0].value.trim()) || "You"];
+    }
+    return nameInputs.map(function (input, i) {
+      return input.value.trim() || "Player " + (i + 1);
+    });
+  }
+
+  pressGroup($("modes"), "mode", function (mode) {
+    play.mode = mode;
+    $("offline-only").hidden = mode !== "offline";
+    $("online-only").hidden = mode !== "online";
+    $("mode-note").textContent = mode === "offline"
+      ? "Up to four of you on this phone, taking turns at one hidden word."
+      : "Hide a word, send the code, and race it on your own phones.";
+    say($("code-notice"), "");
   });
 
-  function startGame() {
+  pressGroup($("levels"), "level", function (level) { play.level = level; });
+  pressGroup($("counts"), "count", function (count) { buildNames(parseInt(count, 10)); });
+  buildNames(1);
+
+  /* ---------- challenge codes ----------
+     Every copy of this page holds the same lexicon in the same order, so a word
+     can travel as nothing more than its position in it — scrambled, so the code
+     itself gives nothing away. */
+  var CODE_M = 46656;   // 36^3, three characters of room
+  var CODE_A = 7919;    // shares no factor with 46656, so the scramble undoes
+  var CODE_B = 1237;
+
+  var CODE_INV = (function (a, m) {
+    var t = 0, nextT = 1, r = m, nextR = a, quotient, hold;
+    while (nextR !== 0) {
+      quotient = Math.floor(r / nextR);
+      hold = t; t = nextT; nextT = hold - quotient * nextT;
+      hold = r; r = nextR; nextR = hold - quotient * nextR;
+    }
+    return ((t % m) + m) % m;
+  })(CODE_A, CODE_M);
+
+  function checkChar(body) {
+    var sum = 0;
+    for (var i = 0; i < body.length; i++) sum += body.charCodeAt(i) * (i + 3);
+    return (sum % 36).toString(36).toUpperCase();
+  }
+
+  function makeCode(index) {
+    var body = ((index * CODE_A + CODE_B) % CODE_M).toString(36).toUpperCase();
+    while (body.length < 3) body = "0" + body;
+    return body + checkChar(body);
+  }
+
+  function readCode(raw) {
+    var code = String(raw || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+    if (code.length !== 4) return null;
+    var body = code.slice(0, 3);
+    if (checkChar(body) !== code.slice(3)) return null;
+    var n = parseInt(body, 36);
+    if (!(n >= 0 && n < CODE_M)) return null;
+    var index = (((n - CODE_B) % CODE_M + CODE_M) % CODE_M) * CODE_INV % CODE_M;
+    return index < V ? index : null;
+  }
+
+  function copyText(text, button, done) {
+    var original = button.textContent;
+    function flash(message) {
+      button.textContent = message;
+      setTimeout(function () { button.textContent = original; }, 1400);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { flash(done); },
+        function () { flash("Select it instead"); }
+      );
+    } else {
+      flash("Select it instead");
+    }
+  }
+
+  function pickSecret() {
     var pool = POOLS[play.level].filter(function (w) { return VEC[w]; });
-    play.secret = pool[Math.floor(Math.random() * pool.length)];
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function beginGame(secret, code) {
+    play.secret = secret;
+    play.code = code || null;
     play.rows = [];
+    play.turn = 0;
     play.done = false;
-    orderFor(play.secret);
+    play.players = play.mode === "offline" ? roster() : ["You"];
+    orderFor(secret);
     $("play-setup").hidden = true;
     $("play-live").hidden = false;
     $("play-controls").hidden = false;
@@ -1336,6 +1552,47 @@ wake|sleep4 morning3 begin2
     say($("play-notice"), "");
     refreshPlay();
     $("play-input").focus();
+  }
+
+  function showCode(code) {
+    $("code-out").textContent = "";
+
+    var card = document.createElement("div");
+    card.className = "card";
+
+    var key = document.createElement("div");
+    key.className = "eyebrow";
+    key.textContent = "send this to your friends";
+    card.appendChild(key);
+
+    var big = document.createElement("div");
+    big.className = "code";
+    big.textContent = code;
+    card.appendChild(big);
+
+    var note = document.createElement("p");
+    note.className = "gloss";
+    note.textContent = "You don't know the word either, so you can play along.";
+    card.appendChild(note);
+
+    var row = document.createElement("div");
+    row.className = "row";
+
+    var copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "ghost";
+    copy.textContent = "Copy code";
+    copy.addEventListener("click", function () { copyText(code, copy, "Copied"); });
+    row.appendChild(copy);
+
+    var go = document.createElement("button");
+    go.type = "button";
+    go.textContent = "Play it now";
+    go.addEventListener("click", function () { beginGame(WORDS[readCode(code)], code); });
+    row.appendChild(go);
+
+    card.appendChild(row);
+    $("code-out").appendChild(card);
   }
 
   function refreshPlay() {
@@ -1347,13 +1604,49 @@ wake|sleep4 morning3 begin2
     } else {
       $("play-best").textContent = "";
     }
-    paintLadder($("play-ladder"), play.rows, { fresh: false });
+
+    var shared = play.players.length > 1;
+    var strip = $("turnstrip");
+    strip.hidden = !shared || play.done;
+    if (!strip.hidden) {
+      strip.textContent = "";
+      play.players.forEach(function (name, i) {
+        var pawn = document.createElement("span");
+        pawn.className = "pawn" + (i === play.turn ? " is-turn" : "");
+        pawn.textContent = name;
+        strip.appendChild(pawn);
+      });
+    }
+
+    paintLadder($("play-ladder"), play.rows.map(function (row) {
+      return shared ? { word: row.word, rank: row.rank, gloss: row.by } : row;
+    }));
   }
 
-  function finish(won) {
+  // A guess as one square, coarse enough to give nothing away.
+  function band(rank) {
+    if (rank === 1) return "🟩";
+    var t = closeness(rank);
+    if (t >= 0.72) return "🟥";
+    if (t >= 0.55) return "🟧";
+    if (t >= 0.35) return "🟨";
+    return "🟦";
+  }
+
+  function resultText() {
+    var title = "Contexto " + (play.code ? play.code : "· " + play.level);
+    var trail = play.rows.map(function (row) { return band(row.rank); }).join("");
+    return title + "\nfound in " + play.rows.length + "\n" + trail;
+  }
+
+  function finish(won, who) {
     play.done = true;
     $("play-controls").hidden = true;
     $("play-quit").hidden = true;
+    $("turnstrip").hidden = true;
+
+    var shared = play.players.length > 1;
+    var count = play.rows.length + (play.rows.length === 1 ? " guess" : " guesses");
 
     var card = document.createElement("div");
     card.className = "card keyed";
@@ -1362,9 +1655,9 @@ wake|sleep4 morning3 begin2
     var key = document.createElement("div");
     key.className = "eyebrow";
     key.style.color = "var(--muted)";
-    key.textContent = won
-      ? "found in " + play.rows.length + (play.rows.length === 1 ? " guess" : " guesses")
-      : "the word was";
+    if (!won) key.textContent = "the word was";
+    else if (shared) key.textContent = who + " found it — " + count + " between you";
+    else key.textContent = "found in " + count;
     card.appendChild(key);
 
     var word = document.createElement("div");
@@ -1384,15 +1677,65 @@ wake|sleep4 morning3 begin2
       card.appendChild(near);
     }
 
+    if (won && shared) {
+      var tally = document.createElement("ul");
+      tally.className = "tally";
+      play.players.forEach(function (name) {
+        var mine = play.rows.filter(function (row) { return row.by === name; });
+        var closest = mine.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
+
+        var line = document.createElement("li");
+        var label = document.createElement("span");
+        label.textContent = name;
+        line.appendChild(label);
+
+        var stat = document.createElement("span");
+        stat.className = "rank";
+        stat.style.color = closest ? heat(closest.rank) : "var(--muted)";
+        stat.textContent = mine.length + (closest ? " · closest " + closest.rank : "");
+        line.appendChild(stat);
+
+        tally.appendChild(line);
+      });
+      card.appendChild(tally);
+    }
+
+    if (won) {
+      var share = document.createElement("textarea");
+      share.className = "result";
+      share.rows = 3;
+      share.readOnly = true;
+      share.setAttribute("aria-label", "Your result, ready to send");
+      share.value = resultText();
+      card.appendChild(share);
+    }
+
+    var buttons = document.createElement("div");
+    buttons.className = "row";
+
+    if (won) {
+      var send = document.createElement("button");
+      send.type = "button";
+      send.className = "ghost";
+      send.textContent = "Copy result";
+      send.addEventListener("click", function () {
+        copyText(card.querySelector(".result").value, send, "Copied");
+      });
+      buttons.appendChild(send);
+    }
+
     var again = document.createElement("button");
     again.type = "button";
-    again.style.alignSelf = "flex-start";
     again.textContent = "Hide another";
     again.addEventListener("click", function () {
       $("play-live").hidden = true;
       $("play-setup").hidden = false;
+      $("code-out").textContent = "";
+      $("code-in").value = "";
     });
-    card.appendChild(again);
+    buttons.appendChild(again);
+
+    card.appendChild(buttons);
 
     $("play-verdict").textContent = "";
     $("play-verdict").appendChild(card);
@@ -1411,21 +1754,43 @@ wake|sleep4 morning3 begin2
 
     say($("play-notice"), "");
     var rank = rankOf(play.secret, w);
-    play.rows.push({ word: w, rank: rank });
+    var who = play.players[play.turn];
+    play.rows.push({ word: w, rank: rank, by: who });
     $("play-input").value = "";
+
+    // A rejected guess costs nobody their turn, so the hand only passes here.
+    if (rank !== 1) play.turn = (play.turn + 1) % play.players.length;
     refreshPlay();
 
     var fresh = $("play-ladder").querySelector(".reading");
     if (fresh && rank === 1) fresh.classList.add("fresh");
 
-    if (rank === 1) finish(true);
+    if (rank === 1) finish(true, who);
     else $("play-input").focus();
   }
 
-  $("start").addEventListener("click", startGame);
+  $("start").addEventListener("click", function () { beginGame(pickSecret(), null); });
+
+  $("make-code").addEventListener("click", function () {
+    var secret = pickSecret();
+    say($("code-notice"), "");
+    showCode(makeCode(WORDS.indexOf(secret)));
+  });
+
+  $("use-code").addEventListener("click", function () {
+    var index = readCode($("code-in").value);
+    if (index === null) {
+      say($("code-notice"), "That code doesn't work — check the four characters and try again.");
+      return;
+    }
+    say($("code-notice"), "");
+    beginGame(WORDS[index], String($("code-in").value).toUpperCase().replace(/[^0-9A-Z]/g, ""));
+  });
+
+  $("code-in").addEventListener("keydown", function (e) { if (e.key === "Enter") $("use-code").click(); });
   $("play-go").addEventListener("click", guess);
   $("play-input").addEventListener("keydown", function (e) { if (e.key === "Enter") guess(); });
-  $("play-quit").addEventListener("click", function () { finish(false); });
+  $("play-quit").addEventListener("click", function () { finish(false, null); });
 
   /* ================================================================
      6. SOLVER
