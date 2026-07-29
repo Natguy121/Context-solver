@@ -467,6 +467,21 @@
       </div>
 
       <div id="online-only" class="panel" hidden>
+        <div class="field">
+          <span class="key">players</span>
+          <div class="segmented" id="online-counts">
+            <button type="button" aria-pressed="true" data-count="1">1</button>
+            <button type="button" aria-pressed="false" data-count="2">2</button>
+            <button type="button" aria-pressed="false" data-count="3">3</button>
+            <button type="button" aria-pressed="false" data-count="4">4</button>
+          </div>
+        </div>
+
+        <div class="field" id="online-names-field" hidden>
+          <span class="key">names</span>
+          <div class="names" id="online-names"></div>
+        </div>
+
         <button class="wide" id="make-code">Hide a word and get a code</button>
         <div id="code-out"></div>
 
@@ -1433,11 +1448,18 @@ wake|sleep4 morning3 begin2
   }
 
   var nameInputs = [];
+  var onlineNameInputs = [];
 
-  function buildNames(total) {
-    var typed = nameInputs.map(function (input) { return input.value; });
-    $("names").textContent = "";
-    nameInputs = [];
+  function buildNames(total, isOnline) {
+    var inputs = isOnline ? onlineNameInputs : nameInputs;
+    var typed = inputs.map(function (input) { return input.value; });
+    var container = isOnline ? $("online-names") : $("names");
+    var field = isOnline ? $("online-names-field") : $("names-field");
+
+    container.textContent = "";
+    if (isOnline) onlineNameInputs = [];
+    else nameInputs = [];
+
     for (var i = 0; i < total; i++) {
       var input = document.createElement("input");
       input.placeholder = "Player " + (i + 1);
@@ -1445,17 +1467,19 @@ wake|sleep4 morning3 begin2
       input.setAttribute("aria-label", "Name of player " + (i + 1));
       input.setAttribute("autocapitalize", "words");
       input.spellcheck = false;
-      $("names").appendChild(input);
-      nameInputs.push(input);
+      container.appendChild(input);
+      if (isOnline) onlineNameInputs.push(input);
+      else nameInputs.push(input);
     }
-    $("names-field").hidden = total < 2;
+    field.hidden = total < 2;
   }
 
   function roster() {
-    if (nameInputs.length < 2) {
-      return [(nameInputs[0] && nameInputs[0].value.trim()) || "You"];
+    var inputs = play.mode === "offline" ? nameInputs : onlineNameInputs;
+    if (inputs.length < 2) {
+      return [(inputs[0] && inputs[0].value.trim()) || "You"];
     }
-    return nameInputs.map(function (input, i) {
+    return inputs.map(function (input, i) {
       return input.value.trim() || "Player " + (i + 1);
     });
   }
@@ -1471,8 +1495,10 @@ wake|sleep4 morning3 begin2
   });
 
   pressGroup($("levels"), "level", function (level) { play.level = level; });
-  pressGroup($("counts"), "count", function (count) { buildNames(parseInt(count, 10)); });
-  buildNames(1);
+  pressGroup($("counts"), "count", function (count) { buildNames(parseInt(count, 10), false); });
+  pressGroup($("online-counts"), "count", function (count) { buildNames(parseInt(count, 10), true); });
+  buildNames(1, false);
+  buildNames(1, true);
 
   /* ---------- challenge codes ----------
      Every copy of this page holds the same lexicon in the same order, so a word
