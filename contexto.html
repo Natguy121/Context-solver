@@ -328,19 +328,48 @@
   /* ---------- multiplayer ---------- */
   .names { display: flex; flex-direction: column; gap: 0.5rem; }
 
-  .turnstrip { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  #play-live.with-roster { display: flex; flex-direction: column; gap: 1.75rem; }
+  .play-main { display: flex; flex-direction: column; gap: 1.75rem; min-width: 0; }
 
-  .pawn {
+  .roster {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1rem;
+    background: var(--sunken);
+  }
+
+  .roster-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .roster-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
     font-family: var(--mono);
     font-size: var(--micro);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    letter-spacing: 0.06em;
     padding: 0.5rem 0.625rem;
     border: 1px solid var(--rule);
     border-radius: 2px;
     color: var(--muted);
+    background: var(--surface);
   }
-  .pawn.is-turn { color: var(--ground); background: var(--ink); border-color: var(--ink); }
+  .roster-item.is-turn { color: var(--ground); background: var(--ink); border-color: var(--ink); }
+  .roster-item .who { text-transform: uppercase; }
+  .roster-item .stat { white-space: nowrap; }
+
+  @media (min-width: 46rem) {
+    .wrap.wide-play { max-width: 54rem; }
+    #play-live.with-roster {
+      flex-direction: row;
+      align-items: flex-start;
+    }
+    #play-live.with-roster .play-main { flex: 1; }
+    #play-live.with-roster .roster { width: 14rem; flex-shrink: 0; }
+  }
 
   .code {
     font-family: var(--mono);
@@ -505,23 +534,28 @@
     </div>
 
     <div id="play-live" hidden class="panel">
-      <div class="scale-legend">
-        <span id="play-count">0 guesses</span>
-        <span id="play-best"></span>
+      <div class="play-main">
+        <div class="scale-legend">
+          <span id="play-count">0 guesses</span>
+          <span id="play-best"></span>
+        </div>
+
+        <div id="play-verdict"></div>
+
+        <div class="row" id="play-controls">
+          <input class="grow" id="play-input" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" />
+          <button id="play-go">Guess</button>
+        </div>
+
+        <p class="notice" id="play-notice" hidden></p>
+        <ul class="readings" id="play-ladder"></ul>
+        <button class="linkish" id="play-quit">give up</button>
       </div>
 
-      <div class="turnstrip" id="turnstrip" hidden></div>
-
-      <div id="play-verdict"></div>
-
-      <div class="row" id="play-controls">
-        <input class="grow" id="play-input" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" />
-        <button id="play-go">Guess</button>
-      </div>
-
-      <p class="notice" id="play-notice" hidden></p>
-      <ul class="readings" id="play-ladder"></ul>
-      <button class="linkish" id="play-quit">give up</button>
+      <aside class="roster" id="roster" hidden>
+        <div class="eyebrow">who's in this game</div>
+        <ul class="roster-list" id="roster-list"></ul>
+      </aside>
     </div>
   </section>
 
@@ -9605,15 +9639,34 @@ plow|farm5 tool4 soil4 work3
     }
 
     var shared = play.players.length > 1;
-    var strip = $("turnstrip");
-    strip.hidden = !shared || play.done;
-    if (!strip.hidden) {
-      strip.textContent = "";
+    $("play-live").classList.toggle("with-roster", shared);
+    document.querySelector(".wrap").classList.toggle("wide-play", shared);
+
+    var roster = $("roster");
+    roster.hidden = !shared || play.done;
+    if (!roster.hidden) {
+      var list = $("roster-list");
+      list.textContent = "";
       play.players.forEach(function (name, i) {
-        var pawn = document.createElement("span");
-        pawn.className = "pawn" + (i === play.turn ? " is-turn" : "");
-        pawn.textContent = name;
-        strip.appendChild(pawn);
+        var rows = play.rows.filter(function (r) { return r.by === name; });
+        var best = rows.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
+
+        var li = document.createElement("li");
+        li.className = "roster-item" + (i === play.turn ? " is-turn" : "");
+
+        var who = document.createElement("span");
+        who.className = "who";
+        who.textContent = name;
+        li.appendChild(who);
+
+        var stat = document.createElement("span");
+        stat.className = "stat";
+        stat.textContent = rows.length
+          ? rows.length + (rows.length === 1 ? " guess" : " guesses") + (best ? " · " + best.rank : "")
+          : (i === play.turn ? "guessing…" : "waiting");
+        li.appendChild(stat);
+
+        list.appendChild(li);
       });
     }
 
@@ -9642,7 +9695,7 @@ plow|farm5 tool4 soil4 work3
     play.done = true;
     $("play-controls").hidden = true;
     $("play-quit").hidden = true;
-    $("turnstrip").hidden = true;
+    $("roster").hidden = true;
 
     var shared = play.players.length > 1;
     var count = play.rows.length + (play.rows.length === 1 ? " guess" : " guesses");
@@ -9729,6 +9782,7 @@ plow|farm5 tool4 soil4 work3
     again.addEventListener("click", function () {
       $("play-live").hidden = true;
       $("play-setup").hidden = false;
+      document.querySelector(".wrap").classList.remove("wide-play");
       $("code-out").textContent = "";
       $("code-in").value = "";
     });
