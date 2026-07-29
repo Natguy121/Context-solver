@@ -358,17 +358,38 @@
     background: var(--surface);
   }
   .roster-item.is-turn { color: var(--ground); background: var(--ink); border-color: var(--ink); }
+  .roster-item.is-me { border-color: var(--accent); color: var(--ink); }
   .roster-item .who { text-transform: uppercase; }
   .roster-item .stat { white-space: nowrap; }
 
+  .chat-eyebrow { margin-top: 0.25rem; }
+
+  .chat-log {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    max-height: 12rem;
+    overflow-y: auto;
+  }
+  .chat-line { font-size: var(--micro); line-height: 1.4; }
+  .chat-line .from { font-family: var(--mono); text-transform: uppercase; color: var(--muted); margin-right: 0.375rem; }
+  .chat-line.mine .from { color: var(--accent); }
+  .chat-empty { font-size: var(--micro); color: var(--muted); }
+
+  #chat-box .row { margin-top: 0.5rem; }
+  #chat-box input { font-size: var(--micro); }
+
   @media (min-width: 46rem) {
-    .wrap.wide-play { max-width: 54rem; }
+    .wrap.wide-play { max-width: 58rem; }
     #play-live.with-roster {
       flex-direction: row;
       align-items: flex-start;
     }
     #play-live.with-roster .play-main { flex: 1; }
-    #play-live.with-roster .roster { width: 14rem; flex-shrink: 0; }
+    #play-live.with-roster .roster { width: 17rem; flex-shrink: 0; }
   }
 
   .code {
@@ -502,18 +523,8 @@
 
       <div id="online-only" class="panel" hidden>
         <div class="field">
-          <span class="key">players</span>
-          <div class="segmented" id="online-counts">
-            <button type="button" aria-pressed="true" data-count="1">1</button>
-            <button type="button" aria-pressed="false" data-count="2">2</button>
-            <button type="button" aria-pressed="false" data-count="3">3</button>
-            <button type="button" aria-pressed="false" data-count="4">4</button>
-          </div>
-        </div>
-
-        <div class="field" id="online-names-field" hidden>
-          <span class="key">names</span>
-          <div class="names" id="online-names"></div>
+          <label class="key" for="online-name">your name</label>
+          <input id="online-name" placeholder="Player" autocapitalize="words" spellcheck="false" />
         </div>
 
         <button class="wide" id="make-code">Hide a word and get a code</button>
@@ -529,7 +540,7 @@
         </div>
 
         <p class="notice" id="code-notice" hidden></p>
-        <p class="gloss">Everyone who opens the same code gets the same hidden word. Play it apart on your own phones, then send each other your results.</p>
+        <p class="gloss">Everyone who opens the same code joins the same live room — you'll see who else is playing and can chat, but each of you guesses on your own. Needs a connection; offline mode doesn't.</p>
       </div>
     </div>
 
@@ -555,6 +566,16 @@
       <aside class="roster" id="roster" hidden>
         <div class="eyebrow">who's in this game</div>
         <ul class="roster-list" id="roster-list"></ul>
+        <p class="notice" id="live-notice" hidden></p>
+
+        <div id="chat-box" hidden>
+          <div class="eyebrow chat-eyebrow">chat</div>
+          <ul class="chat-log" id="chat-log"></ul>
+          <div class="row">
+            <input class="grow" id="chat-input" placeholder="say something" maxlength="140" autocomplete="off" />
+            <button type="button" class="ghost" id="chat-send">Send</button>
+          </div>
+        </div>
       </aside>
     </div>
   </section>
@@ -9439,7 +9460,9 @@ plow|farm5 tool4 soil4 work3
     rows: [],
     players: ["You"],
     turn: 0,
-    done: false
+    done: false,
+    myName: null,
+    live: null   // online mode's live roster, from LiveRoom — null until the first update arrives
   };
 
   // Wire a segmented control: press one, release the others.
@@ -9455,17 +9478,11 @@ plow|farm5 tool4 soil4 work3
   }
 
   var nameInputs = [];
-  var onlineNameInputs = [];
 
-  function buildNames(total, isOnline) {
-    var inputs = isOnline ? onlineNameInputs : nameInputs;
-    var typed = inputs.map(function (input) { return input.value; });
-    var container = isOnline ? $("online-names") : $("names");
-    var field = isOnline ? $("online-names-field") : $("names-field");
-
-    container.textContent = "";
-    if (isOnline) onlineNameInputs = [];
-    else nameInputs = [];
+  function buildNames(total) {
+    var typed = nameInputs.map(function (input) { return input.value; });
+    $("names").textContent = "";
+    nameInputs = [];
 
     for (var i = 0; i < total; i++) {
       var input = document.createElement("input");
@@ -9474,21 +9491,23 @@ plow|farm5 tool4 soil4 work3
       input.setAttribute("aria-label", "Name of player " + (i + 1));
       input.setAttribute("autocapitalize", "words");
       input.spellcheck = false;
-      container.appendChild(input);
-      if (isOnline) onlineNameInputs.push(input);
-      else nameInputs.push(input);
+      $("names").appendChild(input);
+      nameInputs.push(input);
     }
-    field.hidden = total < 2;
+    $("names-field").hidden = total < 2;
   }
 
   function roster() {
-    var inputs = play.mode === "offline" ? nameInputs : onlineNameInputs;
-    if (inputs.length < 2) {
-      return [(inputs[0] && inputs[0].value.trim()) || "You"];
+    if (nameInputs.length < 2) {
+      return [(nameInputs[0] && nameInputs[0].value.trim()) || "You"];
     }
-    return inputs.map(function (input, i) {
+    return nameInputs.map(function (input, i) {
       return input.value.trim() || "Player " + (i + 1);
     });
+  }
+
+  function myOnlineName() {
+    return $("online-name").value.trim() || "Player";
   }
 
   pressGroup($("modes"), "mode", function (mode) {
@@ -9502,10 +9521,8 @@ plow|farm5 tool4 soil4 work3
   });
 
   pressGroup($("levels"), "level", function (level) { play.level = level; });
-  pressGroup($("counts"), "count", function (count) { buildNames(parseInt(count, 10), false); });
-  pressGroup($("online-counts"), "count", function (count) { buildNames(parseInt(count, 10), true); });
-  buildNames(1, false);
-  buildNames(1, true);
+  pressGroup($("counts"), "count", function (count) { buildNames(parseInt(count, 10)); });
+  buildNames(1);
 
   /* ---------- challenge codes ----------
      Every copy of this page holds the same lexicon in the same order, so a word
@@ -9570,12 +9587,23 @@ plow|farm5 tool4 soil4 work3
   }
 
   function beginGame(secret, code) {
+    if (window.LiveRoom) window.LiveRoom.leave();
+
     play.secret = secret;
     play.code = code || null;
     play.rows = [];
     play.turn = 0;
     play.done = false;
-    play.players = play.mode === "offline" ? roster() : ["You"];
+    play.live = null;
+
+    if (play.mode === "offline") {
+      play.players = roster();
+    } else {
+      play.myName = myOnlineName();
+      play.players = [play.myName];
+      joinLiveRoom(code, play.myName);
+    }
+
     orderFor(secret);
     $("play-setup").hidden = true;
     $("play-live").hidden = false;
@@ -9585,6 +9613,66 @@ plow|farm5 tool4 soil4 work3
     say($("play-notice"), "");
     refreshPlay();
     $("play-input").focus();
+  }
+
+  // Online mode's presence + chat, wired to LiveRoom (see the module script
+  // at the bottom of the page). If Firebase isn't configured or the
+  // connection fails, the game still works — you just won't see anyone else.
+  function joinLiveRoom(code, name) {
+    var chatLog = $("chat-log");
+    chatLog.textContent = "";
+    var empty = document.createElement("li");
+    empty.className = "chat-empty";
+    empty.textContent = "No messages yet.";
+    chatLog.appendChild(empty);
+
+    if (!code) return;
+
+    function attach() {
+      if (!window.LiveRoom || !window.LiveRoom.ready) return;
+      say($("live-notice"), "");
+      window.LiveRoom.join(code, name, {
+        onPlayers: function (list) {
+          play.live = list;
+          refreshPlay();
+        },
+        onChat: function (msg) {
+          if (!msg) return;
+          appendChatLine(msg);
+        },
+        onError: function () {
+          say($("live-notice"), "Live sync dropped — you can still play, just without seeing others.");
+        }
+      });
+    }
+
+    if (window.LiveRoom && window.LiveRoom.ready) {
+      attach();
+    } else if (window.LiveRoom && window.LiveRoom.unavailable) {
+      say($("live-notice"), "Live sync isn't set up for this copy of the game — you can still play, just without seeing others.");
+    } else {
+      say($("live-notice"), "Connecting…");
+      window.addEventListener("liveroom-ready", attach, { once: true });
+      window.addEventListener("liveroom-unavailable", function () {
+        say($("live-notice"), "Live sync isn't set up for this copy of the game — you can still play, just without seeing others.");
+      }, { once: true });
+    }
+  }
+
+  function appendChatLine(msg) {
+    var log = $("chat-log");
+    var empty = log.querySelector(".chat-empty");
+    if (empty) empty.remove();
+
+    var li = document.createElement("li");
+    li.className = "chat-line" + (msg.name === play.myName ? " mine" : "");
+    var from = document.createElement("span");
+    from.className = "from";
+    from.textContent = msg.name;
+    li.appendChild(from);
+    li.appendChild(document.createTextNode(msg.text));
+    log.appendChild(li);
+    log.scrollTop = log.scrollHeight;
   }
 
   function showCode(code) {
@@ -9638,40 +9726,71 @@ plow|farm5 tool4 soil4 work3
       $("play-best").textContent = "";
     }
 
-    var shared = play.players.length > 1;
-    $("play-live").classList.toggle("with-roster", shared);
-    document.querySelector(".wrap").classList.toggle("wide-play", shared);
+    var isOnline = play.mode === "online";
+    var multiOffline = !isOnline && play.players.length > 1;
+    var showRoster = isOnline || multiOffline;
+    $("play-live").classList.toggle("with-roster", showRoster);
+    document.querySelector(".wrap").classList.toggle("wide-play", showRoster);
 
     var roster = $("roster");
-    roster.hidden = !shared || play.done;
+    roster.hidden = !showRoster || play.done;
+    $("chat-box").hidden = !isOnline || play.done;
+
     if (!roster.hidden) {
       var list = $("roster-list");
       list.textContent = "";
-      play.players.forEach(function (name, i) {
-        var rows = play.rows.filter(function (r) { return r.by === name; });
-        var best = rows.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
 
-        var li = document.createElement("li");
-        li.className = "roster-item" + (i === play.turn ? " is-turn" : "");
+      if (isOnline) {
+        var live = play.live || [{ name: play.myName, guesses: play.rows.length, best: best ? best.rank : null, isMe: true }];
+        live.forEach(function (p) {
+          var li = document.createElement("li");
+          li.className = "roster-item" + (p.isMe ? " is-me" : "");
 
-        var who = document.createElement("span");
-        who.className = "who";
-        who.textContent = name;
-        li.appendChild(who);
+          var who = document.createElement("span");
+          who.className = "who";
+          who.textContent = p.name + (p.isMe ? " (you)" : "");
+          li.appendChild(who);
 
-        var stat = document.createElement("span");
-        stat.className = "stat";
-        stat.textContent = rows.length
-          ? rows.length + (rows.length === 1 ? " guess" : " guesses") + (best ? " · " + best.rank : "")
-          : (i === play.turn ? "guessing…" : "waiting");
-        li.appendChild(stat);
+          var stat = document.createElement("span");
+          stat.className = "stat";
+          stat.textContent = p.guesses
+            ? p.guesses + (p.guesses === 1 ? " guess" : " guesses") + (p.best ? " · " + p.best : "")
+            : "joined";
+          li.appendChild(stat);
 
-        list.appendChild(li);
-      });
+          list.appendChild(li);
+        });
+      } else {
+        play.players.forEach(function (name, i) {
+          var rows = play.rows.filter(function (r) { return r.by === name; });
+          var pBest = rows.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
+
+          var li = document.createElement("li");
+          li.className = "roster-item" + (i === play.turn ? " is-turn" : "");
+
+          var who = document.createElement("span");
+          who.className = "who";
+          who.textContent = name;
+          li.appendChild(who);
+
+          var stat = document.createElement("span");
+          stat.className = "stat";
+          stat.textContent = rows.length
+            ? rows.length + (rows.length === 1 ? " guess" : " guesses") + (pBest ? " · " + pBest.rank : "")
+            : (i === play.turn ? "guessing…" : "waiting");
+          li.appendChild(stat);
+
+          list.appendChild(li);
+        });
+      }
+    }
+
+    if (isOnline && window.LiveRoom) {
+      window.LiveRoom.updateProgress(play.rows.length, best ? best.rank : null);
     }
 
     paintLadder($("play-ladder"), play.rows.map(function (row) {
-      return shared ? { word: row.word, rank: row.rank, gloss: row.by } : row;
+      return multiOffline ? { word: row.word, rank: row.rank, gloss: row.by } : row;
     }));
   }
 
@@ -9696,6 +9815,8 @@ plow|farm5 tool4 soil4 work3
     $("play-controls").hidden = true;
     $("play-quit").hidden = true;
     $("roster").hidden = true;
+    $("chat-box").hidden = true;
+    if (window.LiveRoom) window.LiveRoom.leave();
 
     var shared = play.players.length > 1;
     var count = play.rows.length + (play.rows.length === 1 ? " guess" : " guesses");
@@ -9844,6 +9965,17 @@ plow|farm5 tool4 soil4 work3
   $("play-go").addEventListener("click", guess);
   $("play-input").addEventListener("keydown", function (e) { if (e.key === "Enter") guess(); });
   $("play-quit").addEventListener("click", function () { finish(false, null); });
+
+  function sendChat() {
+    var input = $("chat-input");
+    var text = input.value.trim();
+    if (!text || !window.LiveRoom) return;
+    window.LiveRoom.sendChat(play.myName, text);
+    input.value = "";
+    input.focus();
+  }
+  $("chat-send").addEventListener("click", sendChat);
+  $("chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendChat(); });
 
   /* ================================================================
      6. SOLVER
@@ -10075,4 +10207,99 @@ plow|farm5 tool4 soil4 work3
     URL.revokeObjectURL(url);
   });
 })();
+</script>
+
+<script type="module">
+  /* ================================================================
+     LIVE ROOM — online mode's presence + chat, backed by Firebase
+     Realtime Database. Everything else in this page runs with no
+     network at all; this is the one piece that needs a connection,
+     since separate phones can only see each other through a server
+     somewhere.
+
+     FIREBASE_CONFIG below is a public client key, not a secret — it's
+     safe to ship in this file. Access is controlled by the database's
+     security rules, not by hiding this object. Fill it in from your
+     own Firebase project (console.firebase.google.com → Project
+     settings → Your apps → the web app's config), matched with rules
+     roughly like:
+       { "rules": { "rooms": { "$code": { ".read": true, ".write": true } } } }
+     ================================================================ */
+  var FIREBASE_CONFIG = {
+    apiKey: "REPLACE_ME",
+    databaseURL: "https://REPLACE_ME.firebaseio.com",
+    projectId: "REPLACE_ME"
+  };
+
+  var LiveRoom = { join: function () {}, leave: function () {}, updateProgress: function () {}, sendChat: function () {}, ready: false, unavailable: false };
+  window.LiveRoom = LiveRoom;
+
+  if (FIREBASE_CONFIG.apiKey !== "REPLACE_ME") {
+    Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js")
+    ]).then(function (mods) {
+      var appMod = mods[0], dbMod = mods[1];
+      var app = appMod.initializeApp(FIREBASE_CONFIG);
+      var db = dbMod.getDatabase(app);
+      var current = null;
+
+      function leave() {
+        if (!current) return;
+        current.unsubPlayers();
+        current.unsubChat();
+        dbMod.remove(current.presenceRef).catch(function () {});
+        current = null;
+      }
+
+      function join(code, name, callbacks) {
+        leave();
+        var myId = Math.random().toString(36).slice(2, 10);
+        var presenceRef = dbMod.ref(db, "rooms/" + code + "/players/" + myId);
+        var playersRef = dbMod.ref(db, "rooms/" + code + "/players");
+        var chatQuery = dbMod.query(dbMod.ref(db, "rooms/" + code + "/chat"), dbMod.limitToLast(50));
+
+        dbMod.set(presenceRef, { name: name, guesses: 0, best: null, joinedAt: dbMod.serverTimestamp() });
+        dbMod.onDisconnect(presenceRef).remove();
+
+        var unsubPlayers = dbMod.onValue(playersRef, function (snap) {
+          var val = snap.val() || {};
+          var list = Object.keys(val).map(function (id) {
+            var p = val[id] || {};
+            return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null, isMe: id === myId };
+          });
+          callbacks.onPlayers(list);
+        }, function () { callbacks.onError && callbacks.onError(); });
+
+        var unsubChat = dbMod.onChildAdded(chatQuery, function (snap) {
+          callbacks.onChat(snap.val());
+        });
+
+        current = { code: code, myId: myId, presenceRef: presenceRef, unsubPlayers: unsubPlayers, unsubChat: unsubChat };
+      }
+
+      function updateProgress(guesses, best) {
+        if (!current) return;
+        dbMod.update(current.presenceRef, { guesses: guesses, best: best });
+      }
+
+      function sendChat(name, text) {
+        if (!current) return;
+        dbMod.push(dbMod.ref(db, "rooms/" + current.code + "/chat"), { name: name, text: text, at: dbMod.serverTimestamp() });
+      }
+
+      LiveRoom.join = join;
+      LiveRoom.leave = leave;
+      LiveRoom.updateProgress = updateProgress;
+      LiveRoom.sendChat = sendChat;
+      LiveRoom.ready = true;
+      window.dispatchEvent(new Event("liveroom-ready"));
+    }).catch(function () {
+      LiveRoom.unavailable = true;
+      window.dispatchEvent(new Event("liveroom-unavailable"));
+    });
+  } else {
+    LiveRoom.unavailable = true;
+    window.dispatchEvent(new Event("liveroom-unavailable"));
+  }
 </script>
