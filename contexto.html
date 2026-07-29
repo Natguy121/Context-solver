@@ -1,0 +1,1649 @@
+<title>Contexto — offline</title>
+
+<style>
+  :root {
+    --ground: #F1F0F6;
+    --surface: #FFFFFF;
+    --sunken: #E7E5EF;
+    --ink: #191725;
+    --muted: #6A6680;
+    --rule: #DEDBE8;
+    --accent: #4E3FA8;
+    --focus: #4E3FA8;
+
+    --serif: ui-serif, "Iowan Old Style", Charter, Georgia, Cambria, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, Menlo, "SF Mono", "Cascadia Mono", monospace;
+
+    --step-0: 0.9375rem;
+    --step-1: 1.0625rem;
+    --step-2: 1.25rem;
+    --step-3: 1.75rem;
+    --step-4: 2.5rem;
+    --micro: 0.6875rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #131220;
+      --surface: #1C1A2B;
+      --sunken: #262338;
+      --ink: #ECEAF4;
+      --muted: #9793AC;
+      --rule: #2E2B43;
+      --accent: #A99CF0;
+      --focus: #A99CF0;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #131220;
+    --surface: #1C1A2B;
+    --sunken: #262338;
+    --ink: #ECEAF4;
+    --muted: #9793AC;
+    --rule: #2E2B43;
+    --accent: #A99CF0;
+    --focus: #A99CF0;
+  }
+
+  :root[data-theme="light"] {
+    --ground: #F1F0F6;
+    --surface: #FFFFFF;
+    --sunken: #E7E5EF;
+    --ink: #191725;
+    --muted: #6A6680;
+    --rule: #DEDBE8;
+    --accent: #4E3FA8;
+    --focus: #4E3FA8;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: var(--step-0);
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap {
+    max-width: 34rem;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-size: var(--step-4);
+    line-height: 1;
+    margin: 0;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .standfirst { margin: 0; color: var(--muted); max-width: 34ch; }
+
+  /* ---------- tabs ---------- */
+  .tabs {
+    display: flex;
+    gap: 1.5rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .tab {
+    appearance: none;
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    padding: 0 0 0.625rem;
+    min-height: 2.75rem;
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+  .tab:hover { color: var(--ink); }
+
+  /* ---------- panels ---------- */
+  .panel { display: flex; flex-direction: column; gap: 1.5rem; }
+  .panel[hidden] { display: none; }
+
+  .field { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  label.key {
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  input, textarea, select {
+    font-family: var(--sans);
+    font-size: var(--step-1);
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.75rem 0.875rem;
+    min-height: 3rem;
+    width: 100%;
+    outline: none;
+  }
+
+  textarea { resize: vertical; line-height: 1.6; }
+  input.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  input:focus-visible, textarea:focus-visible, select:focus-visible,
+  button:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .row { display: flex; gap: 0.5rem; align-items: stretch; }
+  .row > .grow { flex: 1; }
+  .row > .fixed { width: 6rem; flex: none; }
+
+  button {
+    font-family: var(--sans);
+    font-size: var(--step-1);
+    min-height: 3rem;
+    padding: 0 1.25rem;
+    border-radius: 2px;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--ground);
+    cursor: pointer;
+  }
+
+  button.ghost { background: transparent; color: var(--ink); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.wide { width: 100%; }
+
+  .segmented { display: flex; gap: 0.5rem; }
+  .segmented button { flex: 1; padding: 0 0.5rem; }
+  .segmented button[aria-pressed="false"] {
+    background: transparent;
+    color: var(--muted);
+    border-color: var(--rule);
+  }
+
+  .linkish {
+    background: none;
+    border: 0;
+    padding: 0;
+    min-height: 2.75rem;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+  .linkish:hover { color: var(--ink); }
+
+  /* ---------- readings (the ladder) ---------- */
+  .readings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+
+  .reading {
+    padding: 0.875rem 0 0.9375rem;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .reading:first-child { border-top: 1px solid var(--rule); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .reading.fresh { animation: settle 0.32s ease-out; }
+  }
+  @keyframes settle {
+    from { opacity: 0; transform: translateY(-0.375rem); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .reading-head { display: flex; align-items: baseline; gap: 0.75rem; }
+
+  .specimen {
+    font-family: var(--serif);
+    font-size: var(--step-2);
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .rank {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--step-1);
+  }
+
+  .gloss { color: var(--muted); font-size: var(--step-0); margin: 0; }
+
+  .drop {
+    appearance: none;
+    background: none;
+    border: 0;
+    min-height: 2.75rem;
+    min-width: 2rem;
+    padding: 0;
+    color: var(--muted);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .drop:hover { color: var(--ink); }
+
+  /* the spectrum: a hairline scale with a tick showing position */
+  .spectrum { position: relative; height: 0.5rem; }
+  .spectrum::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    height: 1px;
+    background: var(--rule);
+  }
+  .tick {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 0.5rem;
+    border-radius: 1px;
+    transform: translateX(-1px);
+  }
+
+  /* ---------- verdict card ---------- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .card.keyed { border-color: currentColor; }
+
+  .verdict {
+    font-family: var(--serif);
+    font-size: var(--step-3);
+    line-height: 1.1;
+  }
+
+  .empty {
+    border: 1px dashed var(--rule);
+    border-radius: 2px;
+    padding: 1.25rem;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .notice { color: #C0392B; margin: 0; }
+  :root[data-theme="dark"] .notice,
+  :root:not([data-theme="light"]) .notice { color: #E8705C; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) .notice { color: #C0392B; }
+  }
+
+  .scale-legend {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+  .chip {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.625rem 0.75rem;
+    min-height: 3rem;
+    text-align: left;
+    color: var(--ink);
+    font-size: var(--step-0);
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    cursor: pointer;
+  }
+  .chip .cw { font-family: var(--serif); font-size: var(--step-1); }
+  .chip .cf {
+    font-family: var(--mono);
+    font-size: var(--micro);
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .colophon {
+    border-top: 1px solid var(--rule);
+    padding-top: 1rem;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .colophon p { margin: 0; }
+  .colophon b { font-weight: 600; color: var(--ink); }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow" id="dictline">dictionary loading</div>
+    <h1>Contexto</h1>
+    <p class="standfirst">A word is hidden. Every guess comes back with its distance from it.</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play">play</button>
+    <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve">solver</button>
+    <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="panel-compare">compare</button>
+  </nav>
+
+  <!-- ============ PLAY ============ -->
+  <section class="panel" id="panel-play" role="tabpanel" aria-labelledby="tab-play">
+    <div id="play-setup" class="panel">
+      <div class="field">
+        <span class="key">difficulty</span>
+        <div class="segmented" id="levels">
+          <button aria-pressed="false" data-level="easy">easy</button>
+          <button aria-pressed="true" data-level="normal">normal</button>
+          <button aria-pressed="false" data-level="hard">hard</button>
+        </div>
+      </div>
+      <button class="wide" id="start">Hide a word</button>
+      <p class="gloss">Easy words are things you can hold. Hard ones are ideas.</p>
+    </div>
+
+    <div id="play-live" hidden class="panel">
+      <div class="scale-legend">
+        <span id="play-count">0 guesses</span>
+        <span id="play-best"></span>
+      </div>
+
+      <div id="play-verdict"></div>
+
+      <div class="row" id="play-controls">
+        <input class="grow" id="play-input" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" />
+        <button id="play-go">Guess</button>
+      </div>
+
+      <p class="notice" id="play-notice" hidden></p>
+      <ul class="readings" id="play-ladder"></ul>
+      <button class="linkish" id="play-quit">give up</button>
+    </div>
+  </section>
+
+  <!-- ============ SOLVER ============ -->
+  <section class="panel" id="panel-solve" role="tabpanel" aria-labelledby="tab-solve" hidden>
+    <p class="gloss">Playing the real Contexto elsewhere? Type the ranks it gave you. Each one narrows which word fits.</p>
+
+    <div class="row">
+      <input class="grow" id="obs-word" placeholder="word" autocapitalize="none" autocorrect="off" spellcheck="false" />
+      <input class="fixed num" id="obs-rank" placeholder="rank" inputmode="numeric" />
+      <button id="obs-add">Add</button>
+    </div>
+
+    <p class="notice" id="solve-notice" hidden></p>
+
+    <ul class="readings" id="obs-list"></ul>
+    <p class="empty" id="obs-empty">No ranks yet. Start with a broad word — water, money, city — and enter whatever number comes back.</p>
+
+    <button class="wide ghost" id="solve-go">Name the word</button>
+
+    <div id="solve-out"></div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="panel" id="panel-compare" role="tabpanel" aria-labelledby="tab-compare" hidden>
+    <p class="gloss">Place any number of words against one main word, to see which of two guesses is worth a turn.</p>
+
+    <div class="field">
+      <label class="key" for="cmp-main">main word</label>
+      <input id="cmp-main" placeholder="puppy" autocapitalize="none" autocorrect="off" spellcheck="false" />
+    </div>
+
+    <div class="field">
+      <label class="key" for="cmp-others">words to place against it</label>
+      <textarea id="cmp-others" rows="3" placeholder="dog, kitten, wolf, tractor" autocapitalize="none" autocorrect="off" spellcheck="false"></textarea>
+    </div>
+
+    <button class="wide" id="cmp-go">Rank them</button>
+    <p class="notice" id="cmp-notice" hidden></p>
+    <div id="cmp-out"></div>
+  </section>
+
+  <div class="colophon">
+    <p><b>How the ranks are made.</b> Every word here carries a weighted profile across about 150 sense-tags — what it is, what it's made of, where it lives, what it does. Two words are scored by the angle between their profiles, then all of them are sorted against the target. Rank 1 is the word itself.</p>
+    <p>The whole model runs in this page. Nothing is sent anywhere, and it works with no connection.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ================================================================
+     1. THE LEXICON
+     word|tag+weight …  weights run 1 (faint) to 5 (defining)
+     ================================================================ */
+  var SOURCE = `
+animal|animal5 life3 nature3 wild2
+dog|pet5 mammal4 animal4 home2 hunt1
+puppy|pet5 mammal4 animal4 child4 small3 home2 young3
+cat|pet5 mammal4 animal4 home2 hunt2
+kitten|pet5 mammal4 animal4 child4 small3 young3
+horse|mammal4 animal4 farm3 travel2 strong2
+cow|mammal4 animal4 farm4 food2 milk2
+pig|mammal4 animal4 farm4 food2 dirty1
+sheep|mammal4 animal4 farm4 textile2 wool2
+goat|mammal4 animal4 farm4 mountain1
+rabbit|mammal4 animal4 wild3 small3 pet2
+mouse|mammal4 animal4 small4 wild2 house1
+rat|mammal4 animal4 small3 wild3 dirty2
+wolf|mammal4 animal4 wild4 hunt3 danger2 forest2
+fox|mammal4 animal4 wild4 hunt2 forest2
+bear|mammal4 animal4 wild4 forest3 big3 danger2
+lion|mammal4 animal4 wild4 hunt3 danger2 strong3
+tiger|mammal4 animal4 wild4 hunt3 danger2 strong3
+elephant|mammal4 animal4 wild4 big5
+monkey|mammal4 animal4 wild3 forest2 play2
+deer|mammal4 animal4 wild4 forest3 hunt2
+squirrel|mammal4 animal4 wild3 forest3 small3 tree2
+bird|bird5 animal4 air3 wild2
+chicken|bird5 animal4 farm4 food3
+duck|bird5 animal4 water2 farm2
+eagle|bird5 animal4 wild3 air3 hunt3
+owl|bird5 animal4 wild3 night3 hunt2
+crow|bird5 animal4 wild3 dark2 black2
+pigeon|bird5 animal4 city2
+parrot|bird5 animal4 pet3 color2 talk2
+penguin|bird5 animal4 cold3 ice2 water2
+feather|bird4 body2 light3 soft3 small2
+wing|bird3 body3 air3 motion2
+nest|bird4 home3 build2 tree2
+egg|food4 bird3 life3 birth2 round3 kitchen2
+fish|fish5 animal4 water4 food3 sea3
+shark|fish5 animal4 sea4 hunt3 danger3
+whale|animal4 sea4 mammal3 big5 water3
+dolphin|animal4 sea4 mammal3 water3 play2
+crab|animal4 sea3 water3 sand2 food2
+octopus|animal4 sea4 water3
+shell|sea3 hard3 small2 sand2 round1
+coral|sea4 water3 nature2 color1
+insect|insect5 animal4 small4 nature2
+bee|insect5 animal3 sweet3 flower3 sound2
+ant|insect5 animal3 small4 group3 work2
+spider|insect4 animal3 small3 danger1 house1
+butterfly|insect5 animal3 flower3 color3 air2
+mosquito|insect5 animal3 small4 blood2 danger1
+worm|animal3 small3 earth3 soil3
+body|body5 human4 life2
+head|body5 head5 human3 mind2
+face|body5 head4 human3 see2
+eye|body5 head4 see5 sense4
+ear|body5 head4 hear5 sense4
+nose|body5 head4 smell5 sense4
+mouth|body5 head4 taste3 talk3 food2
+tooth|body5 head3 hard3 food2 sharp2
+tongue|body4 head3 taste4 talk3
+hair|body5 head3 soft2
+neck|body5 head2 limb1
+shoulder|body5 limb3 strong2
+arm|body5 limb5 strong2
+hand|body5 limb5 touch4 work2
+finger|body5 limb4 touch4 small2
+leg|body5 limb5 motion3
+foot|body5 limb4 motion3 down2
+knee|body5 limb4 motion2
+chest|body5 organ2
+heart|organ5 body5 blood4 love3 life3
+blood|blood5 body4 life3 red3 liquid3
+bone|body5 hard4 death2 white1
+skin|body5 touch3 soft2
+brain|organ5 body4 mind5 think4
+stomach|organ5 body4 food3
+lung|organ5 body4 air3
+muscle|body5 strong4 motion2
+family|family5 human4 love3 home3 group3
+mother|family5 human4 love4 child3 gender2 birth2
+father|family5 human4 child3 gender2
+parent|family5 human4 child3 adult2
+child|family4 human4 child5 small3 play2 young3
+baby|family4 human4 child5 birth3 small4 young4
+son|family5 human4 child4 gender2
+daughter|family5 human4 child4 gender2
+brother|family5 human4 gender2
+sister|family5 human4 gender2
+grandmother|family5 human4 old3 gender2
+uncle|family5 human4
+cousin|family5 human4
+wife|family5 human4 love3 gender2
+husband|family5 human4 love3 gender2
+friend|human4 love3 group2 society2 good2
+neighbor|human4 society3 house2
+stranger|human4 society2 fear1
+person|human5 society2
+people|human5 group4 society4
+man|human5 gender3 adult3
+woman|human5 gender3 adult3
+boy|human5 gender3 child4 young3
+girl|human5 gender3 child4 young3
+name|word4 human2 comm3 know2
+emotion|emotion5 mind3 abstract3
+love|emotion5 love5 good3 family2
+hate|emotion5 bad3 anger3
+fear|emotion5 fear5 danger3 bad2
+anger|emotion5 anger5 bad2
+joy|emotion5 joy5 good3
+happiness|emotion5 joy5 good3
+sadness|emotion5 sad5 bad2
+grief|emotion5 sad5 death3 bad2
+hope|emotion5 hope5 future3 good2
+shame|emotion5 bad3 sad2
+pride|emotion5 good2 strong2
+guilt|emotion5 bad3 crime2
+envy|emotion5 bad2
+courage|emotion4 strong3 good3 war2
+worry|emotion5 fear3 think2
+calm|emotion4 calm5 quiet3 good2
+lonely|emotion5 sad4 society2
+laugh|emotion4 joy4 sound3
+cry|emotion4 sad4 sound3 water2
+smile|emotion4 joy4 face3
+mind|mind5 think4 abstract3 brain3
+thought|mind5 think5 abstract4
+idea|mind5 think5 abstract4 new2
+memory|mind5 memory5 past4 think3
+dream|mind5 sleep4 night3 hope2 abstract3
+reason|mind4 think4 know3 abstract3
+logic|mind4 think4 know3 science2 abstract3
+truth|know4 good3 abstract4 word2
+lie|word3 bad3 abstract3 talk2
+belief|mind4 know3 religion3 abstract3
+doubt|mind4 think3 fear2 abstract3
+knowledge|know5 learn4 mind4 abstract3
+wisdom|know5 old2 good3 mind4
+question|word4 talk3 think3 know2
+answer|word4 talk3 know3 think2
+problem|think4 bad2 abstract3 work2
+meaning|word3 know3 abstract4
+purpose|abstract4 work2 future2
+word|word5 talk4 comm4 write3
+language|word5 talk4 comm5 know3
+speech|word4 talk5 comm4 sound3
+voice|sound4 talk4 body2 comm3
+talk|talk5 comm4 word4 sound3
+story|word4 book3 comm3 art2
+book|book5 word4 read4 paper3 know3 school2
+letter|word4 write4 paper3 comm4
+message|comm5 word4 tech2
+news|comm4 word3 know3 society2
+paper|paper5 write3 flat3 white2 book2
+pen|write5 tool3 paper3 small2
+write|write5 word4 paper3 comm3 work2
+read|read5 book4 word4 learn3
+poem|word4 art3 book2 emotion2
+sign|comm4 see3 word2 road2
+silence|sound4 quiet5 calm2
+water|water5 liquid5 drink3 nature3 clean2
+sea|sea5 water5 big3 nature3 travel2
+ocean|sea5 water5 big4 nature3
+river|river5 water5 nature3 motion2 long2
+lake|water5 river2 nature3 calm2
+rain|rain5 water5 weather5 sky2
+wave|sea4 water4 motion4
+ice|ice5 water4 cold5 hard3
+snow|ice4 water3 cold5 weather4 white3 sky2
+steam|water3 gas4 heat4
+flood|water5 rain3 danger3 big2
+drop|water4 small4 liquid3 down2
+well|water4 deep3 build2 round2
+stream|river5 water5 small2 motion2
+swim|motion4 water5 sport3 play2
+boat|vehicle4 water4 sea3 travel3 wood2
+ship|vehicle4 sea5 water4 travel3 big3
+sail|sea4 boat3 cloth3 wind3 motion2
+harbor|sea4 boat3 city2 build2 travel2
+beach|sand4 sea4 water3 play2
+sand|sand5 earth3 small4 desert3 beach3
+island|land4 sea4 nature2
+shore|sea4 land4 sand2
+tide|sea5 water4 time2 motion2
+storm|weather5 wind4 rain4 danger3 sky2
+sky|sky5 air4 up4 blue2 big2
+sun|sun5 sky4 light5 heat4 star3 day3
+moon|sky4 night4 light3 star2 round2
+star|star5 sky4 night3 light3 space3
+cloud|sky5 weather4 rain3 white2 air2
+wind|wind5 weather4 air5 motion3
+thunder|weather4 sound5 sky3 storm4
+lightning|weather4 light4 sky3 danger3 energy3
+rainbow|sky4 color5 rain3 light3
+fog|weather4 air3 see2 white2
+shadow|dark5 light3 see2
+night|night5 dark5 time4 sleep3
+day|day5 light3 time5 sun2
+dawn|time4 day3 light3 sun2
+dusk|time4 night3 dark3
+space|space5 star4 sky4 big4
+planet|space5 star3 earth3 round3
+earth|earth5 land4 nature4 space2 soil3
+ground|earth5 land5 down3 flat2
+soil|soil5 earth5 farm3 plant3
+mountain|mountain5 land4 big4 up4 stone3 nature3
+hill|mountain4 land4 up3 nature2
+valley|land4 mountain3 down3 nature2
+rock|stone5 hard5 earth3 nature2
+stone|stone5 hard5 earth3 build2
+cave|stone4 dark4 earth3 deep2
+desert|desert5 sand4 dry5 heat3 land3
+forest|forest5 tree5 nature4 wild3 land3
+tree|tree5 plant5 wood4 forest4 tall3 nature3
+wood|wood5 tree4 build3 hard2 forest2
+leaf|tree4 plant5 green2 small2 flat2
+branch|tree5 wood4 plant3
+root|tree4 plant5 soil4 down3
+flower|flower5 plant5 color4 beauty3 garden3
+grass|plant5 green3 field3 nature3 small2
+field|field5 farm4 land4 nature3 flat2
+garden|garden5 plant4 flower4 house3 farm2
+seed|plant5 farm3 small4 life3 birth2
+plant|plant5 nature4 life3 green2
+fruit|fruit5 food5 plant4 sweet4
+bush|plant5 tree3 garden2 small2
+fire|fire5 heat5 light4 danger3 energy3
+flame|fire5 heat4 light4
+smoke|fire4 gas4 air3 dark2
+ash|fire4 powder4 dark2
+heat|heat5 fire3 energy3 weather2
+burn|fire5 heat4 danger2
+light|light5 see4 bright4 energy3
+lamp|light5 house3 tool2 electric3
+candle|light4 fire4 small2 house2
+coal|fire4 energy4 black3 stone3 earth2
+energy|energy5 power4 abstract3 science3
+power|power5 strong4 energy4 govern3
+electricity|energy5 tech4 power4 light3
+spark|fire4 light3 small3 energy3
+food|food5 eat5 kitchen3 life2
+bread|food5 eat4 kitchen3 wheat3
+meat|meat5 food5 animal3 eat4
+rice|food5 eat4 plant3 white2 small3
+soup|food5 liquid4 kitchen3 heat2
+milk|drink5 food4 white4 milk3 liquid4
+cheese|food5 milk4 eat3
+butter|food5 milk3 kitchen2
+sugar|food4 sweet5 white3 powder3
+salt|food4 taste4 white3 powder3 sea2
+pepper|food4 taste4 powder2 heat2
+oil|liquid5 food3 kitchen2 machine2
+apple|fruit5 food4 sweet3 tree3 round3 red2
+orange|fruit5 food4 sweet3 color3 round3
+banana|fruit5 food4 sweet3 long2 yellow2
+grape|fruit5 food4 sweet3 small3 wine3
+vegetable|veg5 food5 plant4 garden3
+potato|veg5 food4 soil3 round2
+tomato|veg5 fruit3 food4 red3 round3
+onion|veg5 food4 taste3 round2
+carrot|veg5 food4 orange2 long2
+meal|food5 eat5 time3 family2
+breakfast|food4 eat4 time4 day3
+dinner|food4 eat4 time4 night2 family2
+kitchen|kitchen5 room4 cook5 house4 food4
+cook|cook5 kitchen4 food4 heat3 work3
+eat|eat5 food5 mouth3 body2
+drink|drink5 liquid4 mouth3 water3
+wine|drink5 fruit2 red2 grape2
+beer|drink5 liquid3
+coffee|drink5 heat3 dark2 morning2
+tea|drink5 heat3 leaf2 calm2
+hunger|food4 body3 emotion2 bad2
+taste|taste5 sense5 food4 mouth3
+sweet|taste5 sugar4 good2 food3
+bitter|taste5 bad2 food2
+house|house5 home5 build5 room4 family2
+home|home5 house5 family4 love2 calm2
+room|room5 house5 build3
+door|door5 house4 open4 build3 wood2
+window|house4 build3 glass4 see3 open2
+wall|build5 house4 stone3 hard3 flat2
+floor|house4 build3 down4 flat3
+roof|house4 build4 up4
+stair|house4 build3 up3 motion2
+bedroom|room5 house4 sleep4
+bathroom|room5 house4 clean4 water3
+key|tool4 door4 metal3 small3 open3
+lock|tool3 door4 metal3 safe3 closed3
+chair|furniture5 house3 wood3 rest2
+table|furniture5 house3 flat3 wood3 food2
+bed|furniture5 house3 sleep5 room3 soft3
+sofa|furniture5 house3 soft3 rest3
+mirror|house3 glass4 see4 light2 flat2
+shelf|furniture4 house3 book2 flat2
+box|container5 small2 wood2
+cup|container5 kitchen4 drink4 small3
+plate|container4 kitchen4 food3 flat3 round3
+knife|tool5 sharp5 kitchen3 weapon3 metal3
+fork|tool4 kitchen4 eat3 metal3 sharp2
+spoon|tool4 kitchen4 eat3 metal3 round2
+bowl|container5 kitchen4 food3 round3
+pot|container5 kitchen4 cook4 metal3
+towel|cloth4 clean3 bathroom3 soft2
+soap|clean5 bathroom3 water2
+clock|time5 tool3 house2 round2 number2
+building|build5 city4 house3 big3
+city|city5 build4 people4 society3 big3 road3
+town|city5 build3 people3 small2
+village|city4 small3 people3 farm2
+street|road5 city4 build2 travel3
+road|road5 travel4 city2 long3 motion2
+bridge|build5 road4 water3 travel2
+tower|build5 up5 city3 tall4
+church|build4 religion5 god3 city2
+school|school5 build3 learn5 child3 teach4
+hospital|build3 medicine5 health4 illness3 city2
+market|shop5 trade4 city3 food3 money3
+shop|shop5 trade4 money3 buy4 city2
+store|shop5 trade4 buy3 build2
+factory|build4 work5 machine4 city2 tech2
+office|build3 work5 room3 money2
+station|build3 travel5 vehicle3 city2
+airport|build3 travel5 air4 vehicle3
+park|city3 nature4 tree3 play3 green2
+gate|door4 build3 open3 wall2
+work|work5 money3 human3 time2
+job|work5 money4 society2
+money|money5 trade5 buy4 rich3 power2
+price|money5 trade4 number3 buy3
+cost|money5 trade3 number2
+pay|money5 trade4 work3 buy3
+buy|trade5 money5 shop4
+sell|trade5 money5 shop4
+trade|trade5 money4 shop3 society2
+business|work5 money4 trade4 society2
+company|work4 money3 group4 society2
+bank|money5 build3 trade3 safe2
+gold|metal5 money4 rich4 yellow3 shine2
+silver|metal5 money3 white2 shine2
+coin|money5 metal4 small3 round3
+debt|money5 bad2 trade2
+wealth|money5 rich5 good2
+poor|money4 bad3 society3 weak2
+rich|money5 rich5 good2 power2
+tax|money5 govern4 law3
+wage|money5 work5 pay3
+worker|work5 human4 money2
+boss|work5 human3 power4
+farmer|work4 farm5 human3 food3
+doctor|work4 medicine5 health4 human3
+teacher|work4 school5 teach5 human3
+soldier|work3 war5 human3 weapon3
+driver|work3 vehicle5 travel3 human3
+artist|work3 art5 human3 beauty2
+tool|tool5 work4 machine2 hand3
+hammer|tool5 metal3 build3 hard3
+nail|tool4 metal4 small4 build3 sharp3
+saw|tool5 wood3 sharp4 metal3
+rope|tool4 long4 textile3 strong3
+wheel|machine4 round5 vehicle4 motion4
+engine|machine5 vehicle4 power4 metal3
+machine|machine5 tech4 work3 metal3
+computer|tech5 machine4 know3 screen3
+phone|tech5 comm5 machine3 small2
+screen|tech4 see4 flat3 machine2
+button|tech3 small4 clothes3 round2
+wire|tech3 metal4 long4 thin3
+chain|metal5 long3 strong3
+gear|machine5 metal4 round3 motion2
+blade|sharp5 metal4 tool4 weapon3
+needle|tool4 sharp5 small4 metal3 textile3
+thread|textile5 long4 thin4 cloth3
+screw|tool4 metal4 small4 build2 round2
+car|vehicle5 travel4 road4 machine4
+truck|vehicle5 travel3 road4 big3 work2
+bus|vehicle5 travel4 road3 people3 city2
+train|vehicle5 travel5 long3 machine3
+bicycle|vehicle5 travel3 wheel4 sport2
+motorcycle|vehicle5 travel3 road3 fast3 machine3
+plane|vehicle5 travel5 air5 fast4 machine3
+rocket|vehicle4 space5 fast5 fire3 machine3
+travel|travel5 motion5 road3 time2
+journey|travel5 motion4 time3 long2
+speed|fast5 motion5 measure3
+drive|vehicle5 motion4 road3 work2
+ride|vehicle3 motion4 travel3 horse2
+fly|air5 motion5 bird3 fast3
+clothes|wear5 cloth5 textile4 body2
+shirt|wear5 cloth4 body2
+dress|wear5 cloth4 gender2 beauty2
+coat|wear5 cloth4 cold3
+hat|wear5 cloth3 head4
+shoe|wear5 foot4 leather2
+sock|wear5 foot4 cloth3 soft2
+glove|wear5 hand4 cloth3 cold2
+belt|wear4 cloth3 long3 leather2
+pocket|clothes4 small3
+cloth|cloth5 textile5 soft3 wear3
+wool|textile5 cloth4 sheep4 soft3
+cotton|textile5 cloth4 plant3 soft3 white2
+silk|textile5 cloth4 soft4 beauty2
+sew|textile5 needle4 work3 cloth4
+wear|wear5 clothes5 body2
+war|war5 fight5 death3 bad3 society3
+army|war5 group5 soldier4 power3
+gun|weapon5 war4 metal3 danger4 sound2
+sword|weapon5 war4 metal4 sharp5 old2
+bomb|weapon5 war4 danger5 fire3 sound3
+battle|war5 fight5 death2
+fight|fight5 war3 anger3 motion3 bad2
+enemy|war4 hate3 fear2 human3
+peace|war3 calm5 good4 society3
+weapon|weapon5 war4 danger4 tool3
+shield|war4 weapon2 safe4 metal3
+victory|win5 war3 good3
+defeat|war3 bad3 sad2
+wound|body4 blood4 pain4 war2 illness2
+death|death5 life4 sad3 end4
+life|life5 death3 time3 birth3 good2
+game|game5 play5 sport3 win2 rule2
+play|play5 game5 child3 joy3 music2
+sport|sport5 game4 play4 body3 win2
+ball|sport5 game4 round5 play4 small2
+team|group5 sport4 game3 people3
+race|sport4 fast5 win3 motion4
+run|motion5 fast4 sport3 body2
+jump|motion5 up4 sport2 body2
+win|win5 game4 good3 sport3
+lose|game4 bad3 sad2
+score|number4 game4 sport3 win2
+player|human3 game5 sport4
+rule|law4 game3 society2 know2
+toy|play5 child5 game3 small2
+card|game4 play3 paper3 flat3 small2
+chess|game5 play3 think4 rule3
+music|music5 sound5 art4 joy3
+sound|sound5 hear5 sense4
+note|music5 sound4 write2 small2
+drum|music5 sound5 round3
+guitar|music5 sound4 wood3 art2
+piano|music5 sound4 art2
+dance|music4 motion5 art3 joy3 play2
+art|art5 beauty4 human3 abstract2
+paint|art5 color5 liquid3 picture3
+picture|art4 see5 color3 flat3 memory2
+color|color5 see5 light3 art3
+image|see5 picture4 art2 abstract2
+film|art4 see4 story3 tech3
+theater|art4 build3 story3 people2
+actor|art4 human3 story3 work2
+beauty|beauty5 good4 art3 abstract3
+science|science5 know5 learn4 tech3
+study|learn5 school4 book3 think3 work2
+learn|learn5 know5 school4 mind3
+teach|teach5 school4 know4 talk3
+student|school5 learn5 human3 young2
+class|school5 group4 learn4 room2
+test|school4 learn3 know3 question3
+number|number5 measure4 math5 know3
+math|math5 number5 science4 know3
+measure|measure5 number4 science3 size3
+weight|measure5 heavy4 number3 body2
+size|measure5 big3 small3 number2
+shape|measure3 see4 abstract2 round2
+circle|round5 shape5 line3 math2
+line|shape4 long4 thin3 write2 math2
+point|shape3 small4 math3
+experiment|science5 test3 know3 learn2
+nurse|medicine5 health4 work4 human3
+medicine|medicine5 health5 illness4 drug4
+drug|medicine5 health3 illness3 danger2
+pain|body4 bad4 illness3 emotion3
+illness|illness5 health4 bad3 body3
+disease|illness5 health3 bad3 death2
+fever|illness5 heat4 body3
+health|health5 good4 body4 life3
+cure|medicine5 health5 good3
+birth|birth5 life5 child4 mother3 begin3
+law|law5 society4 rule5 govern4
+court|law5 build3 judge4 crime3
+judge|law5 human3 crime3 power3
+police|law5 crime4 city3 safe3 work3
+crime|crime5 law4 bad4 danger2
+prison|crime5 law4 build3 closed4 bad3
+right|law4 society3 good3 abstract3
+freedom|society4 good4 abstract4 open3
+justice|law5 good4 society3 abstract3
+government|govern5 society5 power5 law4
+king|govern5 power5 old2 human3 rich3
+queen|govern5 power5 human3 gender2 rich3
+president|govern5 power4 human3 society3
+vote|govern5 society4 people3 rule2
+country|land5 society5 govern4 people4 big3
+nation|society5 govern4 people4 land3
+god|god5 religion5 spirit4 power4
+prayer|religion5 god4 talk3 ritual4
+faith|religion5 god3 belief5 mind3
+soul|spirit5 religion4 life3 mind3 abstract3
+spirit|spirit5 religion4 abstract4 mind2
+heaven|religion5 god4 sky4 good4
+hell|religion5 fire3 bad4 death3
+angel|religion5 god4 spirit4 wing2 good3
+devil|religion5 bad5 spirit4 fear3
+sin|religion5 bad4 crime2
+holy|religion5 god4 good3
+temple|religion5 build4 god3
+priest|religion5 god3 human3 work3
+ritual|religion4 ritual5 society2 time2
+time|time5 abstract4 measure3
+hour|time5 measure4 number3 day2
+minute|time5 measure4 number3 small2
+second|time5 measure4 number3 small3 fast2
+week|time5 measure3 day3
+month|time5 measure3 year3
+year|time5 year5 measure3 long2
+morning|time5 day4 light2 begin2
+evening|time5 night3 day2 dark2
+today|time5 day4
+tomorrow|time5 future5 day3
+yesterday|time5 past5 day3
+past|past5 time5 memory3
+future|future5 time5 hope3
+moment|time5 small3 fast2
+age|time5 old4 year3 measure2
+calendar|time5 day3 year3 paper2 number2
+season|time5 year4 weather4 nature3
+spring|season5 time4 flower3 new3 nature2
+summer|season5 time4 heat5 sun4
+winter|season5 time4 cold5 ice3 snow3
+autumn|season5 time4 leaf3 cold2
+birthday|time4 year3 child2 joy3 family2
+old|old5 time4 past3
+young|young5 time3 child3 new2
+wait|time5 rest2 calm2
+begin|time4 new4 open2
+end|time4 death3 closed3
+move|motion5 body2
+walk|motion5 body3 slow2 road2
+fall|motion5 down5 fast2 danger2
+climb|motion5 up5 mountain3 body2
+push|motion5 strong3 hand2
+pull|motion5 strong3 hand2
+throw|motion5 hand3 fast2 ball2
+catch|motion5 hand3 ball2 hunt2
+carry|motion4 hand3 work2
+turn|motion5 round3
+stop|motion4 end3 calm2
+follow|motion4 road2 human2
+escape|motion5 fear3 fast3 free3
+arrive|motion4 travel4 end3
+leave|motion4 travel4 begin2
+return|motion4 travel3 past2
+good|good5 quality5 abstract3
+bad|bad5 quality5 abstract3
+big|big5 size4 quality4
+small|small5 size4 quality4
+long|long5 size4 quality3
+short|small4 size4 quality3
+high|up5 size3 quality3
+low|down5 size3 quality3
+hot|heat5 quality4 fire3
+cold|cold5 quality4 ice3
+wet|water5 quality4
+dry|dry5 quality4 desert2
+hard|hard5 quality4 stone3 strong2
+soft|soft5 quality4 cloth2
+fast|fast5 motion4 quality3
+slow|slow5 motion3 quality3 time2
+new|new5 quality4 time3
+strong|strong5 quality4 power4 body2
+weak|weak5 quality4 illness2
+heavy|heavy5 weight4 quality3 big2
+clean|clean5 quality4 water2 good2
+dirty|dirty5 quality4 bad2
+full|full5 quality4 container2
+empty|empty5 quality4 container2
+open|open5 quality3 door3 free2
+closed|closed5 quality3 door3
+dark|dark5 night3 quality3 see2
+bright|light5 bright5 quality3 see2 color2
+loud|sound5 quality3 hear3
+quiet|quiet5 sound3 calm3 quality3
+deep|deep5 water3 quality3 down3
+safe|safe5 good4 quality3 calm2
+dangerous|danger5 bad4 fear3 quality3
+beautiful|beauty5 good4 quality4
+ugly|beauty3 bad4 quality4
+true|know4 good3 quality3 abstract3
+false|know3 bad3 quality3 abstract3
+easy|quality4 good2 abstract3
+difficult|quality4 bad2 work2 abstract3
+glass|glass5 hard3 see3 clean2 container2
+metal|metal5 hard5 shine3 build3
+iron|metal5 hard5 build3 strong3
+steel|metal5 hard5 strong4 build3
+plastic|hard2 soft2 tech3 new2
+dust|powder5 small5 dirty3 earth2
+mud|dirty4 earth4 water4 soil3
+gas|gas5 air4 energy2
+leather|cloth3 animal3 wear3 strong2
+rubber|soft3 wheel2
+string|long4 thin4 textile3 small2
+bag|container5 cloth3
+basket|container5 wood2
+bottle|container5 glass3 liquid4 drink3
+jar|container5 glass3 food2 round2
+barrel|container5 wood3 big2 round3 liquid2
+brush|tool4 hair3 paint3 clean2
+ring|jewel4 round5 metal3 small3 love2 wear2
+crown|govern4 gold4 head3 king4 wear2
+jewel|jewel5 rich4 beauty3 shine4 small3
+diamond|jewel5 hard5 rich4 shine4 small3
+see|see5 sense5 eye4 light3
+look|see5 eye3 sense3
+watch|see5 time2 eye3
+hear|hear5 sense5 ear4 sound4
+listen|hear5 ear3 sound4 sense3
+touch|touch5 sense5 hand4 body2
+feel|touch4 sense4 emotion4 body2
+smell|smell5 sense5 nose4
+noise|sound5 loud4 bad2 hear3
+farm|farm5 field4 food4 work4 land3
+barn|farm5 build4 animal3
+crop|farm5 plant4 food4 field3
+wheat|farm5 plant4 food4 bread3 field3
+corn|farm5 plant4 food4 yellow2
+hay|farm5 plant3 animal2 dry3
+tractor|farm5 machine5 vehicle4 work3
+fence|farm3 build3 wood3 long3 closed2
+harvest|farm5 food4 work4 season2
+plow|farm5 tool4 soil4 work3
+sleep|sleep5 night4 rest5 bed4 dream3
+rest|rest5 calm3 sleep3 time2
+wake|sleep4 morning3 begin2
+`;
+
+  /* ================================================================
+     2. THE MODEL — sparse vectors, cosine angle, full-lexicon sort
+     ================================================================ */
+  var VEC = Object.create(null);
+  var WORDS = [];
+
+  SOURCE.trim().split("\n").forEach(function (line) {
+    var bar = line.indexOf("|");
+    if (bar < 0) return;
+    var word = line.slice(0, bar).trim();
+    var vec = Object.create(null);
+    line.slice(bar + 1).trim().split(/\s+/).forEach(function (token) {
+      var m = /^([a-z]+)(\d)$/.exec(token);
+      if (m) vec[m[1]] = parseInt(m[2], 10);
+    });
+    if (!word || VEC[word]) return;
+    VEC[word] = vec;
+    WORDS.push(word);
+  });
+
+  // A word other words point to is itself the fullest example of that sense:
+  // thunder carries "storm", so the word storm must carry it too, or the link
+  // never fires and the tag is a dimension nothing shares.
+  var pointedAt = Object.create(null);
+  WORDS.forEach(function (word) {
+    for (var tag in VEC[word]) if (tag !== word) pointedAt[tag] = true;
+  });
+  WORDS.forEach(function (word) {
+    if (pointedAt[word] && !VEC[word][word]) VEC[word][word] = 5;
+  });
+
+  WORDS.forEach(function (word) {
+    var vec = VEC[word], norm = 0, tag;
+    for (tag in vec) norm += vec[tag] * vec[tag];
+    vec.__norm = Math.sqrt(norm);
+  });
+
+  var V = WORDS.length;
+
+  function similarity(a, b) {
+    var va = VEC[a], vb = VEC[b], dot = 0, tag;
+    for (tag in va) {
+      if (tag === "__norm") continue;
+      if (vb[tag]) dot += va[tag] * vb[tag];
+    }
+    return dot / (va.__norm * vb.__norm);
+  }
+
+  var ORDER_CACHE = Object.create(null);
+
+  // Every word in the lexicon, sorted by closeness to the target.
+  function orderFor(target) {
+    if (ORDER_CACHE[target]) return ORDER_CACHE[target];
+    var scored = WORDS.map(function (w) {
+      return { word: w, sim: w === target ? 2 : similarity(target, w) };
+    });
+    scored.sort(function (x, y) {
+      if (y.sim !== x.sim) return y.sim - x.sim;
+      return x.word < y.word ? -1 : 1;
+    });
+    var index = Object.create(null);
+    scored.forEach(function (row, i) { index[row.word] = i + 1; });
+    ORDER_CACHE[target] = index;
+    return index;
+  }
+
+  function rankOf(target, word) { return orderFor(target)[word] || null; }
+
+  // Ranks of a handful of probes against one candidate. The solver asks this of
+  // every word in the lexicon in turn, so it counts rather than sorts, and keeps
+  // nothing — building 633 cached orderings would cost far more than it saves.
+  function probeRanks(target, probes) {
+    var sims = new Float64Array(V), i, j;
+    for (i = 0; i < V; i++) sims[i] = WORDS[i] === target ? 2 : similarity(target, WORDS[i]);
+
+    var out = new Array(probes.length);
+    for (j = 0; j < probes.length; j++) {
+      var probe = probes[j];
+      var s = probe === target ? 2 : similarity(target, probe);
+      var rank = 1;
+      for (i = 0; i < V; i++) {
+        if (sims[i] > s || (sims[i] === s && WORDS[i] < probe)) rank++;
+      }
+      out[j] = rank;
+    }
+    return out;
+  }
+
+  /* ---------- heat: one ramp, legible on both grounds ---------- */
+  var FAR = [78, 111, 208], MID = [192, 138, 46], NEAR = [214, 64, 43];
+
+  function closeness(rank) {
+    var t = 1 - Math.log(Math.max(1, rank)) / Math.log(V);
+    return Math.max(0.015, Math.min(1, t));
+  }
+
+  function heat(rank) {
+    var t = closeness(rank), from, to, k;
+    if (t < 0.5) { from = FAR; to = MID; k = t * 2; }
+    else { from = MID; to = NEAR; k = (t - 0.5) * 2; }
+    var rgb = from.map(function (v, i) { return Math.round(v + (to[i] - v) * k); });
+    return "rgb(" + rgb.join(",") + ")";
+  }
+
+  /* ================================================================
+     3. SHARED RENDERING
+     ================================================================ */
+  var $ = function (id) { return document.getElementById(id); };
+
+  function normalize(s) { return String(s || "").toLowerCase().trim(); }
+
+  function readWords(text) {
+    var found = String(text || "").toLowerCase().match(/[a-z]+/g) || [];
+    return found.filter(function (w) { return w.length > 1; });
+  }
+
+  // One reading: word, rank, and a tick on the near→far spectrum.
+  function reading(row, opts) {
+    opts = opts || {};
+    var li = document.createElement("li");
+    li.className = "reading" + (opts.fresh ? " fresh" : "");
+
+    var head = document.createElement("div");
+    head.className = "reading-head";
+
+    var name = document.createElement("span");
+    name.className = "specimen";
+    name.textContent = row.word;
+    head.appendChild(name);
+
+    var rank = document.createElement("span");
+    rank.className = "rank";
+    rank.style.color = heat(row.rank);
+    rank.textContent = row.rank;
+    head.appendChild(rank);
+
+    if (opts.onRemove) {
+      var drop = document.createElement("button");
+      drop.className = "drop";
+      drop.type = "button";
+      drop.setAttribute("aria-label", "Remove " + row.word);
+      drop.textContent = "×";
+      drop.addEventListener("click", function () { opts.onRemove(row.word); });
+      head.appendChild(drop);
+    }
+
+    li.appendChild(head);
+
+    if (row.gloss) {
+      var gloss = document.createElement("p");
+      gloss.className = "gloss";
+      gloss.textContent = row.gloss;
+      li.appendChild(gloss);
+    }
+
+    var spectrum = document.createElement("div");
+    spectrum.className = "spectrum";
+    var tick = document.createElement("span");
+    tick.className = "tick";
+    tick.style.left = (closeness(row.rank) * 100).toFixed(2) + "%";
+    tick.style.background = heat(row.rank);
+    spectrum.appendChild(tick);
+    li.appendChild(spectrum);
+
+    return li;
+  }
+
+  function paintLadder(node, rows, opts) {
+    node.textContent = "";
+    rows.slice().sort(function (a, b) { return a.rank - b.rank; })
+      .forEach(function (row) { node.appendChild(reading(row, opts)); });
+  }
+
+  function say(node, message) {
+    if (!message) { node.hidden = true; node.textContent = ""; return; }
+    node.hidden = false;
+    node.textContent = message;
+  }
+
+  /* ================================================================
+     4. TABS
+     ================================================================ */
+  var TABS = [
+    { tab: "tab-play", panel: "panel-play" },
+    { tab: "tab-solve", panel: "panel-solve" },
+    { tab: "tab-compare", panel: "panel-compare" }
+  ];
+
+  TABS.forEach(function (entry) {
+    $(entry.tab).addEventListener("click", function () {
+      TABS.forEach(function (other) {
+        var on = other === entry;
+        $(other.tab).setAttribute("aria-selected", on ? "true" : "false");
+        $(other.panel).hidden = !on;
+      });
+    });
+  });
+
+  /* ================================================================
+     5. PLAY
+     ================================================================ */
+  var POOLS = {
+    easy: ["dog", "cat", "house", "water", "tree", "bread", "river", "book", "chair", "moon",
+           "fire", "shoe", "apple", "horse", "bridge", "mountain", "window", "garden", "milk",
+           "ship", "snow", "rain", "star", "road", "knife", "bird", "fish", "hand", "door",
+           "key", "clock", "table", "flower", "bed", "sun", "egg", "cup", "hat", "car"],
+    normal: ["harbor", "shadow", "needle", "feather", "engine", "market", "harvest", "silver",
+             "winter", "teacher", "soldier", "island", "candle", "thunder", "forest", "kitchen",
+             "prison", "tower", "desert", "wheel", "mirror", "crown", "salt", "wool", "coal",
+             "storm", "nest", "bone", "voice", "climb", "escape", "season", "gold", "rope"],
+    hard: ["freedom", "memory", "doubt", "purpose", "justice", "wisdom", "envy", "meaning",
+           "ritual", "faith", "grief", "hope", "shame", "silence", "courage", "truth", "reason",
+           "belief", "beauty", "peace", "logic", "knowledge", "pride", "spirit", "future"]
+  };
+
+  var play = { secret: null, rows: [], level: "normal", done: false };
+
+  Array.prototype.forEach.call($("levels").children, function (button) {
+    button.addEventListener("click", function () {
+      play.level = button.dataset.level;
+      Array.prototype.forEach.call($("levels").children, function (other) {
+        other.setAttribute("aria-pressed", other === button ? "true" : "false");
+      });
+    });
+  });
+
+  function startGame() {
+    var pool = POOLS[play.level].filter(function (w) { return VEC[w]; });
+    play.secret = pool[Math.floor(Math.random() * pool.length)];
+    play.rows = [];
+    play.done = false;
+    orderFor(play.secret);
+    $("play-setup").hidden = true;
+    $("play-live").hidden = false;
+    $("play-controls").hidden = false;
+    $("play-quit").hidden = false;
+    $("play-verdict").textContent = "";
+    say($("play-notice"), "");
+    refreshPlay();
+    $("play-input").focus();
+  }
+
+  function refreshPlay() {
+    var best = play.rows.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
+    $("play-count").textContent = play.rows.length === 1 ? "1 guess" : play.rows.length + " guesses";
+    if (best) {
+      $("play-best").textContent = "closest " + best.rank;
+      $("play-best").style.color = heat(best.rank);
+    } else {
+      $("play-best").textContent = "";
+    }
+    paintLadder($("play-ladder"), play.rows, { fresh: false });
+  }
+
+  function finish(won) {
+    play.done = true;
+    $("play-controls").hidden = true;
+    $("play-quit").hidden = true;
+
+    var card = document.createElement("div");
+    card.className = "card keyed";
+    card.style.color = won ? heat(1) : "var(--rule)";
+
+    var key = document.createElement("div");
+    key.className = "eyebrow";
+    key.style.color = "var(--muted)";
+    key.textContent = won
+      ? "found in " + play.rows.length + (play.rows.length === 1 ? " guess" : " guesses")
+      : "the word was";
+    card.appendChild(key);
+
+    var word = document.createElement("div");
+    word.className = "verdict";
+    word.style.color = "var(--ink)";
+    word.textContent = play.secret;
+    card.appendChild(word);
+
+    if (!won) {
+      var near = document.createElement("p");
+      near.className = "gloss";
+      var order = orderFor(play.secret);
+      var neighbours = Object.keys(order)
+        .filter(function (w) { return order[w] > 1 && order[w] <= 6; })
+        .sort(function (a, b) { return order[a] - order[b]; });
+      near.textContent = "Its nearest neighbours were " + neighbours.join(", ") + ".";
+      card.appendChild(near);
+    }
+
+    var again = document.createElement("button");
+    again.type = "button";
+    again.style.alignSelf = "flex-start";
+    again.textContent = "Hide another";
+    again.addEventListener("click", function () {
+      $("play-live").hidden = true;
+      $("play-setup").hidden = false;
+    });
+    card.appendChild(again);
+
+    $("play-verdict").textContent = "";
+    $("play-verdict").appendChild(card);
+  }
+
+  function guess() {
+    if (play.done) return;
+    var w = normalize($("play-input").value);
+
+    if (!w || /[^a-z]/.test(w)) { say($("play-notice"), "One plain word, letters only."); return; }
+    if (!VEC[w]) { say($("play-notice"), w + " isn't in this dictionary — try another word."); return; }
+    if (play.rows.some(function (r) { return r.word === w; })) {
+      say($("play-notice"), "You've already tried " + w + ".");
+      return;
+    }
+
+    say($("play-notice"), "");
+    var rank = rankOf(play.secret, w);
+    play.rows.push({ word: w, rank: rank });
+    $("play-input").value = "";
+    refreshPlay();
+
+    var fresh = $("play-ladder").querySelector(".reading");
+    if (fresh && rank === 1) fresh.classList.add("fresh");
+
+    if (rank === 1) finish(true);
+    else $("play-input").focus();
+  }
+
+  $("start").addEventListener("click", startGame);
+  $("play-go").addEventListener("click", guess);
+  $("play-input").addEventListener("keydown", function (e) { if (e.key === "Enter") guess(); });
+  $("play-quit").addEventListener("click", function () { finish(false); });
+
+  /* ================================================================
+     6. SOLVER
+     Observed ranks come from the real game, whose dictionary is far
+     larger. Map them into this one's scale by matching log position,
+     then look for the target whose own ordering fits best.
+     ================================================================ */
+  var REAL_V = 40000;
+  var observations = [];
+
+  function toScale(realRank) {
+    var position = Math.log(Math.max(1, realRank)) / Math.log(REAL_V);
+    return Math.max(1, Math.exp(position * Math.log(V)));
+  }
+
+  function refreshObs() {
+    $("obs-empty").hidden = observations.length > 0;
+    paintLadder($("obs-list"), observations, {
+      onRemove: function (word) {
+        observations = observations.filter(function (o) { return o.word !== word; });
+        refreshObs();
+      }
+    });
+  }
+
+  function addObservation() {
+    var w = normalize($("obs-word").value);
+    var n = parseInt(String($("obs-rank").value).replace(/[^0-9]/g, ""), 10);
+
+    if (!w || /[^a-z]/.test(w)) { say($("solve-notice"), "Type a plain word first."); return; }
+    if (!(n > 0)) { say($("solve-notice"), "Rank is a whole number, 1 or higher."); return; }
+    if (observations.some(function (o) { return o.word === w; })) {
+      say($("solve-notice"), w + " is already listed.");
+      return;
+    }
+    if (!VEC[w]) {
+      say($("solve-notice"), w + " isn't in this dictionary, so it can't steer the search. Try a plainer word.");
+      return;
+    }
+
+    say($("solve-notice"), "");
+    observations.push({ word: w, rank: n });
+    $("obs-word").value = "";
+    $("obs-rank").value = "";
+    refreshObs();
+    $("obs-word").focus();
+  }
+
+  function solve() {
+    if (!observations.length) { say($("solve-notice"), "Add at least one rank first."); return; }
+    say($("solve-notice"), "");
+
+    var tried = Object.create(null);
+    observations.forEach(function (o) { tried[o.word] = true; });
+
+    var targets = observations.filter(function (o) { return o.rank === 1; });
+    if (targets.length) {
+      $("solve-out").textContent = "";
+      var solvedCard = document.createElement("div");
+      solvedCard.className = "card";
+      var head = document.createElement("div");
+      head.className = "eyebrow";
+      head.textContent = "already found";
+      var body = document.createElement("div");
+      body.className = "verdict";
+      body.textContent = targets[0].word;
+      solvedCard.appendChild(head);
+      solvedCard.appendChild(body);
+      $("solve-out").appendChild(solvedCard);
+      return;
+    }
+
+    // Close ranks say far more about the target than distant ones, so they carry
+    // more weight in the fit.
+    var probes = observations.map(function (o) { return o.word; });
+    var expected = observations.map(function (o) { return Math.log(toScale(o.rank)); });
+    var weights = observations.map(function (o) { return 1 / Math.log(o.rank + 2); });
+    var mass = weights.reduce(function (sum, w) { return sum + w; }, 0) || 0.0001;
+
+    var scored = WORDS.filter(function (w) { return !tried[w]; }).map(function (candidate) {
+      var ranks = probeRanks(candidate, probes), error = 0, i, gap;
+      for (i = 0; i < ranks.length; i++) {
+        gap = Math.log(ranks[i]) - expected[i];
+        error += weights[i] * gap * gap;
+      }
+      return { word: candidate, fit: Math.exp(-error / mass) };
+    });
+
+    scored.sort(function (a, b) { return b.fit - a.fit; });
+    var top = scored.slice(0, 12);
+    var total = top.reduce(function (sum, row) { return sum + row.fit; }, 0) || 1;
+
+    $("solve-out").textContent = "";
+
+    var lead = top[0];
+    var card = document.createElement("div");
+    card.className = "card keyed";
+    card.style.color = heat(1);
+
+    var eyebrow = document.createElement("div");
+    eyebrow.className = "eyebrow";
+    eyebrow.textContent = "best fit";
+    card.appendChild(eyebrow);
+
+    var name = document.createElement("div");
+    name.className = "verdict";
+    name.style.color = "var(--ink)";
+    name.textContent = lead.word;
+    card.appendChild(name);
+
+    var reasoning = document.createElement("p");
+    reasoning.className = "gloss";
+    reasoning.textContent = "Against " + lead.word + ", your ranks would sit at " +
+      observations.slice().sort(function (a, b) { return a.rank - b.rank; }).slice(0, 4)
+        .map(function (o) { return o.word + " " + orderFor(lead.word)[o.word]; }).join(", ") +
+      " on this dictionary's scale.";
+    card.appendChild(reasoning);
+
+    $("solve-out").appendChild(card);
+
+    var heading = document.createElement("div");
+    heading.className = "eyebrow";
+    heading.style.marginTop = "1.5rem";
+    heading.textContent = "other words that fit";
+    $("solve-out").appendChild(heading);
+
+    var chips = document.createElement("div");
+    chips.className = "chips";
+    chips.style.marginTop = "0.75rem";
+    top.slice(1).forEach(function (row) {
+      var chip = document.createElement("button");
+      chip.className = "chip";
+      chip.type = "button";
+      var w = document.createElement("span");
+      w.className = "cw";
+      w.textContent = row.word;
+      var f = document.createElement("span");
+      f.className = "cf";
+      f.textContent = Math.round((row.fit / total) * 100) + "% of the field";
+      chip.appendChild(w);
+      chip.appendChild(f);
+      chip.addEventListener("click", function () {
+        $("obs-word").value = row.word;
+        $("obs-rank").focus();
+      });
+      chips.appendChild(chip);
+    });
+    $("solve-out").appendChild(chips);
+
+    var footnote = document.createElement("p");
+    footnote.className = "gloss";
+    footnote.style.marginTop = "1rem";
+    footnote.textContent = "Tap one to load it, then enter the rank the real game gives back.";
+    $("solve-out").appendChild(footnote);
+  }
+
+  $("obs-add").addEventListener("click", addObservation);
+  $("obs-word").addEventListener("keydown", function (e) { if (e.key === "Enter") $("obs-rank").focus(); });
+  $("obs-rank").addEventListener("keydown", function (e) { if (e.key === "Enter") addObservation(); });
+  $("solve-go").addEventListener("click", solve);
+
+  /* ================================================================
+     7. COMPARE
+     ================================================================ */
+  function compare() {
+    var main = normalize($("cmp-main").value);
+
+    if (!main) { say($("cmp-notice"), "Give a main word first."); return; }
+    if (!VEC[main]) { say($("cmp-notice"), main + " isn't in this dictionary. Try a plainer word."); return; }
+
+    var listed = readWords($("cmp-others").value).filter(function (w) { return w !== main; });
+    if (!listed.length) { say($("cmp-notice"), "Add at least one word to place against it."); return; }
+
+    var seen = Object.create(null);
+    var known = [], unknown = [];
+    listed.forEach(function (w) {
+      if (seen[w]) return;
+      seen[w] = true;
+      if (VEC[w]) known.push(w); else unknown.push(w);
+    });
+
+    if (!known.length) {
+      say($("cmp-notice"), "None of those are in this dictionary: " + unknown.join(", ") + ".");
+      $("cmp-out").textContent = "";
+      return;
+    }
+
+    say($("cmp-notice"), unknown.length ? "Not in this dictionary: " + unknown.join(", ") + "." : "");
+
+    var rows = known.map(function (w) { return { word: w, rank: rankOf(main, w) }; });
+
+    $("cmp-out").textContent = "";
+
+    var heading = document.createElement("div");
+    heading.className = "eyebrow";
+    heading.textContent = "against " + main;
+    $("cmp-out").appendChild(heading);
+
+    var list = document.createElement("ul");
+    list.className = "readings";
+    list.style.marginTop = "0.75rem";
+    $("cmp-out").appendChild(list);
+    paintLadder(list, rows);
+
+    var footnote = document.createElement("p");
+    footnote.className = "gloss";
+    footnote.style.marginTop = "1rem";
+    footnote.textContent = "Positions in this dictionary of " + V +
+      " words — not the numbers the real game prints, but the same ordering logic.";
+    $("cmp-out").appendChild(footnote);
+  }
+
+  $("cmp-go").addEventListener("click", compare);
+
+  /* ================================================================
+     8. BOOT
+     ================================================================ */
+  $("dictline").textContent = V + " words · ranks computed here, offline";
+  refreshObs();
+})();
+</script>
