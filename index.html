@@ -9462,7 +9462,8 @@ plow|farm5 tool4 soil4 work3
     turn: 0,
     done: false,
     myName: null,
-    live: null   // online mode's live roster, from LiveRoom — null until the first update arrives
+    live: null,      // online mode's live roster, from LiveRoom — null until the first update arrives
+    liveRows: null   // online mode's shared guess feed (everyone's guesses), from LiveRoom
   };
 
   // Wire a segmented control: press one, release the others.
@@ -9595,6 +9596,7 @@ plow|farm5 tool4 soil4 work3
     play.turn = 0;
     play.done = false;
     play.live = null;
+    play.liveRows = null;
 
     if (play.mode === "offline") {
       play.players = roster();
@@ -9639,6 +9641,10 @@ plow|farm5 tool4 soil4 work3
         onChat: function (msg) {
           if (!msg) return;
           appendChatLine(msg);
+        },
+        onGuesses: function (list) {
+          play.liveRows = list;
+          refreshPlay();
         },
         onError: function () {
           say($("live-notice"), "Live sync dropped — you can still play, just without seeing others.");
@@ -9717,8 +9723,10 @@ plow|farm5 tool4 soil4 work3
   }
 
   function refreshPlay() {
-    var best = play.rows.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
-    $("play-count").textContent = play.rows.length === 1 ? "1 guess" : play.rows.length + " guesses";
+    var isOnline = play.mode === "online";
+    var ladderRows = isOnline && play.liveRows ? play.liveRows : play.rows;
+    var best = ladderRows.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
+    $("play-count").textContent = ladderRows.length === 1 ? "1 guess" : ladderRows.length + " guesses";
     if (best) {
       $("play-best").textContent = "closest " + best.rank;
       $("play-best").style.color = heat(best.rank);
@@ -9726,7 +9734,6 @@ plow|farm5 tool4 soil4 work3
       $("play-best").textContent = "";
     }
 
-    var isOnline = play.mode === "online";
     var multiOffline = !isOnline && play.players.length > 1;
     var showRoster = isOnline || multiOffline;
     $("play-live").classList.toggle("with-roster", showRoster);
@@ -9789,8 +9796,10 @@ plow|farm5 tool4 soil4 work3
       window.LiveRoom.updateProgress(play.rows.length, best ? best.rank : null);
     }
 
-    paintLadder($("play-ladder"), play.rows.map(function (row) {
-      return multiOffline ? { word: row.word, rank: row.rank, gloss: row.by } : row;
+    paintLadder($("play-ladder"), ladderRows.map(function (row) {
+      if (multiOffline) return { word: row.word, rank: row.rank, gloss: row.by };
+      if (isOnline) return { word: row.word, rank: row.rank, gloss: row.by === play.myName ? "you" : row.by };
+      return row;
     }));
   }
 
@@ -9921,8 +9930,10 @@ plow|farm5 tool4 soil4 work3
 
     if (!w || /[^a-z]/.test(w)) { say($("play-notice"), "One plain word, letters only."); return; }
     if (!VEC[w]) { say($("play-notice"), w + " isn't in this dictionary — try another word."); return; }
-    if (play.rows.some(function (r) { return r.word === w; })) {
-      say($("play-notice"), "You've already tried " + w + ".");
+    var isOnlineGuess = play.mode === "online";
+    var tried = isOnlineGuess && play.liveRows ? play.liveRows : play.rows;
+    if (tried.some(function (r) { return r.word === w; })) {
+      say($("play-notice"), isOnlineGuess ? "Someone's already tried " + w + "." : "You've already tried " + w + ".");
       return;
     }
 
@@ -9930,6 +9941,7 @@ plow|farm5 tool4 soil4 work3
     var rank = rankOf(play.secret, w);
     var who = play.players[play.turn];
     play.rows.push({ word: w, rank: rank, by: who });
+    if (play.mode === "online" && window.LiveRoom) window.LiveRoom.addGuess(who, w, rank);
     $("play-input").value = "";
 
     // A rejected guess costs nobody their turn, so the hand only passes here.
@@ -10231,7 +10243,7 @@ plow|farm5 tool4 soil4 work3
     projectId: "contexto-solver"
   };
 
-  var LiveRoom = { join: function () {}, leave: function () {}, updateProgress: function () {}, sendChat: function () {}, ready: false, unavailable: false };
+  var LiveRoom = { join: function () {}, leave: function () {}, updateProgress: function () {}, sendChat: function () {}, addGuess: function () {}, ready: false, unavailable: false };
   window.LiveRoom = LiveRoom;
 
   if (FIREBASE_CONFIG.apiKey !== "REPLACE_ME") {
@@ -10248,6 +10260,7 @@ plow|farm5 tool4 soil4 work3
         if (!current) return;
         current.unsubPlayers();
         current.unsubChat();
+        current.unsubGuesses();
         dbMod.remove(current.presenceRef).catch(function () {});
         current = null;
       }
@@ -10258,6 +10271,7 @@ plow|farm5 tool4 soil4 work3
         var presenceRef = dbMod.ref(db, "rooms/" + code + "/players/" + myId);
         var playersRef = dbMod.ref(db, "rooms/" + code + "/players");
         var chatQuery = dbMod.query(dbMod.ref(db, "rooms/" + code + "/chat"), dbMod.limitToLast(50));
+        var guessesRef = dbMod.ref(db, "rooms/" + code + "/guesses");
 
         dbMod.set(presenceRef, { name: name, guesses: 0, best: null, joinedAt: dbMod.serverTimestamp() });
         dbMod.onDisconnect(presenceRef).remove();
@@ -10275,7 +10289,17 @@ plow|farm5 tool4 soil4 work3
           callbacks.onChat(snap.val());
         });
 
-        current = { code: code, myId: myId, presenceRef: presenceRef, unsubPlayers: unsubPlayers, unsubChat: unsubChat };
+        var unsubGuesses = dbMod.onValue(guessesRef, function (snap) {
+          var val = snap.val() || {};
+          var list = Object.keys(val).map(function (id) {
+            var g = val[id] || {};
+            return { word: g.word, rank: g.rank, by: g.name, at: g.at || 0 };
+          });
+          list.sort(function (a, b) { return a.at - b.at; });
+          callbacks.onGuesses(list);
+        });
+
+        current = { code: code, myId: myId, presenceRef: presenceRef, unsubPlayers: unsubPlayers, unsubChat: unsubChat, unsubGuesses: unsubGuesses };
       }
 
       function updateProgress(guesses, best) {
@@ -10288,10 +10312,16 @@ plow|farm5 tool4 soil4 work3
         dbMod.push(dbMod.ref(db, "rooms/" + current.code + "/chat"), { name: name, text: text, at: dbMod.serverTimestamp() });
       }
 
+      function addGuess(name, word, rank) {
+        if (!current) return;
+        dbMod.push(dbMod.ref(db, "rooms/" + current.code + "/guesses"), { name: name, word: word, rank: rank, at: dbMod.serverTimestamp() });
+      }
+
       LiveRoom.join = join;
       LiveRoom.leave = leave;
       LiveRoom.updateProgress = updateProgress;
       LiveRoom.sendChat = sendChat;
+      LiveRoom.addGuess = addGuess;
       LiveRoom.ready = true;
       window.dispatchEvent(new Event("liveroom-ready"));
     }).catch(function () {
