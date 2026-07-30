@@ -565,24 +565,11 @@
     </p>
   </header>
 
-  <div class="shop" id="shop" hidden>
-    <div class="eyebrow">shop</div>
-    <ul class="shop-list">
-      <li>
-        <div>
-          <span class="shop-name">2 hints</span>
-          <span class="shop-note">A hint names the word worth guessing next.</span>
-        </div>
-        <button type="button" id="buy-hints">3 coins</button>
-      </li>
-    </ul>
-    <p class="gloss" id="shop-notice" hidden></p>
-  </div>
-
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play">play</button>
     <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve">solver</button>
     <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="panel-compare">compare</button>
+    <button class="tab" role="tab" id="tab-shop" aria-selected="false" aria-controls="panel-shop">shop</button>
   </nav>
 
   <!-- ============ PLAY ============ -->
@@ -736,6 +723,21 @@
     <button class="wide" id="cmp-go">Rank them</button>
     <p class="notice" id="cmp-notice" hidden></p>
     <div id="cmp-out"></div>
+  </section>
+
+  <!-- ============ SHOP ============ -->
+  <section class="panel" id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden>
+    <p class="gloss">Spend coins to boost your hints and game settings.</p>
+    <ul class="shop-list">
+      <li>
+        <div>
+          <span class="shop-name">2 hints</span>
+          <span class="shop-note">A hint names the word worth guessing next.</span>
+        </div>
+        <button type="button" id="buy-hints">3 coins</button>
+      </li>
+    </ul>
+    <p class="gloss" id="shop-notice" hidden></p>
   </section>
 
   <div class="colophon">
@@ -979,7 +981,8 @@
   var TABS = [
     { tab: "tab-play", panel: "panel-play" },
     { tab: "tab-solve", panel: "panel-solve" },
-    { tab: "tab-compare", panel: "panel-compare" }
+    { tab: "tab-compare", panel: "panel-compare" },
+    { tab: "tab-shop", panel: "panel-shop" }
   ];
 
   TABS.forEach(function (entry) {
@@ -1065,10 +1068,7 @@
   }
 
   $("purse").addEventListener("click", function () {
-    var shop = $("shop");
-    shop.hidden = !shop.hidden;
-    $("purse").setAttribute("aria-expanded", shop.hidden ? "false" : "true");
-    shopSay("");
+    $("tab-shop").click();
   });
 
   $("buy-hints").addEventListener("click", function () {
