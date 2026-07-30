@@ -200,6 +200,7 @@
     justify-content: space-between;
     gap: 1rem;
   }
+  .masthead-left { display: flex; align-items: baseline; gap: 0.875rem; min-width: 0; }
   .purse {
     font-family: var(--mono);
     font-size: var(--micro);
@@ -214,6 +215,46 @@
     cursor: pointer;
   }
   .purse:hover { text-decoration: underline; }
+
+  .admin-btn {
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    background: none;
+    border: 0;
+    padding: 0;
+    min-height: 0;
+    cursor: pointer;
+    flex: none;
+  }
+  .admin-btn:hover { color: var(--ink); }
+  .admin-btn.is-on { color: var(--accent); }
+
+  .admin-panel {
+    padding: 1rem;
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+  }
+  .admin-item-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.375rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .admin-item-row input { width: 100%; }
+  .admin-item-row .row input { width: auto; }
+  #admin-request-list li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 
   .shop {
     display: flex;
@@ -551,7 +592,10 @@
 <div class="wrap">
   <header class="masthead">
     <div class="masthead-top">
-      <div class="eyebrow" id="dictline">dictionary loading</div>
+      <div class="masthead-left">
+        <button type="button" class="admin-btn" id="admin-btn" title="Admin">Admin</button>
+        <div class="eyebrow" id="dictline">dictionary loading</div>
+      </div>
       <button type="button" class="purse" id="purse" aria-expanded="false">0 coins</button>
     </div>
     <h1>Contexto</h1>
@@ -728,16 +772,61 @@
   <!-- ============ SHOP ============ -->
   <section class="panel" id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden>
     <p class="gloss">Spend coins to boost your hints and game settings.</p>
-    <ul class="shop-list">
-      <li>
-        <div>
-          <span class="shop-name">2 hints</span>
-          <span class="shop-note">A hint names the word worth guessing next.</span>
-        </div>
-        <button type="button" id="buy-hints">3 coins</button>
-      </li>
-    </ul>
+    <ul class="shop-list" id="shop-list-live"></ul>
     <p class="gloss" id="shop-notice" hidden></p>
+  </section>
+
+  <!-- ============ ADMIN ============ -->
+  <section class="panel admin-panel" id="admin-panel" hidden>
+    <div class="eyebrow">admin</div>
+    <p class="gloss" id="admin-role-note"></p>
+
+    <div id="admin-shop-editor" hidden>
+      <div class="field">
+        <span class="key">shop items</span>
+        <ul class="shop-list" id="admin-item-list"></ul>
+      </div>
+      <div class="field">
+        <span class="key">add an item</span>
+        <input id="admin-new-name" placeholder="item name" autocapitalize="none" autocorrect="off" />
+        <input id="admin-new-note" placeholder="short description" autocapitalize="none" autocorrect="off" />
+        <div class="row">
+          <input class="num fixed" id="admin-new-price" type="number" min="1" placeholder="coins" />
+          <input class="num fixed" id="admin-new-hints" type="number" min="1" placeholder="hints" />
+          <button type="button" class="grow" id="admin-add-item">Add item</button>
+        </div>
+      </div>
+      <button type="button" class="ghost" id="admin-reset-shop">Reset to default</button>
+    </div>
+
+    <div id="admin-request-form" hidden>
+      <div class="field">
+        <span class="key">send a request</span>
+        <div class="segmented" id="req-type">
+          <button type="button" aria-pressed="true" data-type="feature">feature</button>
+          <button type="button" aria-pressed="false" data-type="bug">bug</button>
+        </div>
+        <textarea id="admin-req-text" rows="3" placeholder="What should be added, or what's broken?"></textarea>
+      </div>
+      <button type="button" id="admin-req-send">Send</button>
+    </div>
+
+    <div id="admin-requests" hidden>
+      <span class="key">requests &amp; bugs</span>
+      <ul class="shop-list" id="admin-request-list"></ul>
+    </div>
+
+    <div class="field">
+      <span class="key">admin chat</span>
+      <ul class="chat-log" id="admin-chat-log"><li class="chat-empty">No messages yet.</li></ul>
+      <div class="row">
+        <input class="grow" id="admin-chat-input" placeholder="message the other admin…" maxlength="280" autocomplete="off" />
+        <button type="button" class="fixed" id="admin-chat-send">Send</button>
+      </div>
+    </div>
+
+    <p class="gloss" id="admin-notice" hidden></p>
+    <button type="button" class="linkish" id="admin-signout">Sign out of admin</button>
   </section>
 
   <div class="colophon">
@@ -987,6 +1076,7 @@
 
   TABS.forEach(function (entry) {
     $(entry.tab).addEventListener("click", function () {
+      $("admin-panel").hidden = true;
       TABS.forEach(function (other) {
         var on = other === entry;
         $(other.tab).setAttribute("aria-selected", on ? "true" : "false");
@@ -1027,10 +1117,17 @@
   });
 
   // Coins live on this device only — nothing about them is sent anywhere, and
-  // clearing the browser's storage clears them.
+  // clearing the browser's storage clears them. The shop's item list is
+  // different: it's meant to be the same for everyone, so it's kept in the
+  // shared Firebase database (see AdminRoom below) and only cached here for
+  // when that database can't be reached.
   var PURSE_KEY = "contexto-coins";
   var HINT_KEY = "contexto-hints";
-  var HINT_PRICE = 3, HINT_BUNDLE = 2, HINT_START = 3;
+  var HINT_START = 3;
+  var SHOP_CACHE_KEY = "contexto-shop-items";
+  var DEFAULT_SHOP_ITEMS = [
+    { id: "starter-hints", name: "2 hints", note: "A hint names the word worth guessing next.", price: 3, hints: 2 }
+  ];
 
   function purse() {
     try { return parseInt(localStorage.getItem(PURSE_KEY), 10) || 0; } catch (e) { return 0; }
@@ -1052,11 +1149,67 @@
 
   function tally(n, one, many) { return n + " " + (n === 1 ? one : many); }
 
+  function loadCachedShopItems() {
+    try {
+      var raw = localStorage.getItem(SHOP_CACHE_KEY);
+      var parsed = raw && JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    } catch (e) {}
+    return DEFAULT_SHOP_ITEMS.slice();
+  }
+
+  function cacheShopItems(items) {
+    try { localStorage.setItem(SHOP_CACHE_KEY, JSON.stringify(items)); } catch (e) {}
+  }
+
+  var shopItems = loadCachedShopItems();
+
+  function cheapestItem() {
+    if (!shopItems.length) return DEFAULT_SHOP_ITEMS[0];
+    return shopItems.reduce(function (a, b) { return b.price < a.price ? b : a; });
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function renderShopList() {
+    var ul = $("shop-list-live");
+    if (!shopItems.length) {
+      ul.innerHTML = '<li class="chat-empty">Nothing in the shop right now.</li>';
+      return;
+    }
+    ul.innerHTML = shopItems.map(function (item, idx) {
+      return '<li><div><span class="shop-name">' + escapeHtml(item.name) + '</span>' +
+        '<span class="shop-note">' + escapeHtml(item.note) + '</span></div>' +
+        '<button type="button" class="buy-item" data-idx="' + idx + '"' +
+        (purse() < item.price ? " disabled" : "") + '>' + tally(item.price, "coin", "coins") + '</button></li>';
+    }).join("");
+  }
+
+  $("shop-list-live").addEventListener("click", function (e) {
+    if (!e.target.classList.contains("buy-item")) return;
+    buyItem(shopItems[+e.target.dataset.idx]);
+  });
+
+  function buyItem(item) {
+    if (!item) return;
+    if (purse() < item.price) {
+      shopSay("Not enough coins yet — one comes with every word you find.");
+      return;
+    }
+    store(PURSE_KEY, purse() - item.price);
+    store(HINT_KEY, hints() + item.hints);
+    shopSay("Bought " + tally(item.hints, "hint", "hints") + ". " + tally(purse(), "coin", "coins") + " left.");
+  }
+
   function paintPurse() {
     var coins = purse(), left = hints();
     $("purse").textContent = tally(coins, "coin", "coins") + " · " + tally(left, "hint", "hints");
-    $("buy-hints").disabled = coins < HINT_PRICE;
     $("play-hint").textContent = left > 0 ? "Hint · " + left : "Hint";
+    renderShopList();
   }
 
   function earnCoin() { store(PURSE_KEY, purse() + 1); }
@@ -1071,14 +1224,246 @@
     $("tab-shop").click();
   });
 
-  $("buy-hints").addEventListener("click", function () {
-    if (purse() < HINT_PRICE) {
-      shopSay("Not enough coins yet — one comes with every word you find.");
-      return;
+  /* ================================================================
+     ADMIN — a shop editor and a request/bug queue and chat, gated by
+     two passwords. This is a static page with no server of its own,
+     so the password check is a deterrent, not real security: anyone
+     reading the source can find both passwords. What's real is the
+     shared Firebase database behind it (AdminRoom, wired up further
+     down), which is what makes shop edits, requests and chat visible
+     to both people rather than stuck on one device.
+     ================================================================ */
+  var ADMIN_PASSWORD = "Antoine121";
+  var ASSIST_PASSWORD = "Zmichel";
+  var ADMIN_ROLE_KEY = "contexto-admin-role";
+  var lastRequests = [];
+  var adminChannelsSubscribed = false;
+
+  function adminRole() {
+    try { return localStorage.getItem(ADMIN_ROLE_KEY) || ""; } catch (e) { return ""; }
+  }
+
+  function setAdminRole(role) {
+    try {
+      if (role) localStorage.setItem(ADMIN_ROLE_KEY, role);
+      else localStorage.removeItem(ADMIN_ROLE_KEY);
+    } catch (e) {}
+    $("admin-btn").classList.toggle("is-on", !!role);
+  }
+
+  function adminSay(message) {
+    var node = $("admin-notice");
+    node.textContent = message || "";
+    node.hidden = !message;
+  }
+
+  function adminDbNote() {
+    adminSay("Couldn't reach the shared database, so this only applies here. See the " +
+              "comment above FIREBASE_CONFIG in the page source for the database rule this needs.");
+  }
+
+  function renderAdminItemList() {
+    var ul = $("admin-item-list");
+    ul.innerHTML = shopItems.map(function (item, idx) {
+      return '<li class="admin-item-row" data-idx="' + idx + '">' +
+        '<input class="admin-name" value="' + escapeHtml(item.name) + '" placeholder="name" />' +
+        '<input class="admin-note" value="' + escapeHtml(item.note || "") + '" placeholder="description" />' +
+        '<div class="row">' +
+          '<input class="num fixed admin-price" type="number" min="1" value="' + item.price + '" />' +
+          '<input class="num fixed admin-hints" type="number" min="1" value="' + item.hints + '" />' +
+          '<button type="button" class="ghost grow admin-save-item">Save</button>' +
+          '<button type="button" class="ghost admin-del-item">Delete</button>' +
+        '</div></li>';
+    }).join("") || '<li class="chat-empty">No items yet.</li>';
+  }
+
+  function renderAdminRequestList() {
+    var ul = $("admin-request-list");
+    ul.innerHTML = lastRequests.map(function (r) {
+      return '<li data-id="' + r.id + '"><div><span class="shop-name">' +
+        (r.type === "bug" ? "Bug" : "Feature") + " — " + escapeHtml(r.by || "assistant") +
+        (r.done ? " (done)" : "") + '</span><span class="shop-note">' + escapeHtml(r.text) + '</span></div>' +
+        '<div class="row"><button type="button" class="ghost admin-req-done">' +
+        (r.done ? "Reopen" : "Mark done") + '</button>' +
+        '<button type="button" class="ghost admin-req-del">Delete</button></div></li>';
+    }).join("") || '<li class="chat-empty">Nothing yet.</li>';
+  }
+
+  function renderAdminPanel() {
+    var role = adminRole();
+    $("admin-role-note").textContent = role === "admin"
+      ? "Full admin — edit the shop, and see requests and bugs sent in."
+      : "Assistant admin — send feature requests and bug reports, and chat here.";
+    $("admin-shop-editor").hidden = role !== "admin";
+    $("admin-requests").hidden = role !== "admin";
+    $("admin-request-form").hidden = role !== "assistant";
+    adminSay("");
+    if (role === "admin") { renderAdminItemList(); renderAdminRequestList(); }
+  }
+
+  function persistShopItems() {
+    cacheShopItems(shopItems);
+    renderShopList();
+    if (window.AdminRoom) {
+      window.AdminRoom.setShopItems(shopItems).catch(adminDbNote);
+    } else {
+      adminDbNote();
     }
-    store(PURSE_KEY, purse() - HINT_PRICE);
-    store(HINT_KEY, hints() + HINT_BUNDLE);
-    shopSay("Bought " + HINT_BUNDLE + " hints. " + tally(purse(), "coin", "coins") + " left.");
+  }
+
+  function openAdminPanel() {
+    TABS.forEach(function (entry) {
+      $(entry.tab).setAttribute("aria-selected", "false");
+      $(entry.panel).hidden = true;
+    });
+    $("admin-panel").hidden = false;
+    renderAdminPanel();
+  }
+
+  $("admin-btn").addEventListener("click", function () {
+    var role = adminRole();
+    if (!role) {
+      var pw = prompt("Admin password:");
+      if (pw === null) return;
+      if (pw === ADMIN_PASSWORD) role = "admin";
+      else if (pw === ASSIST_PASSWORD) role = "assistant";
+      else { alert("Wrong password."); return; }
+      setAdminRole(role);
+      subscribeAdminChannels();
+    }
+    openAdminPanel();
+  });
+
+  $("admin-signout").addEventListener("click", function () {
+    setAdminRole("");
+    $("admin-panel").hidden = true;
+    $("tab-play").click();
+  });
+
+  $("admin-item-list").addEventListener("click", function (e) {
+    var li = e.target.closest(".admin-item-row");
+    if (!li) return;
+    var idx = +li.dataset.idx;
+    if (e.target.classList.contains("admin-save-item")) {
+      var name = li.querySelector(".admin-name").value.trim();
+      var note = li.querySelector(".admin-note").value.trim();
+      var price = Math.max(1, parseInt(li.querySelector(".admin-price").value, 10) || 1);
+      var hintsN = Math.max(1, parseInt(li.querySelector(".admin-hints").value, 10) || 1);
+      if (!name) { adminSay("Give it a name first."); return; }
+      shopItems[idx] = { id: shopItems[idx].id, name: name, note: note, price: price, hints: hintsN };
+      persistShopItems();
+      adminSay("Saved.");
+    } else if (e.target.classList.contains("admin-del-item")) {
+      shopItems.splice(idx, 1);
+      persistShopItems();
+      renderAdminItemList();
+      adminSay("Removed.");
+    }
+  });
+
+  $("admin-add-item").addEventListener("click", function () {
+    var name = $("admin-new-name").value.trim();
+    var note = $("admin-new-note").value.trim();
+    var price = Math.max(1, parseInt($("admin-new-price").value, 10) || 1);
+    var hintsN = Math.max(1, parseInt($("admin-new-hints").value, 10) || 1);
+    if (!name) { adminSay("Give it a name first."); return; }
+    shopItems.push({ id: "item-" + Date.now().toString(36), name: name, note: note, price: price, hints: hintsN });
+    $("admin-new-name").value = "";
+    $("admin-new-note").value = "";
+    $("admin-new-price").value = "";
+    $("admin-new-hints").value = "";
+    persistShopItems();
+    renderAdminItemList();
+    adminSay("Added.");
+  });
+
+  $("admin-reset-shop").addEventListener("click", function () {
+    shopItems = DEFAULT_SHOP_ITEMS.slice();
+    persistShopItems();
+    renderAdminItemList();
+    adminSay("Back to the default shop.");
+  });
+
+  var reqType = "feature";
+  pressGroup($("req-type"), "type", function (val) { reqType = val; });
+
+  $("admin-req-send").addEventListener("click", function () {
+    var text = $("admin-req-text").value.trim();
+    if (!text) { adminSay("Write what you want to send first."); return; }
+    if (!window.AdminRoom) { adminDbNote(); return; }
+    window.AdminRoom.submitRequest(reqType, text, "Assistant").then(function () {
+      $("admin-req-text").value = "";
+      adminSay("Sent.");
+    }).catch(adminDbNote);
+  });
+
+  $("admin-request-list").addEventListener("click", function (e) {
+    var li = e.target.closest("li[data-id]");
+    if (!li || !window.AdminRoom) return;
+    var id = li.dataset.id;
+    var r = lastRequests.filter(function (x) { return x.id === id; })[0];
+    if (e.target.classList.contains("admin-req-done") && r) {
+      window.AdminRoom.markRequest(id, !r.done).catch(adminDbNote);
+    } else if (e.target.classList.contains("admin-req-del")) {
+      window.AdminRoom.deleteRequest(id).catch(adminDbNote);
+    }
+  });
+
+  function appendAdminChatLine(msg) {
+    var log = $("admin-chat-log");
+    var empty = log.querySelector(".chat-empty");
+    if (empty) empty.remove();
+    var mine = msg.name === (adminRole() === "admin" ? "Admin" : "Assistant");
+    var li = document.createElement("li");
+    li.className = "chat-line" + (mine ? " mine" : "");
+    var from = document.createElement("span");
+    from.className = "from";
+    from.textContent = msg.name;
+    li.appendChild(from);
+    li.appendChild(document.createTextNode(msg.text));
+    log.appendChild(li);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function sendAdminChat() {
+    var input = $("admin-chat-input");
+    var text = input.value.trim();
+    if (!text || !window.AdminRoom) { if (text) adminDbNote(); return; }
+    var name = adminRole() === "admin" ? "Admin" : "Assistant";
+    window.AdminRoom.sendChat(name, text).catch(adminDbNote);
+    input.value = "";
+  }
+
+  $("admin-chat-send").addEventListener("click", sendAdminChat);
+  $("admin-chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendAdminChat(); });
+
+  // The shop is the same for every visitor, admin or not, so it syncs as
+  // soon as the shared database answers — no password needed to read it,
+  // only to change it. Chat and the request queue are admin-only, and only
+  // start listening once someone has actually signed in.
+  function subscribeShopSync() {
+    window.AdminRoom.onShopItems(function (items) {
+      if (!items) return;
+      shopItems = items;
+      cacheShopItems(items);
+      renderShopList();
+      if (adminRole() === "admin" && !$("admin-panel").hidden) renderAdminItemList();
+    });
+  }
+
+  function subscribeAdminChannels() {
+    if (adminChannelsSubscribed || !adminRole() || !window.AdminRoom) return;
+    adminChannelsSubscribed = true;
+    window.AdminRoom.onChat(appendAdminChatLine);
+    window.AdminRoom.onRequests(function (list) {
+      lastRequests = list;
+      if (adminRole() === "admin" && !$("admin-panel").hidden) renderAdminRequestList();
+    });
+  }
+
+  window.addEventListener("adminroom-ready", function () {
+    subscribeShopSync();
+    subscribeAdminChannels();
   });
 
   // Each difficulty gets its own clock. Running out ends the game the way
@@ -1684,8 +2069,9 @@
     }
 
     if (hints() <= 0) {
-      say($("play-notice"), "No hints left. " + HINT_PRICE + " coins buys " + HINT_BUNDLE +
-                            " more — tap your coins at the top of the page.");
+      var cheapest = cheapestItem();
+      say($("play-notice"), "No hints left. " + tally(cheapest.price, "coin", "coins") + " buys " +
+                            tally(cheapest.hints, "more", "more") + " — tap your coins at the top of the page.");
       return;
     }
 
@@ -1755,10 +2141,11 @@
       until: "read",
       say: function () {
         var mins = Math.round((LIMITS[play.level] || LIMITS.normal) / 60);
+        var cheapest = cheapestItem();
         return "Two last things. Hint names the word worth trying next — it works out what " +
                "you've narrowed down and picks whatever would tell you the most. You have " +
-               tally(hints(), "of them", "of them") + " to spend, and " + HINT_PRICE +
-               " coins buys " + HINT_BUNDLE + " more from the shop behind the coin count up top. " +
+               tally(hints(), "of them", "of them") + " to spend, and " + tally(cheapest.price, "coin", "coins") +
+               " buys " + tally(cheapest.hints, "more", "more") + " from the shop behind the coin count up top. " +
                "And this round is on a " + mins + "-minute clock, which starts the moment you " +
                "close this. Find the word before it runs out and you earn a coin.";
       }
@@ -2195,6 +2582,8 @@
      ================================================================ */
   $("dictline").textContent = V + " words · ranks computed here, offline";
   paintPurse();
+  $("admin-btn").classList.toggle("is-on", !!adminRole());
+  if (window.AdminRoom && window.AdminRoom.ready) { subscribeShopSync(); subscribeAdminChannels(); }
   refreshObs();
 
   $("save-copy").addEventListener("click", function (e) {
@@ -2224,7 +2613,12 @@
      own Firebase project (console.firebase.google.com → Project
      settings → Your apps → the web app's config), matched with rules
      roughly like:
-       { "rules": { "rooms": { "$code": { ".read": true, ".write": true } } } }
+       { "rules": { "rooms": { "$code": { ".read": true, ".write": true } },
+                     "admin": { ".read": true, ".write": true } } }
+     The "admin" branch is what the Admin panel (shop editing, the
+     assistant's requests, and the admin-to-admin chat) reads and writes —
+     without it in the rules those writes fail silently and everything
+     falls back to this browser's own localStorage.
      ================================================================ */
   var FIREBASE_CONFIG = {
     apiKey: "AIzaSyCuBAGbiSak6l9YmehE2F4vlpCn8Rizqi0",
@@ -2234,6 +2628,18 @@
 
   var LiveRoom = { join: function () {}, leave: function () {}, updateProgress: function () {}, sendChat: function () {}, addGuess: function () {}, ready: false, unavailable: false };
   window.LiveRoom = LiveRoom;
+
+  var AdminRoom = {
+    sendChat: function () { return Promise.reject(new Error("offline")); }, onChat: function () {},
+    submitRequest: function () { return Promise.reject(new Error("offline")); },
+    onRequests: function () {},
+    markRequest: function () { return Promise.reject(new Error("offline")); },
+    deleteRequest: function () { return Promise.reject(new Error("offline")); },
+    setShopItems: function () { return Promise.reject(new Error("offline")); },
+    onShopItems: function () {},
+    ready: false, unavailable: false
+  };
+  window.AdminRoom = AdminRoom;
 
   if (FIREBASE_CONFIG.apiKey !== "REPLACE_ME") {
     Promise.all([
@@ -2313,12 +2719,60 @@
       LiveRoom.addGuess = addGuess;
       LiveRoom.ready = true;
       window.dispatchEvent(new Event("liveroom-ready"));
+
+      // The admin channel isn't scoped to a room code — the two people who
+      // know the passwords share one shop, one request queue, one chat.
+      var adminChatQuery = dbMod.query(dbMod.ref(db, "admin/chat"), dbMod.limitToLast(50));
+      var adminRequestsRef = dbMod.ref(db, "admin/requests");
+      var adminShopRef = dbMod.ref(db, "admin/shop/items");
+
+      AdminRoom.sendChat = function (name, text) {
+        return dbMod.push(dbMod.ref(db, "admin/chat"), { name: name, text: text, at: dbMod.serverTimestamp() });
+      };
+      AdminRoom.onChat = function (cb) {
+        return dbMod.onChildAdded(adminChatQuery, function (snap) { cb(snap.val()); });
+      };
+      AdminRoom.submitRequest = function (type, text, by) {
+        return dbMod.push(adminRequestsRef, { type: type, text: text, by: by, done: false, at: dbMod.serverTimestamp() });
+      };
+      AdminRoom.onRequests = function (cb) {
+        return dbMod.onValue(adminRequestsRef, function (snap) {
+          var val = snap.val() || {};
+          var list = Object.keys(val).map(function (id) {
+            var r = val[id] || {};
+            return { id: id, type: r.type, text: r.text, by: r.by, done: !!r.done, at: r.at || 0 };
+          });
+          list.sort(function (a, b) { return b.at - a.at; });
+          cb(list);
+        });
+      };
+      AdminRoom.markRequest = function (id, done) {
+        return dbMod.update(dbMod.ref(db, "admin/requests/" + id), { done: done });
+      };
+      AdminRoom.deleteRequest = function (id) {
+        return dbMod.remove(dbMod.ref(db, "admin/requests/" + id));
+      };
+      AdminRoom.setShopItems = function (items) {
+        return dbMod.set(adminShopRef, items);
+      };
+      AdminRoom.onShopItems = function (cb) {
+        return dbMod.onValue(adminShopRef, function (snap) {
+          var val = snap.val();
+          cb(Array.isArray(val) && val.length ? val : null);
+        });
+      };
+      AdminRoom.ready = true;
+      window.dispatchEvent(new Event("adminroom-ready"));
     }).catch(function () {
       LiveRoom.unavailable = true;
       window.dispatchEvent(new Event("liveroom-unavailable"));
+      AdminRoom.unavailable = true;
+      window.dispatchEvent(new Event("adminroom-unavailable"));
     });
   } else {
     LiveRoom.unavailable = true;
     window.dispatchEvent(new Event("liveroom-unavailable"));
+    AdminRoom.unavailable = true;
+    window.dispatchEvent(new Event("adminroom-unavailable"));
   }
 </script>
