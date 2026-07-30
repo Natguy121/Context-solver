@@ -207,7 +207,35 @@
     text-transform: uppercase;
     color: var(--accent);
     white-space: nowrap;
+    background: none;
+    border: 0;
+    padding: 0;
+    min-height: 0;
+    cursor: pointer;
   }
+  .purse:hover { text-decoration: underline; }
+
+  .shop {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+  }
+  .shop-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+  .shop-list li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .shop-list button { flex: 0 0 auto; }
+  .shop-name { display: block; }
+  .shop-note { display: block; color: var(--muted); font-size: var(--step-0); }
   #play-clock { font-family: var(--mono); margin-left: auto; }
   #play-clock.urgent { color: var(--accent); font-weight: 600; }
 
@@ -257,12 +285,34 @@
 
   .reading:first-child { border-top: 1px solid var(--rule); }
 
+  /* A guess that has just landed says so, and how loudly it says so is how
+     close it came. Ranks are logarithmic, so the tiers are too: out of fifty
+     thousand words, anything inside 25 has earned the noise. */
   @media (prefers-reduced-motion: no-preference) {
     .reading.fresh { animation: settle 0.32s ease-out; }
+    .reading.landed { animation: settle 0.32s ease-out; }
+    .reading.landed.warm { animation: settle 0.32s ease-out, flare 0.75s ease-out 0.08s 1; }
+    .reading.landed.hot { animation: settle 0.32s ease-out, flare 0.75s ease-out 0.08s 2; }
+    .reading.landed.burning { animation: settle 0.32s ease-out, flare 0.75s ease-out 0.08s 3; }
+    .reading.landed .tick { animation: tick-in 0.45s cubic-bezier(0.2, 1.5, 0.4, 1); }
+    .reading.landed.hot .rank,
+    .reading.landed.burning .rank { animation: pop 0.5s ease-out 0.08s; }
   }
   @keyframes settle {
     from { opacity: 0; transform: translateY(-0.375rem); }
     to { opacity: 1; transform: none; }
+  }
+  @keyframes flare {
+    0%, 100% { box-shadow: 0 0 0 0 transparent; }
+    30% { box-shadow: 0 0 0.9rem 0 var(--flare); }
+  }
+  @keyframes tick-in {
+    from { transform: translateX(-1px) scaleY(0.15); opacity: 0; }
+    to { transform: translateX(-1px) scaleY(1); opacity: 1; }
+  }
+  @keyframes pop {
+    0%, 100% { transform: scale(1); }
+    45% { transform: scale(1.3); }
   }
 
   .reading-head { display: flex; align-items: baseline; gap: 0.75rem; }
@@ -502,7 +552,7 @@
   <header class="masthead">
     <div class="masthead-top">
       <div class="eyebrow" id="dictline">dictionary loading</div>
-      <div class="purse" id="purse">0 coins</div>
+      <button type="button" class="purse" id="purse" aria-expanded="false">0 coins</button>
     </div>
     <h1>Contexto</h1>
     <p class="standfirst">A word is hidden. Every guess comes back with its distance from it.</p>
@@ -514,6 +564,20 @@
       <a href="#" id="save-copy">Save this page</a> to play with no connection, no account, on any device.
     </p>
   </header>
+
+  <div class="shop" id="shop" hidden>
+    <div class="eyebrow">shop</div>
+    <ul class="shop-list">
+      <li>
+        <div>
+          <span class="shop-name">2 hints</span>
+          <span class="shop-note">A hint names the word worth guessing next.</span>
+        </div>
+        <button type="button" id="buy-hints">3 coins</button>
+      </li>
+    </ul>
+    <p class="gloss" id="shop-notice" hidden></p>
+  </div>
 
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play">play</button>
@@ -836,10 +900,21 @@
   }
 
   // One reading: word, rank, and a tick on the near→far spectrum.
+  // How loudly a guess announces itself when it lands. Out of fifty thousand
+  // words, anything inside 25 has earned the noise.
+  function tierOf(rank) {
+    if (rank <= 25) return " burning";
+    if (rank <= 250) return " hot";
+    if (rank <= 2500) return " warm";
+    return "";
+  }
+
   function reading(row, opts) {
     opts = opts || {};
     var li = document.createElement("li");
-    li.className = "reading" + (opts.fresh ? " fresh" : "");
+    var landed = opts.landed && opts.landed === row.word;
+    li.className = "reading" + (opts.fresh ? " fresh" : "") + (landed ? " landed" + tierOf(row.rank) : "");
+    if (landed) li.style.setProperty("--flare", heat(row.rank));
 
     var head = document.createElement("div");
     head.className = "reading-head";
@@ -951,26 +1026,67 @@
   // Coins live on this device only — nothing about them is sent anywhere, and
   // clearing the browser's storage clears them.
   var PURSE_KEY = "contexto-coins";
+  var HINT_KEY = "contexto-hints";
+  var HINT_PRICE = 3, HINT_BUNDLE = 2, HINT_START = 3;
 
   function purse() {
     try { return parseInt(localStorage.getItem(PURSE_KEY), 10) || 0; } catch (e) { return 0; }
   }
 
-  function paintPurse() {
-    var n = purse();
-    $("purse").textContent = n === 1 ? "1 coin" : n + " coins";
+  // A first-time player starts with a few hints in hand, so the tour's promise
+  // that Hint exists isn't immediately worthless.
+  function hints() {
+    try {
+      var raw = localStorage.getItem(HINT_KEY);
+      return raw === null ? HINT_START : (parseInt(raw, 10) || 0);
+    } catch (e) { return HINT_START; }
   }
 
-  function earnCoin() {
-    try { localStorage.setItem(PURSE_KEY, String(purse() + 1)); } catch (e) {}
+  function store(key, n) {
+    try { localStorage.setItem(key, String(Math.max(0, n))); } catch (e) {}
     paintPurse();
   }
+
+  function tally(n, one, many) { return n + " " + (n === 1 ? one : many); }
+
+  function paintPurse() {
+    var coins = purse(), left = hints();
+    $("purse").textContent = tally(coins, "coin", "coins") + " · " + tally(left, "hint", "hints");
+    $("buy-hints").disabled = coins < HINT_PRICE;
+    $("play-hint").textContent = left > 0 ? "Hint · " + left : "Hint";
+  }
+
+  function earnCoin() { store(PURSE_KEY, purse() + 1); }
+
+  function shopSay(message) {
+    var node = $("shop-notice");
+    node.textContent = message || "";
+    node.hidden = !message;
+  }
+
+  $("purse").addEventListener("click", function () {
+    var shop = $("shop");
+    shop.hidden = !shop.hidden;
+    $("purse").setAttribute("aria-expanded", shop.hidden ? "false" : "true");
+    shopSay("");
+  });
+
+  $("buy-hints").addEventListener("click", function () {
+    if (purse() < HINT_PRICE) {
+      shopSay("Not enough coins yet — one comes with every word you find.");
+      return;
+    }
+    store(PURSE_KEY, purse() - HINT_PRICE);
+    store(HINT_KEY, hints() + HINT_BUNDLE);
+    shopSay("Bought " + HINT_BUNDLE + " hints. " + tally(purse(), "coin", "coins") + " left.");
+  });
 
   // Each difficulty gets its own clock. Running out ends the game the way
   // giving up does: the word is shown, and no coin is earned.
   var LIMITS = { easy: 7 * 60, normal: 10 * 60, hard: 12 * 60, nightmare: 17 * 60 };
   var clock = { left: 0, tick: null };
   var tour = { on: false, at: 0 };
+  var lastHint = { after: -1, word: null };
 
   function stopClock() {
     if (clock.tick) { clearInterval(clock.tick); clock.tick = null; }
@@ -1011,8 +1127,9 @@
     turn: 0,
     done: false,
     myName: null,
-    live: null,      // online mode's live roster, from LiveRoom — null until the first update arrives
-    liveRows: null   // online mode's shared guess feed (everyone's guesses), from LiveRoom
+    live: null,       // online mode's live roster, from LiveRoom — null until the first update arrives
+    liveRows: null,   // online mode's shared guess feed (everyone's guesses), from LiveRoom
+    justGuessed: null // the word to single out in the ladder, so only it animates
   };
 
   // Wire a segmented control: press one, release the others.
@@ -1152,6 +1269,13 @@
     play.done = false;
     play.live = null;
     play.liveRows = null;
+    play.justGuessed = null;
+    lastHint = { after: -1, word: null };
+
+    // The solver would answer the very question the game is asking, so it steps
+    // out of the way until the round is over.
+    $("tab-solve").hidden = true;
+    if ($("tab-solve").getAttribute("aria-selected") === "true") $("tab-play").click();
 
     if (play.mode === "offline") {
       play.players = roster();
@@ -1356,7 +1480,7 @@
       if (multiOffline) return { word: row.word, rank: row.rank, gloss: row.by };
       if (isOnline) return { word: row.word, rank: row.rank, gloss: row.by === play.myName ? "you" : row.by };
       return row;
-    }));
+    }), { landed: play.justGuessed });
   }
 
   // A guess as one square, coarse enough to give nothing away.
@@ -1381,6 +1505,7 @@
     tour.on = false;
     $("coach").hidden = true;
     $("play-clock").hidden = true;
+    $("tab-solve").hidden = false;
     if (won) earnCoin();
     $("play-controls").hidden = true;
     $("play-quit").hidden = true;
@@ -1502,6 +1627,13 @@
     if (play.mode === "online" && window.LiveRoom) window.LiveRoom.addGuess(who, w, rank);
     $("play-input").value = "";
 
+    // Marked so the ladder can single this row out; cleared once the animation
+    // has run, or a later repaint would set it off again.
+    play.justGuessed = w;
+    setTimeout(function () {
+      if (play.justGuessed === w) { play.justGuessed = null; }
+    }, 1400);
+
     // A rejected guess costs nobody their turn, so the hand only passes here.
     if (rank !== 1) play.turn = (play.turn + 1) % play.players.length;
     refreshPlay();
@@ -1544,10 +1676,29 @@
       return;
     }
 
+    // Asking twice without having guessed in between would return the same word,
+    // so repeat the answer rather than charging for it again.
+    if (lastHint.after === rows.length && lastHint.word) {
+      say($("play-notice"), "Still " + lastHint.word + " — that one's free. Guess something before asking again.");
+      return;
+    }
+
+    if (hints() <= 0) {
+      say($("play-notice"), "No hints left. " + HINT_PRICE + " coins buys " + HINT_BUNDLE +
+                            " more — tap your coins at the top of the page.");
+      return;
+    }
+
     var tried = Object.create(null);
     rows.forEach(function (r) { tried[r.word] = true; });
     var obs = rows.map(function (r) { return { word: r.word, rank: r.rank }; });
     var next = suggestNext(believe(obs, V, tried), tried);
+
+    // Only charge for a hint that actually said something.
+    if (next) {
+      store(HINT_KEY, hints() - 1);
+      lastHint = { after: rows.length, word: next };
+    }
 
     say($("play-notice"), next
       ? "Try " + next + " — of everything left, that one's rank would tell you the most."
@@ -1604,10 +1755,12 @@
       until: "read",
       say: function () {
         var mins = Math.round((LIMITS[play.level] || LIMITS.normal) / 60);
-        return "Two last things. Hint will name the word worth trying next — it works out what " +
-               "you've narrowed down and picks whatever would tell you the most. And this round " +
-               "is on a " + mins + "-minute clock, which starts the moment you close this. Find " +
-               "the word before it runs out and you earn a coin.";
+        return "Two last things. Hint names the word worth trying next — it works out what " +
+               "you've narrowed down and picks whatever would tell you the most. You have " +
+               tally(hints(), "of them", "of them") + " to spend, and " + HINT_PRICE +
+               " coins buys " + HINT_BUNDLE + " more from the shop behind the coin count up top. " +
+               "And this round is on a " + mins + "-minute clock, which starts the moment you " +
+               "close this. Find the word before it runs out and you earn a coin.";
       }
     }
   ];
