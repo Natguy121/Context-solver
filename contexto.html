@@ -210,6 +210,19 @@
   }
   #play-clock { font-family: var(--mono); margin-left: auto; }
   #play-clock.urgent { color: var(--accent); font-weight: 600; }
+
+  .coach {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+  }
+  .coach p { margin: 0; }
+  .coach .row { align-items: center; gap: 1rem; }
+  .coach .row button { flex: 0 0 auto; }
   .segmented button[aria-pressed="false"] {
     background: transparent;
     color: var(--muted);
@@ -494,6 +507,10 @@
     <h1>Contexto</h1>
     <p class="standfirst">A word is hidden. Every guess comes back with its distance from it.</p>
     <p class="gloss">
+      New here? <a href="#" id="start-tour">Take the tour</a> — it deals you a real round and
+      talks you through it.
+    </p>
+    <p class="gloss">
       <a href="#" id="save-copy">Save this page</a> to play with no connection, no account, on any device.
     </p>
   </header>
@@ -580,6 +597,15 @@
         </div>
 
         <div id="play-verdict"></div>
+
+        <aside class="coach" id="coach" hidden>
+          <div class="eyebrow" id="coach-step"></div>
+          <p id="coach-text"></p>
+          <div class="row">
+            <button type="button" class="ghost" id="coach-next">Got it</button>
+            <button type="button" class="linkish" id="coach-skip">skip the tour</button>
+          </div>
+        </aside>
 
         <div class="row" id="play-controls">
           <input class="grow" id="play-input" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" />
@@ -944,6 +970,7 @@
   // giving up does: the word is shown, and no coin is earned.
   var LIMITS = { easy: 7 * 60, normal: 10 * 60, hard: 12 * 60, nightmare: 17 * 60 };
   var clock = { left: 0, tick: null };
+  var tour = { on: false, at: 0 };
 
   function stopClock() {
     if (clock.tick) { clearInterval(clock.tick); clock.tick = null; }
@@ -959,6 +986,9 @@
   function startClock() {
     stopClock();
     clock.left = LIMITS[play.level] || LIMITS.normal;
+    // Nobody should be racing a clock while they are still being told the rules.
+    // The tour starts it again on the way out.
+    if (tour.on) { $("play-clock").hidden = true; return; }
     $("play-clock").hidden = false;
     paintClock();
     clock.tick = setInterval(function () {
@@ -1348,6 +1378,8 @@
   function finish(won, who, ranOut) {
     play.done = true;
     stopClock();
+    tour.on = false;
+    $("coach").hidden = true;
     $("play-clock").hidden = true;
     if (won) earnCoin();
     $("play-controls").hidden = true;
@@ -1478,7 +1510,7 @@
     if (fresh && rank === 1) fresh.classList.add("fresh");
 
     if (rank === 1) finish(true, who);
-    else $("play-input").focus();
+    else { tourSaw("guess"); $("play-input").focus(); }
   }
 
   $("start").addEventListener("click", function () { beginGame(pickSecret(), null); });
@@ -1521,6 +1553,117 @@
       ? "Try " + next + " — of everything left, that one's rank would tell you the most."
       : "Nothing useful left to suggest — you've already tried the words that would narrow it.");
   }
+
+  /* ---------- the tour: a real round, narrated ---------- */
+  // Each step either waits for the player to guess or for them to say they've
+  // read it, so the tour moves at whatever pace they do. Nothing here is a
+  // mock-up — they are playing an ordinary offline game the whole way through.
+  var TOUR = [
+    {
+      until: "guess",
+      say: function () {
+        return "Somewhere behind this page is one hidden word. Type any word at all in the box " +
+               "below and press Guess — it honestly doesn't matter which one. A guess that is " +
+               "nowhere near is still how you find out where you are.";
+      }
+    },
+    {
+      until: "read",
+      say: function () {
+        var row = play.rows[play.rows.length - 1];
+        return "“" + row.word + "” came back at " + row.rank + ". Every one of the " +
+               V.toLocaleString() + " words is sorted by how close it is in meaning to the hidden " +
+               "word, and that is the position yours landed in. Rank 1 is the word itself, so the " +
+               "smaller the number, the warmer you are. The colour and the little bar underneath " +
+               "say the same thing without you having to read the number.";
+      }
+    },
+    {
+      until: "guess",
+      say: function () {
+        return "Now guess a second word, something with a bit to do with your first. Watch which " +
+               "way the number moves: down is warmer, up is colder. That is the entire game.";
+      }
+    },
+    {
+      until: "read",
+      say: function () {
+        var sorted = play.rows.slice().sort(function (a, b) { return a.rank - b.rank; });
+        var near = sorted[0], far = sorted[sorted.length - 1];
+        if (near.rank === far.rank) {
+          return "Both landed in the same place, which happens. Keep going — the list above always " +
+                 "keeps your closest guess at the top, so it's the one to think from.";
+        }
+        return near.word + " at " + near.rank + " is warmer than " + far.word + " at " + far.rank +
+               ", so the hidden word has more to do with " + near.word + " than with " + far.word +
+               ". Follow that. The list above always keeps your closest guess on top, so the word " +
+               "to think from is the one at the top.";
+      }
+    },
+    {
+      until: "read",
+      say: function () {
+        var mins = Math.round((LIMITS[play.level] || LIMITS.normal) / 60);
+        return "Two last things. Hint will name the word worth trying next — it works out what " +
+               "you've narrowed down and picks whatever would tell you the most. And this round " +
+               "is on a " + mins + "-minute clock, which starts the moment you close this. Find " +
+               "the word before it runs out and you earn a coin.";
+      }
+    }
+  ];
+
+  function paintCoach() {
+    var step = TOUR[tour.at];
+    $("coach-step").textContent = "step " + (tour.at + 1) + " of " + TOUR.length;
+    $("coach-text").textContent = step.say();
+    $("coach-next").hidden = step.until !== "read";
+    $("coach").hidden = false;
+  }
+
+  function tourSaw(what) {
+    if (!tour.on || TOUR[tour.at].until !== what) return;
+    tour.at += 1;
+    if (tour.at >= TOUR.length) endTour();
+    else paintCoach();
+  }
+
+  function endTour() {
+    if (!tour.on) return;
+    tour.on = false;
+    $("coach").hidden = true;
+    if (!play.done) startClock();
+    $("play-input").focus();
+  }
+
+  function startTour() {
+    // Drive the ordinary controls rather than reaching past them, so the setup
+    // screen agrees with what the tour has chosen.
+    press($("modes"), "offline");
+    press($("levels"), "easy");
+    press($("counts"), "1");
+
+    tour.on = true;
+    tour.at = 0;
+    beginGame(pickSecret(), null);
+    paintCoach();
+  }
+
+  function press(group, value) {
+    if (!group) return;
+    Array.prototype.forEach.call(group.children, function (button) {
+      if (button.dataset.mode === value || button.dataset.level === value || button.dataset.count === value) {
+        button.click();
+      }
+    });
+  }
+
+  $("start-tour").addEventListener("click", function (e) {
+    e.preventDefault();
+    $("tab-play").click();
+    startTour();
+  });
+  $("coach-next").addEventListener("click", function () { tourSaw("read"); });
+  $("coach-skip").addEventListener("click", endTour);
 
   $("play-hint").addEventListener("click", playHint);
   $("play-go").addEventListener("click", guess);
