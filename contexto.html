@@ -1372,6 +1372,7 @@
   var giftUnsub = null;
   var adminUids = {};
   var assistantUids = {};
+  var adminUidsLoaded = false;
 
   function cleanName(name) {
     return String(name || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
@@ -1403,7 +1404,7 @@
     // Somebody has to be the first admin, and there is no console step that
     // can name them before an account exists. So the empty list is claimable
     // once, from here, and sealed by the rules the moment it isn't empty.
-    var unclaimed = !Object.keys(adminUids).length;
+    var unclaimed = adminUidsLoaded && !Object.keys(adminUids).length;
     $("claim-admin").hidden = !unclaimed;
     $("account-uid").textContent = account.uid;
   }
@@ -1941,6 +1942,7 @@
   window.addEventListener("accountroom-ready", function () {
     window.AccountRoom.onAdmins(function (map) {
       adminUids = map;
+      adminUidsLoaded = true;
       renderAdminAvailability();
       renderAccountPanel();
       if (!$("everyone-box").hidden) renderEveryone();
