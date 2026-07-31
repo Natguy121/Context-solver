@@ -1373,7 +1373,9 @@
     renderGiftItems();
   }
 
-  function earnCoin() { store(PURSE_KEY, purse() + 1); }
+  var LEVEL_COINS = { easy: 0, normal: 1, hard: 2, nightmare: 4 };
+
+  function earnCoin() { store(PURSE_KEY, purse() + (LEVEL_COINS[play.level] || 0)); }
 
   function shopSay(message) {
     var node = $("shop-notice");
