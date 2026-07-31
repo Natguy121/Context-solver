@@ -845,6 +845,10 @@
   #chat-box .row { margin-top: 0.5rem; }
   #chat-box input { font-size: var(--micro); }
 
+  #spectate-chat-box { margin-top: 0.875rem; }
+  #spectate-chat-box .row { margin-top: 0.5rem; }
+  #spectate-chat-box input { font-size: var(--micro); }
+
   @media (min-width: 46rem) {
     .wrap.wide-play { max-width: 58rem; }
     #play-live.with-roster {
@@ -1324,11 +1328,21 @@
             <span data-i18n="spectating">Spectating</span> <code id="spectate-code-label"></code> —
             <span id="spectate-visibility"></span>
           </p>
+          <p class="gloss" id="spectate-status"></p>
           <div class="row">
             <button type="button" class="ghost" id="spectate-reveal" data-i18n="show-myself">Show myself</button>
             <button type="button" class="ghost" id="spectate-stop" data-i18n="stop-spectating">Stop spectating</button>
           </div>
           <ul class="roster-list" id="spectate-roster"></ul>
+
+          <div id="spectate-chat-box">
+            <div class="eyebrow chat-eyebrow" data-i18n="chat">chat</div>
+            <ul class="chat-log" id="spectate-chat-log"></ul>
+            <div class="row">
+              <input class="grow" id="spectate-chat-input" placeholder="say something" maxlength="140" autocomplete="off" />
+              <button type="button" class="ghost" id="spectate-chat-send" data-i18n="send">Send</button>
+            </div>
+          </div>
         </div>
         <p class="gloss" id="spectate-notice" hidden></p>
       </div>
@@ -1563,6 +1577,8 @@
     "Kick": "Expulser", "Delete": "Supprimer", "typing": "en train d'écrire",
     "Nobody here yet.": "Personne ici pour l'instant.",
     "No games open right now.": "Aucune partie ouverte pour l'instant.",
+    "This room is online": "Cette partie est en ligne",
+    "This room is online, but empty right now.": "Cette partie est en ligne, mais vide pour l'instant.",
     "Live sync dropped — try spectating again.": "Synchronisation en direct interrompue — réessayez d'observer.",
     "close": "Fermer", "closest": "le plus proche", "(you)": "(vous)", "joined": "arrivé",
     "guessing…": "propose…", "waiting": "en attente",
@@ -2561,7 +2577,10 @@
           '<input class="num fixed give-amount" type="number" min="1" value="1" />' +
           '<button type="button" class="ghost grow give-coins">Give coins</button>' +
           '<button type="button" class="ghost grow take-coins">Take coins</button>' +
+        '</div>' +
+        '<div class="row">' +
           '<button type="button" class="ghost grow give-hints">Give hints</button>' +
+          '<button type="button" class="ghost grow take-hints">Take hints</button>' +
         '</div>' +
         (adminUids[u.uid] ? "" :
           '<button type="button" class="ghost make-assistant">' +
@@ -2599,6 +2618,7 @@
     if (e.target.classList.contains("give-coins")) patch = { coins: user.coins + amount };
     else if (e.target.classList.contains("take-coins")) patch = { coins: Math.max(0, user.coins - amount) };
     else if (e.target.classList.contains("give-hints")) patch = { hints: user.hints + amount };
+    else if (e.target.classList.contains("take-hints")) patch = { hints: Math.max(0, user.hints - amount) };
     if (!patch) return;
 
     window.AccountRoom.updateUser(uid, patch).then(function () {
@@ -2657,13 +2677,41 @@
     }).join("") || '<li class="chat-empty">' + escapeHtml(t("Nobody here yet.")) + '</li>';
   }
 
+  // The roster is the only signal this system has for "is this room actually
+  // live" — there's no separate room record, just presence rows — so online
+  // just means at least one of those rows currently exists. spectate()'s
+  // list carries no isMe flag (only join()'s does), so a revealed spectator
+  // — who does have a presence row of their own — is excluded the same way
+  // renderSpectateRoster excludes them: by id, against spectatorId().
+  function renderSpectateStatus(list) {
+    var node = $("spectate-status");
+    var myId = window.LiveRoom && window.LiveRoom.spectatorId ? window.LiveRoom.spectatorId() : null;
+    var real = (list || []).filter(function (p) { return p.id !== myId; });
+    node.textContent = real.length
+      ? t("This room is online") + " — " + tally(real.length, "player", "players")
+      : t("This room is online, but empty right now.");
+  }
+
+  // The name a message sent from spectate shows up under — same "(admin)"/
+  // "(assistant)" convention as revealSpectator, so a room's own chat log
+  // can't confuse an incognito admin message for a regular player's.
+  function spectateChatName() {
+    var role = myRole();
+    var label = role === "assistant" ? "(assistant)" : "(admin)";
+    return label + " " + (account ? account.name : (role === "assistant" ? "Assistant" : "Admin"));
+  }
+
   function startSpectating(code) {
     if (!window.LiveRoom || !window.LiveRoom.ready) { spectateSay("Can't reach the live service right now."); return; }
     spectateCode = code;
     spectateSay("");
+    resetChatLog("spectate-chat-log", "No messages yet.");
     window.LiveRoom.spectate(code, {
-      onPlayers: function (list) { spectateRoster = list; renderSpectateRoster(); },
-      onChat: function () {},
+      onPlayers: function (list) { spectateRoster = list; renderSpectateRoster(); renderSpectateStatus(list); },
+      onChat: function (msg) {
+        if (!msg) return;
+        appendChatLine("spectate-chat-log", msg, msg.name === spectateChatName());
+      },
       onGuesses: function () {},
       onError: function () { spectateSay("Live sync dropped — try spectating again."); }
     });
@@ -2671,6 +2719,17 @@
     $("spectate-live").hidden = false;
     renderSpectateVisibility();
   }
+
+  function sendSpectateChat() {
+    var input = $("spectate-chat-input");
+    var text = input.value.trim();
+    if (!text || !window.LiveRoom || !spectateCode) return;
+    window.LiveRoom.sendSpectatorChat(spectateChatName(), text);
+    input.value = "";
+    input.focus();
+  }
+  $("spectate-chat-send").addEventListener("click", sendSpectateChat);
+  $("spectate-chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendSpectateChat(); });
 
   $("spectate-btn").addEventListener("click", function () {
     var box = $("spectate-box");
@@ -2695,7 +2754,7 @@
     var revealed = window.LiveRoom.isRevealed && window.LiveRoom.isRevealed();
     var action = revealed
       ? window.LiveRoom.hideSpectator()
-      : window.LiveRoom.revealSpectator("(admin) " + (account ? account.name : "Admin"));
+      : window.LiveRoom.revealSpectator(spectateChatName());
     Promise.resolve(action).then(renderSpectateVisibility).catch(adminDbNote);
   });
 
@@ -2704,6 +2763,7 @@
     spectateCode = null;
     spectateRoster = [];
     $("spectate-live").hidden = true;
+    $("spectate-status").textContent = "";
   });
 
   $("spectate-roster").addEventListener("click", function (e) {
@@ -3091,12 +3151,7 @@
   // at the bottom of the page). If Firebase isn't configured or the
   // connection fails, the game still works — you just won't see anyone else.
   function joinLiveRoom(code, name) {
-    var chatLog = $("chat-log");
-    chatLog.textContent = "";
-    var empty = document.createElement("li");
-    empty.className = "chat-empty";
-    empty.textContent = "No messages yet.";
-    chatLog.appendChild(empty);
+    resetChatLog("chat-log", "No messages yet.");
 
     if (!code) return;
 
@@ -3135,7 +3190,7 @@
         },
         onChat: function (msg) {
           if (!msg) return;
-          appendChatLine(msg);
+          appendChatLine("chat-log", msg, msg.name === play.myName);
         },
         onGuesses: function (list) {
           play.liveRows = list;
@@ -3160,13 +3215,16 @@
     }
   }
 
-  function appendChatLine(msg) {
-    var log = $("chat-log");
+  // Shared by the room's own chat and the spectate chat below it — same log
+  // shape, same rendering, just a different target list and a different
+  // idea of which messages are "mine".
+  function appendChatLine(logId, msg, isMine) {
+    var log = $(logId);
     var empty = log.querySelector(".chat-empty");
     if (empty) empty.remove();
 
     var li = document.createElement("li");
-    li.className = "chat-line" + (msg.name === play.myName ? " mine" : "");
+    li.className = "chat-line" + (isMine ? " mine" : "");
     var from = document.createElement("span");
     from.className = "from";
     from.textContent = msg.name;
@@ -3174,6 +3232,15 @@
     li.appendChild(document.createTextNode(msg.text));
     log.appendChild(li);
     log.scrollTop = log.scrollHeight;
+  }
+
+  function resetChatLog(logId, emptyText) {
+    var log = $(logId);
+    log.textContent = "";
+    var empty = document.createElement("li");
+    empty.className = "chat-empty";
+    empty.textContent = emptyText;
+    log.appendChild(empty);
   }
 
   function showCode(code) {
@@ -4275,7 +4342,7 @@
   var LiveRoom = {
     join: function () {}, leave: function () {}, updateProgress: function () {}, updateTyping: function () {},
     sendChat: function () {}, addGuess: function () {},
-    spectate: function () {}, stopSpectating: function () {},
+    spectate: function () {}, stopSpectating: function () {}, sendSpectatorChat: function () {},
     isRevealed: function () { return false; }, spectatorId: function () { return null; },
     revealSpectator: offline, hideSpectator: function () { return Promise.resolve(); }, kick: offline,
     ready: false, unavailable: false
@@ -4472,6 +4539,15 @@
       };
       LiveRoom.kick = function (code, playerId) {
         return dbMod.remove(dbMod.ref(db, "rooms/" + code + "/players/" + playerId));
+      };
+      // Posts into a spectated room's chat without needing a presence entry
+      // there — same write a revealed spectator's own chat message would
+      // make, just addressed by the room the spectate subscription is
+      // watching instead of a joined room's own current.code.
+      LiveRoom.sendSpectatorChat = function (name, text) {
+        if (!spectating) return;
+        dbMod.push(dbMod.ref(db, "rooms/" + spectating.code + "/chat"),
+          { name: name, text: text, at: dbMod.serverTimestamp() });
       };
 
       LiveRoom.ready = true;
