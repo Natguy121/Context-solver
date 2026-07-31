@@ -626,7 +626,7 @@
   <header class="masthead">
     <div class="masthead-top">
       <div class="masthead-left">
-        <button type="button" class="admin-btn" id="admin-btn" title="Admin">Admin</button>
+        <button type="button" class="admin-btn" id="admin-btn" title="Admin" hidden>Admin</button>
         <div class="eyebrow" id="dictline">dictionary loading</div>
       </div>
       <div class="masthead-right">
@@ -674,6 +674,8 @@
 
     <div id="account-signed-in" hidden>
       <p class="gloss" id="account-who"></p>
+      <p class="gloss">Your account id: <code id="account-uid"></code></p>
+      <button type="button" id="claim-admin" hidden>Claim admin</button>
       <button type="button" class="linkish" id="account-signout">Sign out</button>
     </div>
 
@@ -927,7 +929,7 @@
     </div>
 
     <p class="gloss" id="admin-notice" hidden></p>
-    <button type="button" class="linkish" id="admin-signout">Sign out of admin</button>
+    <button type="button" class="linkish" id="admin-close">Close</button>
   </section>
 
   <div class="colophon">
@@ -1258,7 +1260,7 @@
       var patch = {};
       if (key === PURSE_KEY) { account.coins = n; patch.coins = n; }
       else { account.hints = n; patch.hints = n; }
-      if (window.AccountRoom) window.AccountRoom.updateUser(account.key, patch).catch(function () {});
+      if (window.AccountRoom) window.AccountRoom.updateUser(account.uid, patch).catch(function () {});
     } else {
       try { localStorage.setItem(key, String(n)); } catch (e) {}
     }
@@ -1346,51 +1348,33 @@
   });
 
   /* ================================================================
-     ACCOUNTS — a name, a password, and a balance that follows you
-     between devices.
+     ACCOUNTS — a name, a password, and a balance that follows you.
 
-     The password is never stored or sent: what goes into the database
-     is PBKDF2-SHA256 over it, 150,000 rounds, with a random salt per
-     account. So a person who reads the accounts table can't recover
-     anyone's password from it.
+     Passwords are Firebase Authentication's job. Nothing in this page
+     ever sees one, stores one, or sends one anywhere but to Firebase's
+     own sign-in call. The username you type is turned into an address
+     for it; no mail is ever sent there.
 
-     What that does NOT do is make an account tamper-proof. This page
-     has no server, so the database has to be writable by whoever holds
-     it, and someone determined can write to another account's row
-     directly. The hash protects the password itself — that matters
-     most, since people reuse them — not the coins beside it. Firebase
-     Authentication with per-user security rules is the real fix, and
-     needs a console change rather than a change here.
+     What the database rules then enforce (they're printed in full above
+     FIREBASE_CONFIG at the foot of this page): your row is writable by
+     you and by an admin, and by nobody else. A gift is left in the
+     recipient's inbox rather than reached into their balance. Admin is
+     a uid listed in /admins, claimable exactly once while that list is
+     empty, and only changeable from the Firebase console after that.
+
+     The one thing rules can't settle is a player's own balance: their
+     browser writes their own coins, so someone determined can give
+     themselves some. Stopping that needs code running where they can't
+     reach it, and this page has to work with no connection at all.
      ================================================================ */
-  var ACCOUNT_KEY = "contexto-account";
-  var PBKDF2_ROUNDS = 150000;
+  var account = null;        // { uid, name, coins, hints } while signed in
   var accountUnsub = null;
+  var giftUnsub = null;
+  var adminUids = {};
+  var assistantUids = {};
 
-  function accountKey(name) {
+  function cleanName(name) {
     return String(name || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
-  }
-
-  function hexOf(buf) {
-    return Array.prototype.map.call(new Uint8Array(buf), function (b) {
-      return ("0" + b.toString(16)).slice(-2);
-    }).join("");
-  }
-
-  function hashPassword(password, saltHex) {
-    var crypto = window.crypto && window.crypto.subtle;
-    if (!crypto) return Promise.reject(new Error("nocrypto"));
-    var salt = new Uint8Array(saltHex.match(/../g).map(function (h) { return parseInt(h, 16); }));
-    return crypto.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"])
-      .then(function (key) {
-        return crypto.deriveBits(
-          { name: "PBKDF2", salt: salt, iterations: PBKDF2_ROUNDS, hash: "SHA-256" }, key, 256);
-      }).then(hexOf);
-  }
-
-  function newSalt() {
-    var bytes = new Uint8Array(16);
-    window.crypto.getRandomValues(bytes);
-    return hexOf(bytes);
   }
 
   function accountSay(message) {
@@ -1399,13 +1383,29 @@
     node.hidden = !message;
   }
 
+  function myRole() {
+    if (!account) return "";
+    if (adminUids[account.uid]) return "admin";
+    if (assistantUids[account.uid]) return "assistant";
+    return "";
+  }
+
   function renderAccountPanel() {
     $("account-signed-out").hidden = !!account;
     $("account-signed-in").hidden = !account;
-    if (account) {
-      $("account-who").textContent = "Signed in as " + account.name + ". Your coins and hints " +
-        "follow this account, so they're the same on any device you sign in on.";
-    }
+    if (!account) return;
+
+    var role = myRole();
+    $("account-who").textContent = "Signed in as " + account.name +
+      (role === "admin" ? " — admin." : role === "assistant" ? " — assistant admin." : ".") +
+      " Your coins and hints follow this account onto any device you sign in on.";
+
+    // Somebody has to be the first admin, and there is no console step that
+    // can name them before an account exists. So the empty list is claimable
+    // once, from here, and sealed by the rules the moment it isn't empty.
+    var unclaimed = !Object.keys(adminUids).length;
+    $("claim-admin").hidden = !unclaimed;
+    $("account-uid").textContent = account.uid;
   }
 
   function openAccountPanel() {
@@ -1419,51 +1419,89 @@
     renderAccountPanel();
   }
 
-  // Signing in re-points the purse at the account's row and follows it live,
-  // so a coin granted from the admin's Everyone list lands without a reload.
-  function watchAccount(key, name) {
-    account = { key: key, name: name, coins: 0, hints: 0 };
-    try { localStorage.setItem(ACCOUNT_KEY, key); } catch (e) {}
-    if (accountUnsub) { accountUnsub(); accountUnsub = null; }
-    if (window.AccountRoom && window.AccountRoom.ready) {
-      accountUnsub = window.AccountRoom.onUser(key, function (rec) {
-        if (!rec) return;
-        account.name = rec.name || key;
-        account.coins = rec.coins || 0;
-        account.hints = rec.hints || 0;
-        paintPurse();
-        renderAccountPanel();
-      });
-    }
-    paintPurse();
-    renderAccountPanel();
+  // Gifts wait in an inbox until the person they're for opens the page, so
+  // sending one never touches anybody else's balance.
+  function claimGifts() {
+    if (!account || !window.AccountRoom) return;
+    if (giftUnsub) { giftUnsub(); giftUnsub = null; }
+    var mine = account.uid;
+    giftUnsub = window.AccountRoom.onGifts(mine, function (list) {
+      // Whoever is signed in now may not be who this inbox belongs to: a
+      // watcher can outlive the sign-out that should have ended it, and
+      // crediting the wrong person is worse than dropping the gift.
+      if (!list.length || !account || account.uid !== mine) return;
+      var total = list.reduce(function (n, g) { return n + (g.hints || 0); }, 0);
+      var from = list.map(function (g) { return g.from; }).filter(Boolean);
+      if (total) {
+        store(HINT_KEY, hints() + total);
+        shopSay("A gift of " + tally(total, "hint", "hints") +
+                (from.length ? " from " + from.join(", ") : "") + " landed in your account.");
+      }
+      list.forEach(function (g) { window.AccountRoom.clearGift(mine, g.id).catch(function () {}); });
+    });
   }
 
-  function signOut() {
+  function watchAccount(uid) {
     if (accountUnsub) { accountUnsub(); accountUnsub = null; }
+    account = { uid: uid, name: uid.slice(0, 6), coins: 0, hints: 0 };
+    if (!window.AccountRoom || !window.AccountRoom.ready) { paintPurse(); return; }
+
+    accountUnsub = window.AccountRoom.onProfile(uid, function (rec) {
+      if (!account || account.uid !== uid) return;
+      if (rec) {
+        account.name = rec.name || account.name;
+        account.coins = rec.coins || 0;
+        account.hints = rec.hints || 0;
+      }
+      paintPurse();
+      renderAccountPanel();
+      renderAdminAvailability();
+    });
+    claimGifts();
+  }
+
+  function forgetAccount() {
+    if (accountUnsub) { accountUnsub(); accountUnsub = null; }
+    if (giftUnsub) { giftUnsub(); giftUnsub = null; }
     account = null;
-    try { localStorage.removeItem(ACCOUNT_KEY); } catch (e) {}
     paintPurse();
     renderAccountPanel();
+    renderAdminAvailability();
   }
 
   function accountFields() {
-    var name = $("account-name").value.trim();
-    var key = accountKey(name);
+    var typed = $("account-name").value.trim();
+    var name = cleanName(typed);
     var pass = $("account-pass").value;
-    if (!key) { accountSay("Pick a username — letters, numbers, dashes."); return null; }
-    if (pass.length < 4) { accountSay("Use a password of at least four characters."); return null; }
-    if (!window.AccountRoom || !window.AccountRoom.ready) {
-      accountSay("Can't reach the accounts database from here, so signing in isn't possible " +
+    if (!name) { accountSay("Pick a username — letters, numbers, dashes."); return null; }
+    if (pass.length < 6) { accountSay("Firebase asks for at least six characters in a password."); return null; }
+    if (!window.Auth || !window.Auth.ready) {
+      accountSay("Can't reach the accounts service from here, so signing in isn't possible " +
                  "right now. Your coins still work on this device.");
       return null;
     }
-    return { name: name, key: key, pass: pass };
+    return { name: name, display: typed.slice(0, 20), pass: pass };
+  }
+
+  function authTrouble(e) {
+    var code = (e && (e.code || e.message)) || "";
+    if (code === "taken" || code.indexOf("email-already-in-use") > -1) return "That username is taken — try another.";
+    if (code.indexOf("wrong-password") > -1 || code.indexOf("invalid-credential") > -1 ||
+        code.indexOf("user-not-found") > -1) return "That username and password don't match an account.";
+    if (code.indexOf("weak-password") > -1) return "That password is too easy to guess — try a longer one.";
+    if (code.indexOf("too-many-requests") > -1) return "Too many tries. Wait a minute, then go again.";
+    if (code.indexOf("operation-not-allowed") > -1) {
+      return "Email/Password sign-in isn't switched on for this Firebase project yet — " +
+             "turn it on under Authentication -> Sign-in method.";
+    }
+    if (code.indexOf("network") > -1) return "No connection to the accounts service. Try again in a moment.";
+    return "Couldn't do that. Check the connection and try again.";
   }
 
   $("account-btn").addEventListener("click", openAccountPanel);
+
   $("account-signout").addEventListener("click", function () {
-    signOut();
+    window.Auth.signOut().catch(function () {});
     accountSay("Signed out. Coins earned from here on stay on this device.");
   });
 
@@ -1471,53 +1509,61 @@
     var f = accountFields();
     if (!f) return;
     accountSay("Creating…");
-    var salt = newSalt();
-    hashPassword(f.pass, salt).then(function (hash) {
-      return window.AccountRoom.createUser(f.key, {
-        name: f.name, salt: salt, hash: hash,
-        coins: purse(), hints: hints(), at: Date.now()
+    var carried = { coins: purse(), hints: hints() };
+    window.Auth.signUp(f.name, f.pass).then(function (uid) {
+      // Written after sign-up, so the rules see it coming from the account
+      // it belongs to.
+      return window.AccountRoom.updateUser(uid, {
+        name: f.display || f.name, coins: carried.coins, hints: carried.hints, at: Date.now()
       });
     }).then(function () {
       $("account-pass").value = "";
-      watchAccount(f.key, f.name);
       accountSay("Account made. The coins you already had came with you.");
-    }).catch(function (e) {
-      accountSay(e && e.message === "taken"
-        ? "That username is taken — try another."
-        : "Couldn't create the account. Check the connection and try again.");
-    });
+    }).catch(function (e) { accountSay(authTrouble(e)); });
   });
 
   $("account-signin").addEventListener("click", function () {
     var f = accountFields();
     if (!f) return;
     accountSay("Checking…");
-    window.AccountRoom.getUser(f.key).then(function (rec) {
-      if (!rec || !rec.salt) throw new Error("nouser");
-      return hashPassword(f.pass, rec.salt).then(function (hash) {
-        if (hash !== rec.hash) throw new Error("wrong");
-        $("account-pass").value = "";
-        watchAccount(f.key, rec.name || f.name);
-        accountSay("");
-        $("tab-play").click();
-      });
-    }).catch(function (e) {
-      var why = e && e.message;
-      accountSay(why === "nouser" ? "No account with that name yet — Create account makes one."
-               : why === "wrong" ? "That password doesn't match."
-               : "Couldn't sign in. Check the connection and try again.");
-    });
+    window.Auth.signIn(f.name, f.pass).then(function () {
+      $("account-pass").value = "";
+      accountSay("");
+      $("tab-play").click();
+    }).catch(function (e) { accountSay(authTrouble(e)); });
   });
 
   $("account-pass").addEventListener("keydown", function (e) {
     if (e.key === "Enter") $("account-signin").click();
   });
 
+  $("claim-admin").addEventListener("click", function () {
+    if (!account) return;
+    accountSay("Claiming…");
+    window.AccountRoom.claimAdmin(account.uid).then(function () {
+      accountSay("You're the admin. That list is sealed now — changing it again " +
+                 "means editing /admins in the Firebase console.");
+    }).catch(function () {
+      accountSay("Couldn't claim it. Either somebody already has it, or the " +
+                 "database rules aren't in place yet.");
+    });
+  });
+
+  // Firebase remembers the session itself, so this fires on every load as
+  // well as on every sign-in and sign-out.
+  window.addEventListener("auth-ready", function () {
+    window.Auth.onChange(function (user) {
+      if (user) watchAccount(user.uid);
+      else forgetAccount();
+    });
+  });
+
   /* ---------- gifting ---------- */
   function renderGiftItems() {
     var sel = $("gift-item");
-    if (sel.dataset.stamp === String(shopItems.length) + ":" + shopItems.map(function (i) { return i.id; }).join(",")) return;
-    sel.dataset.stamp = String(shopItems.length) + ":" + shopItems.map(function (i) { return i.id; }).join(",");
+    var stamp = shopItems.map(function (i) { return i.id + ":" + i.price; }).join(",");
+    if (sel.dataset.stamp === stamp) return;
+    sel.dataset.stamp = stamp;
     sel.innerHTML = shopItems.map(function (item, idx) {
       return '<option value="' + idx + '">' + escapeHtml(item.name) + " — " +
              tally(item.price, "coin", "coins") + "</option>";
@@ -1532,24 +1578,25 @@
 
   $("gift-send").addEventListener("click", function () {
     var item = shopItems[+$("gift-item").value];
-    var toKey = accountKey($("gift-to").value);
+    var toName = cleanName($("gift-to").value);
     if (!item) { giftSay("Pick something to send."); return; }
-    if (!toKey) { giftSay("Who's it for? Type their username."); return; }
+    if (!toName) { giftSay("Who's it for? Type their username."); return; }
     if (!account) { giftSay("Sign in first — a gift comes out of your own coins."); return; }
-    if (toKey === account.key) { giftSay("That's you. Buying it outright is the same thing."); return; }
+    if (toName === cleanName(account.name)) { giftSay("That's you. Buying it outright is the same thing."); return; }
     if (purse() < item.price) { giftSay("Not enough coins for that one."); return; }
-    if (!window.AccountRoom || !window.AccountRoom.ready) { giftSay("Can't reach the accounts database right now."); return; }
+    if (!window.AccountRoom || !window.AccountRoom.ready) { giftSay("Can't reach the accounts service right now."); return; }
 
     giftSay("Sending…");
-    window.AccountRoom.getUser(toKey).then(function (rec) {
-      if (!rec) throw new Error("nouser");
-      // Charge only once the recipient is known to exist, so a typo can't
+    window.AccountRoom.lookupUsername(toName).then(function (uid) {
+      if (!uid) throw new Error("nouser");
+      // Charged only once the account is known to exist, so a typo can't
       // quietly cost coins.
-      return window.AccountRoom.updateUser(toKey, { hints: (rec.hints || 0) + item.hints })
+      return window.AccountRoom.sendGift(uid, { from: account.name, hints: item.hints, at: Date.now() })
         .then(function () {
           store(PURSE_KEY, purse() - item.price);
           $("gift-to").value = "";
-          giftSay("Sent " + tally(item.hints, "hint", "hints") + " to " + (rec.name || toKey) + ".");
+          giftSay("Sent " + tally(item.hints, "hint", "hints") + " to " + toName +
+                  ". It lands the next time they open the game.");
         });
     }).catch(function (e) {
       giftSay(e && e.message === "nouser"
@@ -1559,30 +1606,31 @@
   });
 
   /* ================================================================
-     ADMIN — a shop editor and a request/bug queue and chat, gated by
-     two passwords. This is a static page with no server of its own,
-     so the password check is a deterrent, not real security: anyone
-     reading the source can find both passwords. What's real is the
-     shared Firebase database behind it (AdminRoom, wired up further
-     down), which is what makes shop edits, requests and chat visible
-     to both people rather than stuck on one device.
+     ADMIN — a shop editor, a request queue, a noticeboard and a chat.
+
+     There is no password here any more. Being an admin means your uid
+     is listed in /admins, and the database rules are what enforce it:
+     a shop edit or an announcement written by anybody else is refused
+     by the server, not merely hidden by this page. Assistants work the
+     same way through /assistants, and an admin can appoint one from
+     the Everyone list.
      ================================================================ */
-  var ADMIN_PASSWORD = "Antoine121";
-  var ASSIST_PASSWORD = "Zmichel";
-  var ADMIN_ROLE_KEY = "contexto-admin-role";
   var lastRequests = [];
   var adminChannelsSubscribed = false;
 
-  function adminRole() {
-    try { return localStorage.getItem(ADMIN_ROLE_KEY) || ""; } catch (e) { return ""; }
-  }
+  function adminRole() { return myRole(); }
 
-  function setAdminRole(role) {
-    try {
-      if (role) localStorage.setItem(ADMIN_ROLE_KEY, role);
-      else localStorage.removeItem(ADMIN_ROLE_KEY);
-    } catch (e) {}
+  // The button only appears for the people it belongs to.
+  function renderAdminAvailability() {
+    var role = myRole();
+    $("admin-btn").hidden = !role;
     $("admin-btn").classList.toggle("is-on", !!role);
+    if (!role && !$("admin-panel").hidden) {
+      $("admin-panel").hidden = true;
+      $("tab-play").click();
+    }
+    if (role) subscribeAdminChannels();
+    if (!$("admin-panel").hidden) renderAdminPanel();
   }
 
   function adminSay(message) {
@@ -1640,6 +1688,7 @@
   function persistShopItems() {
     cacheShopItems(shopItems);
     renderShopList();
+    renderGiftItems();
     if (window.AdminRoom) {
       window.AdminRoom.setShopItems(shopItems).catch(adminDbNote);
     } else {
@@ -1657,21 +1706,11 @@
   }
 
   $("admin-btn").addEventListener("click", function () {
-    var role = adminRole();
-    if (!role) {
-      var pw = prompt("Admin password:");
-      if (pw === null) return;
-      if (pw === ADMIN_PASSWORD) role = "admin";
-      else if (pw === ASSIST_PASSWORD) role = "assistant";
-      else { alert("Wrong password."); return; }
-      setAdminRole(role);
-      subscribeAdminChannels();
-    }
+    if (!myRole()) { openAccountPanel(); return; }
     openAdminPanel();
   });
 
-  $("admin-signout").addEventListener("click", function () {
-    setAdminRole("");
+  $("admin-close").addEventListener("click", function () {
     $("admin-panel").hidden = true;
     $("tab-play").click();
   });
@@ -1726,15 +1765,20 @@
   function renderEveryone() {
     var ul = $("everyone-list");
     ul.innerHTML = allUsers.map(function (u) {
-      return '<li class="user-row" data-key="' + escapeHtml(u.key) + '">' +
-        '<span class="who"><span>' + escapeHtml(u.name) + '</span>' +
+      var badge = adminUids[u.uid] ? " · admin" : assistantUids[u.uid] ? " · assistant" : "";
+      return '<li class="user-row" data-uid="' + escapeHtml(u.uid) + '">' +
+        '<span class="who"><span>' + escapeHtml(u.name) + escapeHtml(badge) + '</span>' +
         '<b>' + tally(u.coins, "coin", "coins") + " · " + tally(u.hints, "hint", "hints") + '</b></span>' +
         '<div class="row">' +
           '<input class="num fixed give-amount" type="number" min="1" value="1" />' +
           '<button type="button" class="ghost grow give-coins">Give coins</button>' +
           '<button type="button" class="ghost grow take-coins">Take coins</button>' +
           '<button type="button" class="ghost grow give-hints">Give hints</button>' +
-        '</div></li>';
+        '</div>' +
+        (adminUids[u.uid] ? "" :
+          '<button type="button" class="ghost make-assistant">' +
+          (assistantUids[u.uid] ? "Remove as assistant" : "Make assistant") + '</button>') +
+        '</li>';
     }).join("") || '<li class="chat-empty">Nobody has made an account yet.</li>';
   }
 
@@ -1745,20 +1789,31 @@
   });
 
   $("everyone-list").addEventListener("click", function (e) {
-    var li = e.target.closest("li[data-key]");
+    var li = e.target.closest("li[data-uid]");
     if (!li || !window.AccountRoom) return;
-    var key = li.dataset.key;
-    var user = allUsers.filter(function (u) { return u.key === key; })[0];
+    var uid = li.dataset.uid;
+    var user = allUsers.filter(function (u) { return u.uid === uid; })[0];
     if (!user) return;
-    var amount = Math.max(1, parseInt(li.querySelector(".give-amount").value, 10) || 1);
 
+    if (e.target.classList.contains("make-assistant")) {
+      // Read the intent before the write, since the live subscription has
+      // usually turned assistantUids around by the time this settles.
+      var making = !assistantUids[uid];
+      window.AccountRoom.setAssistant(uid, making).then(function () {
+        adminSay(making ? user.name + " is an assistant now."
+                        : "Removed " + user.name + " as assistant.");
+      }).catch(adminDbNote);
+      return;
+    }
+
+    var amount = Math.max(1, parseInt(li.querySelector(".give-amount").value, 10) || 1);
     var patch = null;
     if (e.target.classList.contains("give-coins")) patch = { coins: user.coins + amount };
     else if (e.target.classList.contains("take-coins")) patch = { coins: Math.max(0, user.coins - amount) };
     else if (e.target.classList.contains("give-hints")) patch = { hints: user.hints + amount };
     if (!patch) return;
 
-    window.AccountRoom.updateUser(key, patch).then(function () {
+    window.AccountRoom.updateUser(uid, patch).then(function () {
       adminSay("Updated " + user.name + ".");
     }).catch(adminDbNote);
   });
@@ -1850,6 +1905,7 @@
       shopItems = items;
       cacheShopItems(items);
       renderShopList();
+      renderGiftItems();
       if (adminRole() === "admin" && !$("admin-panel").hidden) renderAdminItemList();
     });
     window.AdminRoom.onAnnouncements(appendAnnounceLine);
@@ -1870,21 +1926,26 @@
     subscribeAdminChannels();
   });
 
-  // The account roster feeds the admin's Everyone list; the remembered
-  // sign-in is picked back up as soon as the database can answer for it.
+  // Who holds which role is read straight off the database, by everyone, so
+  // the page agrees with the rules that actually enforce it. The roster
+  // itself only answers for admins — the rules see to that — and comes back
+  // empty for anybody else who asks.
   window.addEventListener("accountroom-ready", function () {
+    window.AccountRoom.onAdmins(function (map) {
+      adminUids = map;
+      renderAdminAvailability();
+      renderAccountPanel();
+      if (!$("everyone-box").hidden) renderEveryone();
+    });
+    window.AccountRoom.onAssistants(function (map) {
+      assistantUids = map;
+      renderAdminAvailability();
+      if (!$("everyone-box").hidden) renderEveryone();
+    });
     window.AccountRoom.onAllUsers(function (list) {
       allUsers = list;
-      if (adminRole() === "admin" && !$("admin-panel").hidden && !$("everyone-box").hidden) renderEveryone();
+      if (myRole() === "admin" && !$("admin-panel").hidden && !$("everyone-box").hidden) renderEveryone();
     });
-    var remembered = null;
-    try { remembered = localStorage.getItem(ACCOUNT_KEY); } catch (e) {}
-    if (remembered) {
-      window.AccountRoom.getUser(remembered).then(function (rec) {
-        if (rec) watchAccount(remembered, rec.name || remembered);
-        else { try { localStorage.removeItem(ACCOUNT_KEY); } catch (e) {} }
-      }).catch(function () {});
-    }
   });
 
   // Each difficulty gets its own clock. Running out ends the game the way
@@ -3111,7 +3172,7 @@
      ================================================================ */
   $("dictline").textContent = V + " words · ranks computed here, offline";
   paintPurse();
-  $("admin-btn").classList.toggle("is-on", !!adminRole());
+  renderAdminAvailability();
   if (window.AdminRoom && window.AdminRoom.ready) { subscribeShopSync(); subscribeAdminChannels(); }
   refreshObs();
 
@@ -3130,71 +3191,158 @@
 
 <script type="module">
   /* ================================================================
-     LIVE ROOM — online mode's presence + chat, backed by Firebase
-     Realtime Database. Everything else in this page runs with no
-     network at all; this is the one piece that needs a connection,
-     since separate phones can only see each other through a server
-     somewhere.
+     THE NETWORKED HALF
 
-     FIREBASE_CONFIG below is a public client key, not a secret — it's
-     safe to ship in this file. Access is controlled by the database's
-     security rules, not by hiding this object. Fill it in from your
-     own Firebase project (console.firebase.google.com → Project
-     settings → Your apps → the web app's config), matched with rules
-     roughly like:
-       { "rules": { "rooms": { "$code": { ".read": true, ".write": true } },
-                     "admin": { ".read": true, ".write": true } } }
-     The "admin" branch is what the Admin panel (shop editing, the
-     assistant's requests, and the admin-to-admin chat) reads and writes —
-     without it in the rules those writes fail silently and everything
-     falls back to this browser's own localStorage.
+     Everything else in this page runs with no connection at all. This
+     is the one piece that needs one, because separate phones can only
+     see each other through a server somewhere: the live multiplayer
+     room, and the accounts, shop and admin channels behind it.
+
+     FIREBASE_CONFIG is a public client key, not a secret — it is meant
+     to ship in the page. What keeps people out of each other's data is
+     Firebase Authentication plus the database's own security rules,
+     not hiding this object. Fill it in from your own project
+     (console.firebase.google.com -> Project settings -> Your apps),
+     turn on Authentication -> Sign-in method -> Email/Password, and
+     paste these rules into Realtime Database -> Rules:
+
+     {
+       "rules": {
+         "rooms":  { "$code": { ".read": true, ".write": true } },
+         "lobby":  { ".read": true, ".write": true },
+         "shop":   { ".read": true,
+                     ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
+         "announcements": { ".read": true,
+                     ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
+
+         "admins":     { ".read": true, ".write": "auth != null && !data.exists()" },
+         "assistants": { ".read": true,
+                     ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
+
+         "usernames": {
+           ".read": true,
+           "$name": { ".write": "auth != null && !data.exists() && newData.val() === auth.uid" }
+         },
+
+         "users": {
+           ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+           "$uid": {
+             ".read":  "auth != null && auth.uid === $uid",
+             ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())",
+             "coins": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+             "hints": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+             "name":  { ".validate": "newData.isString() && newData.val().length <= 20" }
+           }
+         },
+
+         "gifts": {
+           "$uid": {
+             ".read":  "auth != null && auth.uid === $uid",
+             "$giftId": { ".write": "auth != null && (!data.exists() || auth.uid === $uid)" }
+           }
+         },
+
+         "requests": {
+           ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())",
+           ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())"
+         },
+         "adminchat": {
+           ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())",
+           ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())"
+         }
+       }
+     }
+
+     What those rules buy, and what they don't:
+
+       - Passwords are Firebase's problem now, not this page's. Nothing
+         here ever sees or stores one.
+       - Nobody can write to anybody else's account. Only you and an
+         admin can touch your row.
+       - "admins" is writable exactly once, while it is still empty, by
+         whoever is signed in at the time. That is the bootstrap: the
+         first person to press Claim admin becomes the admin, and after
+         that the node can only be changed from the Firebase console.
+       - A gift is a note left in the recipient's inbox, which only they
+         can read and clear. Nobody reaches into anyone's balance.
+       - What is still NOT enforced is a player's own balance. Their
+         browser writes their own coins, so a determined person can give
+         themselves coins. Stopping that needs code running somewhere
+         they don't control — a Cloud Function — which is a step beyond
+         a page that has to work offline.
      ================================================================ */
   var FIREBASE_CONFIG = {
     apiKey: "AIzaSyCuBAGbiSak6l9YmehE2F4vlpCn8Rizqi0",
     databaseURL: "https://contexto-solver-default-rtdb.firebaseio.com",
-    projectId: "contexto-solver"
+    projectId: "contexto-solver",
+    authDomain: "contexto-solver.firebaseapp.com"
   };
 
-  var LiveRoom = { join: function () {}, leave: function () {}, updateProgress: function () {}, sendChat: function () {}, addGuess: function () {}, ready: false, unavailable: false };
-  window.LiveRoom = LiveRoom;
+  // Usernames are the thing people type; Firebase wants an email, so one
+  // is made from the other. No mail is ever sent to it.
+  var EMAIL_DOMAIN = "@players.contexto-solver.com";
+
+  function offline() { return Promise.reject(new Error("offline")); }
+  function noop() { return function () {}; }
+
+  var LiveRoom = {
+    join: function () {}, leave: function () {}, updateProgress: function () {},
+    sendChat: function () {}, addGuess: function () {},
+    ready: false, unavailable: false
+  };
+
+  var Auth = {
+    signUp: offline, signIn: offline, signOut: offline,
+    onChange: noop, uid: function () { return null; },
+    ready: false, unavailable: false
+  };
 
   var AccountRoom = {
-    getUser: function () { return Promise.reject(new Error("offline")); },
-    createUser: function () { return Promise.reject(new Error("offline")); },
-    updateUser: function () { return Promise.reject(new Error("offline")); },
-    onUser: function () {},
-    onAllUsers: function () {},
-    findOpenGame: function () { return Promise.reject(new Error("offline")); },
-    openGame: function () { return Promise.reject(new Error("offline")); },
-    closeGame: function () { return Promise.reject(new Error("offline")); },
+    lookupUsername: offline, claimUsername: offline,
+    onProfile: noop, updateUser: offline, onAllUsers: noop,
+    sendGift: offline, onGifts: noop, clearGift: offline,
+    onAdmins: noop, onAssistants: noop, claimAdmin: offline, setAssistant: offline,
+    findOpenGame: offline, openGame: offline, closeGame: offline,
     ready: false, unavailable: false
   };
-  window.AccountRoom = AccountRoom;
 
   var AdminRoom = {
-    sendChat: function () { return Promise.reject(new Error("offline")); }, onChat: function () {},
-    submitRequest: function () { return Promise.reject(new Error("offline")); },
-    onRequests: function () {},
-    markRequest: function () { return Promise.reject(new Error("offline")); },
-    deleteRequest: function () { return Promise.reject(new Error("offline")); },
-    setShopItems: function () { return Promise.reject(new Error("offline")); },
-    onShopItems: function () {},
-    postAnnouncement: function () { return Promise.reject(new Error("offline")); },
-    onAnnouncements: function () {},
+    sendChat: offline, onChat: noop,
+    submitRequest: offline, onRequests: noop, markRequest: offline, deleteRequest: offline,
+    setShopItems: offline, onShopItems: noop,
+    postAnnouncement: offline, onAnnouncements: noop,
     ready: false, unavailable: false
   };
+
+  window.LiveRoom = LiveRoom;
+  window.Auth = Auth;
+  window.AccountRoom = AccountRoom;
   window.AdminRoom = AdminRoom;
 
-  if (FIREBASE_CONFIG.apiKey !== "REPLACE_ME") {
+  function giveUp() {
+    [["LiveRoom", LiveRoom, "liveroom"], ["Auth", Auth, "auth"],
+     ["AccountRoom", AccountRoom, "accountroom"], ["AdminRoom", AdminRoom, "adminroom"]]
+      .forEach(function (entry) {
+        entry[1].unavailable = true;
+        window.dispatchEvent(new Event(entry[2] + "-unavailable"));
+      });
+  }
+
+  if (FIREBASE_CONFIG.apiKey === "REPLACE_ME") {
+    giveUp();
+  } else {
     Promise.all([
       import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"),
-      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js")
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js"),
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js")
     ]).then(function (mods) {
-      var appMod = mods[0], dbMod = mods[1];
+      var appMod = mods[0], dbMod = mods[1], authMod = mods[2];
       var app = appMod.initializeApp(FIREBASE_CONFIG);
       var db = dbMod.getDatabase(app);
+      var auth = authMod.getAuth(app);
       var current = null;
 
+      /* ---------- the live room ---------- */
       function leave() {
         if (!current) return;
         current.unsubPlayers();
@@ -3217,16 +3365,13 @@
 
         var unsubPlayers = dbMod.onValue(playersRef, function (snap) {
           var val = snap.val() || {};
-          var list = Object.keys(val).map(function (id) {
+          callbacks.onPlayers(Object.keys(val).map(function (id) {
             var p = val[id] || {};
             return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null, isMe: id === myId };
-          });
-          callbacks.onPlayers(list);
+          }));
         }, function () { callbacks.onError && callbacks.onError(); });
 
-        var unsubChat = dbMod.onChildAdded(chatQuery, function (snap) {
-          callbacks.onChat(snap.val());
-        });
+        var unsubChat = dbMod.onChildAdded(chatQuery, function (snap) { callbacks.onChat(snap.val()); });
 
         var unsubGuesses = dbMod.onValue(guessesRef, function (snap) {
           var val = snap.val() || {};
@@ -3238,121 +3383,107 @@
           callbacks.onGuesses(list);
         });
 
-        current = { code: code, myId: myId, presenceRef: presenceRef, unsubPlayers: unsubPlayers, unsubChat: unsubChat, unsubGuesses: unsubGuesses };
-      }
-
-      function updateProgress(guesses, best) {
-        if (!current) return;
-        dbMod.update(current.presenceRef, { guesses: guesses, best: best });
-      }
-
-      function sendChat(name, text) {
-        if (!current) return;
-        dbMod.push(dbMod.ref(db, "rooms/" + current.code + "/chat"), { name: name, text: text, at: dbMod.serverTimestamp() });
-      }
-
-      function addGuess(name, word, rank) {
-        if (!current) return;
-        dbMod.push(dbMod.ref(db, "rooms/" + current.code + "/guesses"), { name: name, word: word, rank: rank, at: dbMod.serverTimestamp() });
+        current = { code: code, myId: myId, presenceRef: presenceRef,
+                    unsubPlayers: unsubPlayers, unsubChat: unsubChat, unsubGuesses: unsubGuesses };
       }
 
       LiveRoom.join = join;
       LiveRoom.leave = leave;
-      LiveRoom.updateProgress = updateProgress;
-      LiveRoom.sendChat = sendChat;
-      LiveRoom.addGuess = addGuess;
+      LiveRoom.updateProgress = function (guesses, best) {
+        if (current) dbMod.update(current.presenceRef, { guesses: guesses, best: best });
+      };
+      LiveRoom.sendChat = function (name, text) {
+        if (current) dbMod.push(dbMod.ref(db, "rooms/" + current.code + "/chat"),
+          { name: name, text: text, at: dbMod.serverTimestamp() });
+      };
+      LiveRoom.addGuess = function (name, word, rank) {
+        if (current) dbMod.push(dbMod.ref(db, "rooms/" + current.code + "/guesses"),
+          { name: name, word: word, rank: rank, at: dbMod.serverTimestamp() });
+      };
       LiveRoom.ready = true;
       window.dispatchEvent(new Event("liveroom-ready"));
 
-      // The admin channel isn't scoped to a room code — the two people who
-      // know the passwords share one shop, one request queue, one chat.
-      var adminChatQuery = dbMod.query(dbMod.ref(db, "admin/chat"), dbMod.limitToLast(50));
-      var adminRequestsRef = dbMod.ref(db, "admin/requests");
-      var adminShopRef = dbMod.ref(db, "admin/shop/items");
-      var adminAnnouncementsQuery = dbMod.query(dbMod.ref(db, "admin/announcements"), dbMod.limitToLast(20));
-
-      AdminRoom.sendChat = function (name, text) {
-        return dbMod.push(dbMod.ref(db, "admin/chat"), { name: name, text: text, at: dbMod.serverTimestamp() });
-      };
-      AdminRoom.onChat = function (cb) {
-        return dbMod.onChildAdded(adminChatQuery, function (snap) { cb(snap.val()); });
-      };
-      AdminRoom.submitRequest = function (type, text, by) {
-        return dbMod.push(adminRequestsRef, { type: type, text: text, by: by, done: false, at: dbMod.serverTimestamp() });
-      };
-      AdminRoom.onRequests = function (cb) {
-        return dbMod.onValue(adminRequestsRef, function (snap) {
-          var val = snap.val() || {};
-          var list = Object.keys(val).map(function (id) {
-            var r = val[id] || {};
-            return { id: id, type: r.type, text: r.text, by: r.by, done: !!r.done, at: r.at || 0 };
-          });
-          list.sort(function (a, b) { return b.at - a.at; });
-          cb(list);
+      /* ---------- who you are ---------- */
+      Auth.signUp = function (username, password) {
+        var key = String(username).toLowerCase();
+        return dbMod.get(dbMod.ref(db, "usernames/" + key)).then(function (snap) {
+          if (snap.exists()) throw new Error("taken");
+          return authMod.createUserWithEmailAndPassword(auth, key + EMAIL_DOMAIN, password);
+        }).then(function (cred) {
+          var uid = cred.user.uid;
+          // The rules only accept this write from the account it names, so a
+          // username can never be claimed on somebody else's behalf.
+          return dbMod.set(dbMod.ref(db, "usernames/" + key), uid).then(function () { return uid; });
         });
       };
-      AdminRoom.markRequest = function (id, done) {
-        return dbMod.update(dbMod.ref(db, "admin/requests/" + id), { done: done });
+      Auth.signIn = function (username, password) {
+        return authMod.signInWithEmailAndPassword(auth, String(username).toLowerCase() + EMAIL_DOMAIN, password)
+          .then(function (cred) { return cred.user.uid; });
       };
-      AdminRoom.deleteRequest = function (id) {
-        return dbMod.remove(dbMod.ref(db, "admin/requests/" + id));
-      };
-      AdminRoom.setShopItems = function (items) {
-        return dbMod.set(adminShopRef, items);
-      };
-      AdminRoom.onShopItems = function (cb) {
-        return dbMod.onValue(adminShopRef, function (snap) {
-          var val = snap.val();
-          cb(Array.isArray(val) && val.length ? val : null);
-        });
-      };
-      // Everyone can read this — only the admin panel ever calls postAnnouncement.
-      AdminRoom.postAnnouncement = function (text) {
-        return dbMod.push(dbMod.ref(db, "admin/announcements"), { text: text, at: dbMod.serverTimestamp() });
-      };
-      AdminRoom.onAnnouncements = function (cb) {
-        return dbMod.onChildAdded(adminAnnouncementsQuery, function (snap) { cb(snap.val()); });
-      };
-      AdminRoom.ready = true;
-      window.dispatchEvent(new Event("adminroom-ready"));
+      Auth.signOut = function () { return authMod.signOut(auth); };
+      Auth.onChange = function (cb) { return authMod.onAuthStateChanged(auth, cb); };
+      Auth.uid = function () { return auth.currentUser ? auth.currentUser.uid : null; };
+      Auth.ready = true;
+      window.dispatchEvent(new Event("auth-ready"));
 
-      // Accounts and the open-game lobby both sit under the same "admin"
-      // branch, so they need no database rule beyond the one already
-      // documented above FIREBASE_CONFIG.
-      var usersRef = dbMod.ref(db, "admin/users");
-      var lobbyRef = dbMod.ref(db, "admin/lobby");
-
-      AccountRoom.getUser = function (key) {
-        return dbMod.get(dbMod.ref(db, "admin/users/" + key)).then(function (s) { return s.val(); });
+      /* ---------- accounts, gifts, roles, the lobby ---------- */
+      AccountRoom.lookupUsername = function (name) {
+        return dbMod.get(dbMod.ref(db, "usernames/" + String(name).toLowerCase()))
+          .then(function (s) { return s.val(); });
       };
-      AccountRoom.createUser = function (key, rec) {
-        return dbMod.get(dbMod.ref(db, "admin/users/" + key)).then(function (s) {
-          if (s.val()) throw new Error("taken");
-          return dbMod.set(dbMod.ref(db, "admin/users/" + key), rec);
-        });
+      AccountRoom.onProfile = function (uid, cb) {
+        return dbMod.onValue(dbMod.ref(db, "users/" + uid), function (s) { cb(s.val()); });
       };
-      AccountRoom.updateUser = function (key, patch) {
-        return dbMod.update(dbMod.ref(db, "admin/users/" + key), patch);
-      };
-      AccountRoom.onUser = function (key, cb) {
-        return dbMod.onValue(dbMod.ref(db, "admin/users/" + key), function (s) { cb(s.val()); });
+      AccountRoom.updateUser = function (uid, patch) {
+        return dbMod.update(dbMod.ref(db, "users/" + uid), patch);
       };
       AccountRoom.onAllUsers = function (cb) {
-        return dbMod.onValue(usersRef, function (s) {
+        return dbMod.onValue(dbMod.ref(db, "users"), function (s) {
           var val = s.val() || {};
-          cb(Object.keys(val).map(function (k) {
-            var u = val[k] || {};
-            return { key: k, name: u.name || k, coins: u.coins || 0, hints: u.hints || 0, at: u.at || 0 };
+          cb(Object.keys(val).map(function (uid) {
+            var u = val[uid] || {};
+            return { uid: uid, name: u.name || uid, coins: u.coins || 0, hints: u.hints || 0, at: u.at || 0 };
           }).sort(function (a, b) { return a.at - b.at; }));
-        });
+        }, function () { cb([]); });
       };
 
-      // An open game is one somebody started and is still sitting in, waiting.
-      // Anything older than a few minutes is stale — whoever opened it has
-      // long since finished or closed the tab — so it never gets handed out.
+      // A gift is left in the recipient's inbox rather than written into
+      // their balance, so no account is ever reachable from another.
+      AccountRoom.sendGift = function (toUid, gift) {
+        return dbMod.push(dbMod.ref(db, "gifts/" + toUid), gift);
+      };
+      AccountRoom.onGifts = function (uid, cb) {
+        return dbMod.onValue(dbMod.ref(db, "gifts/" + uid), function (s) {
+          var val = s.val() || {};
+          cb(Object.keys(val).map(function (id) {
+            return { id: id, from: val[id].from, hints: val[id].hints || 0 };
+          }));
+        }, function () { cb([]); });
+      };
+      AccountRoom.clearGift = function (uid, id) {
+        return dbMod.remove(dbMod.ref(db, "gifts/" + uid + "/" + id));
+      };
+
+      AccountRoom.onAdmins = function (cb) {
+        return dbMod.onValue(dbMod.ref(db, "admins"), function (s) { cb(s.val() || {}); },
+          function () { cb({}); });
+      };
+      AccountRoom.onAssistants = function (cb) {
+        return dbMod.onValue(dbMod.ref(db, "assistants"), function (s) { cb(s.val() || {}); },
+          function () { cb({}); });
+      };
+      // Accepted by the rules only while nobody holds it yet.
+      AccountRoom.claimAdmin = function (uid) {
+        var rec = {}; rec[uid] = true;
+        return dbMod.set(dbMod.ref(db, "admins"), rec);
+      };
+      AccountRoom.setAssistant = function (uid, on) {
+        return dbMod.set(dbMod.ref(db, "assistants/" + uid), on ? true : null);
+      };
+
       var GAME_FRESH_MS = 4 * 60 * 1000;
       AccountRoom.findOpenGame = function (level) {
-        return dbMod.get(lobbyRef).then(function (s) {
+        return dbMod.get(dbMod.ref(db, "lobby")).then(function (s) {
           var val = s.val() || {}, now = Date.now();
           var open = Object.keys(val).map(function (k) { return val[k]; }).filter(function (g) {
             return g && g.code && g.level === level && (now - (g.at || 0)) < GAME_FRESH_MS;
@@ -3361,28 +3492,66 @@
         });
       };
       AccountRoom.openGame = function (code, level) {
-        return dbMod.set(dbMod.ref(db, "admin/lobby/" + code), { code: code, level: level, at: Date.now() });
+        return dbMod.set(dbMod.ref(db, "lobby/" + code), { code: code, level: level, at: Date.now() });
       };
       AccountRoom.closeGame = function (code) {
-        return dbMod.remove(dbMod.ref(db, "admin/lobby/" + code));
+        return dbMod.remove(dbMod.ref(db, "lobby/" + code));
       };
-
       AccountRoom.ready = true;
       window.dispatchEvent(new Event("accountroom-ready"));
-    }).catch(function () {
-      LiveRoom.unavailable = true;
-      window.dispatchEvent(new Event("liveroom-unavailable"));
-      AdminRoom.unavailable = true;
-      window.dispatchEvent(new Event("adminroom-unavailable"));
-      AccountRoom.unavailable = true;
-      window.dispatchEvent(new Event("accountroom-unavailable"));
-    });
-  } else {
-    LiveRoom.unavailable = true;
-    window.dispatchEvent(new Event("liveroom-unavailable"));
-    AdminRoom.unavailable = true;
-    window.dispatchEvent(new Event("adminroom-unavailable"));
-    AccountRoom.unavailable = true;
-    window.dispatchEvent(new Event("accountroom-unavailable"));
+
+      /* ---------- the shop, the noticeboard, the admin channels ---------- */
+      var shopRef = dbMod.ref(db, "shop/items");
+      var requestsRef = dbMod.ref(db, "requests");
+
+      AdminRoom.setShopItems = function (items) { return dbMod.set(shopRef, items); };
+      AdminRoom.onShopItems = function (cb) {
+        return dbMod.onValue(shopRef, function (s) {
+          var val = s.val();
+          cb(Array.isArray(val) && val.length ? val : null);
+        }, function () { cb(null); });
+      };
+
+      AdminRoom.postAnnouncement = function (text) {
+        return dbMod.push(dbMod.ref(db, "announcements"), { text: text, at: dbMod.serverTimestamp() });
+      };
+      AdminRoom.onAnnouncements = function (cb) {
+        return dbMod.onChildAdded(
+          dbMod.query(dbMod.ref(db, "announcements"), dbMod.limitToLast(20)),
+          function (s) { cb(s.val()); });
+      };
+
+      AdminRoom.sendChat = function (name, text) {
+        return dbMod.push(dbMod.ref(db, "adminchat"), { name: name, text: text, at: dbMod.serverTimestamp() });
+      };
+      AdminRoom.onChat = function (cb) {
+        return dbMod.onChildAdded(
+          dbMod.query(dbMod.ref(db, "adminchat"), dbMod.limitToLast(50)),
+          function (s) { cb(s.val()); });
+      };
+
+      AdminRoom.submitRequest = function (type, text, by) {
+        return dbMod.push(requestsRef, { type: type, text: text, by: by, done: false, at: dbMod.serverTimestamp() });
+      };
+      AdminRoom.onRequests = function (cb) {
+        return dbMod.onValue(requestsRef, function (s) {
+          var val = s.val() || {};
+          var list = Object.keys(val).map(function (id) {
+            var r = val[id] || {};
+            return { id: id, type: r.type, text: r.text, by: r.by, done: !!r.done, at: r.at || 0 };
+          });
+          list.sort(function (a, b) { return b.at - a.at; });
+          cb(list);
+        }, function () { cb([]); });
+      };
+      AdminRoom.markRequest = function (id, done) {
+        return dbMod.update(dbMod.ref(db, "requests/" + id), { done: done });
+      };
+      AdminRoom.deleteRequest = function (id) {
+        return dbMod.remove(dbMod.ref(db, "requests/" + id));
+      };
+      AdminRoom.ready = true;
+      window.dispatchEvent(new Event("adminroom-ready"));
+    }).catch(giveUp);
   }
 </script>
