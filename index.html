@@ -1669,6 +1669,7 @@
       paintPurse();
       renderAccountPanel();
       renderAdminAvailability();
+      renderAnnounceLog();
     });
     claimGifts();
   }
@@ -1678,6 +1679,7 @@
     if (giftUnsub) { giftUnsub(); giftUnsub = null; }
     if (window.LiveRoom) window.LiveRoom.stopSpectating();
     account = null;
+    renderAnnounceLog();
     paintPurse();
     renderAccountPanel();
     renderAdminAvailability();
@@ -2360,18 +2362,29 @@
   $("admin-chat-send").addEventListener("click", sendAdminChat);
   $("admin-chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendAdminChat(); });
 
-  // Read by every visitor, no password needed — only postAnnouncement (below,
-  // gated to the admin role) ever writes here.
-  function appendAnnounceLine(msg) {
+  // Read by every visitor, no password needed — only postAnnouncement and
+  // deleteAnnouncement (both gated to the admin role) ever write here.
+  var announceList = [];
+
+  function renderAnnounceLog() {
     var panel = $("announce-panel");
-    panel.hidden = false;
+    panel.hidden = !announceList.length;
     var log = $("announce-log");
-    var li = document.createElement("li");
-    li.className = "chat-line";
-    li.textContent = msg.text;
-    log.appendChild(li);
+    var canDelete = myRole() === "admin";
+    log.innerHTML = announceList.map(function (a) {
+      return '<li class="chat-line" data-id="' + escapeHtml(a.id) + '">' + escapeHtml(a.text) +
+        (canDelete ? ' <button type="button" class="linkish delete-announce">' + escapeHtml(t("Delete")) + '</button>' : '') +
+        '</li>';
+    }).join("");
     log.scrollTop = log.scrollHeight;
   }
+
+  $("announce-log").addEventListener("click", function (e) {
+    if (!e.target.classList.contains("delete-announce")) return;
+    var li = e.target.closest("li[data-id]");
+    if (!li || !window.AdminRoom) return;
+    window.AdminRoom.deleteAnnouncement(li.dataset.id).catch(adminDbNote);
+  });
 
   $("admin-broadcast-send").addEventListener("click", function () {
     var text = $("admin-broadcast-text").value.trim();
@@ -2397,7 +2410,10 @@
       renderGiftItems();
       if (adminRole() === "admin" && !$("admin-panel").hidden) renderAdminItemList();
     });
-    window.AdminRoom.onAnnouncements(appendAnnounceLine);
+    window.AdminRoom.onAnnouncements(function (list) {
+      announceList = list;
+      renderAnnounceLog();
+    });
   }
 
   function subscribeAdminChannels() {
@@ -2426,6 +2442,7 @@
       renderAdminAvailability();
       renderAccountPanel();
       if (!$("everyone-box").hidden) renderEveryone();
+      renderAnnounceLog();
     });
     window.AccountRoom.onAssistants(function (map) {
       assistantUids = map;
@@ -3780,7 +3797,7 @@
     sendChat: offline, onChat: noop,
     submitRequest: offline, onRequests: noop, markRequest: offline, deleteRequest: offline,
     setShopItems: offline, onShopItems: noop,
-    postAnnouncement: offline, onAnnouncements: noop,
+    postAnnouncement: offline, onAnnouncements: noop, deleteAnnouncement: offline,
     ready: false, unavailable: false
   };
 
@@ -4094,13 +4111,25 @@
         }, function () { cb(null); });
       };
 
+      var announcementsRef = dbMod.ref(db, "announcements");
       AdminRoom.postAnnouncement = function (text) {
-        return dbMod.push(dbMod.ref(db, "announcements"), { text: text, at: dbMod.serverTimestamp() });
+        return dbMod.push(announcementsRef, { text: text, at: dbMod.serverTimestamp() });
+      };
+      AdminRoom.deleteAnnouncement = function (id) {
+        return dbMod.remove(dbMod.ref(db, "announcements/" + id));
       };
       AdminRoom.onAnnouncements = function (cb) {
-        return dbMod.onChildAdded(
-          dbMod.query(dbMod.ref(db, "announcements"), dbMod.limitToLast(20)),
-          function (s) { cb(s.val()); });
+        return dbMod.onValue(
+          dbMod.query(announcementsRef, dbMod.limitToLast(20)),
+          function (s) {
+            var val = s.val() || {};
+            var list = Object.keys(val).map(function (id) {
+              var a = val[id] || {};
+              return { id: id, text: a.text, at: a.at || 0 };
+            });
+            list.sort(function (a, b) { return a.at - b.at; });
+            cb(list);
+          }, function () { cb([]); });
       };
 
       AdminRoom.sendChat = function (name, text) {
