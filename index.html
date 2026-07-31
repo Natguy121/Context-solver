@@ -2778,8 +2778,8 @@
     }
 
     if (won && shared) {
-      var tally = document.createElement("ul");
-      tally.className = "tally";
+      var tallyList = document.createElement("ul");
+      tallyList.className = "tally";
       play.players.forEach(function (name) {
         var mine = play.rows.filter(function (row) { return row.by === name; });
         var closest = mine.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
@@ -2795,9 +2795,9 @@
         stat.textContent = mine.length + (closest ? " · closest " + closest.rank : "");
         line.appendChild(stat);
 
-        tally.appendChild(line);
+        tallyList.appendChild(line);
       });
-      card.appendChild(tally);
+      card.appendChild(tallyList);
     }
 
     if (won) {
@@ -3217,15 +3217,12 @@
   // A guess every candidate answers alike teaches nothing; one that splits the
   // field ten ways teaches log 10. Suggestions are drawn from the field itself,
   // so the advice is always a word someone might actually type — and it stays a
-  // real guess: if it happens to be right, the game ends there.
+  // real guess: if it happens to be right, the game ends there. This never
+  // just names the likeliest candidate outright — SHARPNESS makes the belief
+  // model overconfident fast, and an in-game hint that flatly states the
+  // answer isn't a hint any more.
   function suggestNext(field, tried, exclude) {
     var live = field.slice(0, 120);
-
-    // Once one word is clearly ahead, splitting what's left is pointless — the
-    // useful move is to go and say it.
-    if (live.length && live[0].p >= 0.08 && !tried[live[0].word] && live[0].word !== exclude) {
-      return live[0].word;
-    }
 
     var bestWord = null, bestGain = -1, c, k, i, spread, total, p, h;
     for (c = 0; c < live.length; c++) {
