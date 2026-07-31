@@ -1495,7 +1495,15 @@
              "turn it on under Authentication -> Sign-in method.";
     }
     if (code.indexOf("network") > -1) return "No connection to the accounts service. Try again in a moment.";
-    return "Couldn't do that. Check the connection and try again.";
+    if (code.indexOf("unauthorized-domain") > -1) {
+      return "This page's address isn't on Firebase's allowed list yet — add it under " +
+             "Authentication -> Settings -> Authorized domains.";
+    }
+    if (code.indexOf("permission") > -1 || code.indexOf("PERMISSION_DENIED") > -1) {
+      return "The database rules refused that — check they've been published, and that " +
+             "they match what's printed above FIREBASE_CONFIG in the page source.";
+    }
+    return "Couldn't do that (" + (code || "no error code came back") + "). Check the connection and try again.";
   }
 
   $("account-btn").addEventListener("click", openAccountPanel);
