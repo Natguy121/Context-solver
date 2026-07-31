@@ -12,15 +12,19 @@
     --ink: #191725;
     --muted: #6A6680;
     --rule: #DEDBE8;
-    --accent: #4E3FA8;
-    --focus: #4E3FA8;
+    /* Was #4E3FA8 — a muted, greyed-down violet. Same hue, pushed to a
+       saturated electric violet so it actually reads as a colour choice
+       rather than a slightly-tinted ink. Contrast against ground: 7.86:1. */
+    --accent: #4B1FCB;
+    --focus: #4B1FCB;
 
     /* Derived tints, so accent-keyed surfaces don't need a second hand-picked
        hex per theme. Kept as separate tokens rather than inline color-mix()
        so the dark block can override any that need a different weighting. */
-    --accent-wash: color-mix(in srgb, var(--accent) 7%, var(--surface));
-    --accent-edge: color-mix(in srgb, var(--accent) 28%, var(--rule));
+    --accent-wash: color-mix(in srgb, var(--accent) 9%, var(--surface));
+    --accent-edge: color-mix(in srgb, var(--accent) 32%, var(--rule));
     --ring: color-mix(in srgb, var(--focus) 22%, transparent);
+    --glow: color-mix(in srgb, var(--accent) 32%, transparent);
     --danger: #C0392B;
 
     --serif: ui-serif, "Iowan Old Style", Charter, Georgia, Cambria, serif;
@@ -66,10 +70,13 @@
       --ink: #ECEAF4;
       --muted: #9793AC;
       --rule: #2E2B43;
-      --accent: #A99CF0;
-      --focus: #A99CF0;
-      --accent-wash: color-mix(in srgb, var(--accent) 10%, var(--surface));
-      --accent-edge: color-mix(in srgb, var(--accent) 34%, var(--rule));
+      /* Was #A99CF0 — a pastel lavender that barely read as colour on dark
+         ground. Same hue, saturated up so it still glows rather than fades. */
+      --accent: #B18AFF;
+      --focus: #B18AFF;
+      --accent-wash: color-mix(in srgb, var(--accent) 12%, var(--surface));
+      --accent-edge: color-mix(in srgb, var(--accent) 38%, var(--rule));
+      --glow: color-mix(in srgb, var(--accent) 30%, transparent);
       --danger: #E8705C;
       /* Shadows read as murk on dark ground, so depth comes mostly from a
          hairline top highlight with only a whisper of cast shadow. */
@@ -87,10 +94,11 @@
     --ink: #ECEAF4;
     --muted: #9793AC;
     --rule: #2E2B43;
-    --accent: #A99CF0;
-    --focus: #A99CF0;
-    --accent-wash: color-mix(in srgb, var(--accent) 10%, var(--surface));
-    --accent-edge: color-mix(in srgb, var(--accent) 34%, var(--rule));
+    --accent: #B18AFF;
+    --focus: #B18AFF;
+    --accent-wash: color-mix(in srgb, var(--accent) 12%, var(--surface));
+    --accent-edge: color-mix(in srgb, var(--accent) 38%, var(--rule));
+    --glow: color-mix(in srgb, var(--accent) 30%, transparent);
     --danger: #E8705C;
     --lift-1: 0 1px 2px rgba(0, 0, 0, 0.3);
     --lift-2: 0 1px 2px rgba(0, 0, 0, 0.34), 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -113,6 +121,17 @@
   }
 
   ::selection { background: var(--accent); color: var(--surface); }
+
+  /* The only two <a> tags in the page were falling through to the browser's
+     default link blue, which fought the rest of the accent-keyed palette. */
+  a {
+    color: var(--accent);
+    text-decoration-color: var(--accent-edge);
+    text-underline-offset: 0.15em;
+    transition: color var(--fast) var(--ease), text-decoration-color var(--fast) var(--ease);
+  }
+  a:hover { text-decoration-color: currentColor; }
+  a:visited { color: var(--accent); }
 
   /* Every transition in the sheet is opt-in through these two properties, so
      one media query can retire all of them for reduced-motion users. */
@@ -263,14 +282,19 @@
     #play-controls button { flex: 1; }
   }
 
+  /* Primary buttons take the accent fill rather than flat ink/ground. Text
+     stays on --ground: in light theme that's near-white on the dark violet
+     fill, and in dark theme --ground is the near-black page colour, which
+     happens to be exactly right for text on the light-lavender fill — the
+     two theme blocks were already built to invert together. */
   button {
     font-family: var(--sans);
     font-size: var(--step-1);
     min-height: 3rem;
     padding: 0 1.25rem;
     border-radius: var(--radius);
-    border: 1px solid var(--ink);
-    background: var(--ink);
+    border: 1px solid var(--accent);
+    background: var(--accent);
     color: var(--ground);
     cursor: pointer;
     box-shadow: var(--lift-1);
@@ -280,8 +304,13 @@
   }
 
   /* A press should feel like the button takes the weight: lift on hover,
-     settle flush on the way down. 1px is enough to read as physical. */
-  button:hover:not(:disabled) { box-shadow: var(--lift-2); transform: translateY(-1px); }
+     settle flush on the way down. 1px is enough to read as physical. The
+     filled accent buttons get a tinted glow layered under the lift instead
+     of a neutral shadow, so the colour itself feels like the source of it. */
+  button:hover:not(:disabled) {
+    box-shadow: var(--lift-2), 0 6px 16px -4px var(--glow);
+    transform: translateY(-1px);
+  }
   button:active:not(:disabled) { box-shadow: var(--lift-1); transform: translateY(0); }
 
   button.ghost {
@@ -1456,8 +1485,10 @@
   var SOLVE_WORDS = "were time people good first know think back these want because well most very even need really year work right going still take those world life down great through last best love home long something look same both every state part come between around better find since high help little another things game thing school house place give next each without against found show team feel sure family keep please money second free someone left number away city until play name night company real called different having thought however government group public women week business system start care case today already person nothing anything told point change full enough live everything read support hard tell mean including power music water seen stop national based took white small head call believe came went though side party later service line less order actually country season open thank united general children everyone area following black together whole president story face kind maybe news least health within important course hope means early local information young book post able video friends social talk court half given level single hand fact mind guys south office death become control food hours body problem true several university known history lost large research almost room wrong john along matter anyone else girl pretty remember york probably friend understand nice yeah international past close possible class comes idea members months series human move woman question cause happy wait north late community special leave data watch million police taken future short morning light either stay third report whether deal soon rather turn reason among development minutes form heart check major although players fire media child phone political market west near plan building behind easy quite gonna former according final street education front list available ready kids program college current meet example bring experience heard type march process father study song chance word baby month across students outside action gave clear self held town main board road field cost instead mother seems moment points played force department issue term results price energy wife summer fight space rest fine hear killed strong site land shot project date goes miss beautiful record total include period position similar especially parents account eyes military security film lead died club share likely common personal knew happened perfect center county industry return player private english test star dead hold inside view online couple sense happen member higher middle result event training present break hour wish sorry policy interest king gold society finally design gone answer learn guess bank added east press received church role park average sent medical brought performance original movie longer worth certain alone meeting became director bill provide ground value source relationship sound exactly cool official round rate production evidence lives stand save follow whatever stuff league federal match fall management green step blue drive size felt amount model fast picture trust trade central various forward range science paid upon review page chief football vote lower james attention cannot natural style brother property character quality send looked hate china economic august title involved stage language serious related complete blood lord hell amazing french born attack decision release technology situation decided written poor entire perhaps article kill enjoy foreign union election council financial race continue increase staff legal considered sign cover simply choice super door lose seem pick simple code walk hair began career built hospital published daily popular loss difficult version daughter modern figure paper writing voice safe ones crazy army goal success rules practice huge towards earth forget listen okay mark base offer created risk access professional pass deep missing table truth sleep percent minister district recent visit wrote products wall ball build straight note card dark piece wanna growth river allowed paul officer rock response married fans standard culture places specific respect speak write pain tonight peace sales century album network spent track charge create effect student limited required store cold except weight tomorrow funny capital committee conference population station moved western island association radio ahead anti pressure allow beat brown addition potential double treatment expect normal difference text region campaign despite nearly miles previous described cross beginning travel credit quickly focus kept husband individual join message speed section female particular certainly completely sort content interesting tour throughout feet positive drop sale consider fair contact link welcome earlier immediately conditions significant minute sell additional beyond nature extra unless quick absolutely statement manager justice construction sold movement computer income safety scene episode spend agree clean posted favorite photo announced coach heavy wide search train ability subject collection knowledge definitely leader secretary german workers named global judge developed unit hotel letter material regular centre product opportunity claim generally fear author sister plus lady nobody gotta sports majority battle annual contract growing reach finished rule successful features insurance floor degree image hurt meant opinion physical brain anymore stupid stock administration defense civil biggest independent weekend ship active approach worst cancer none direction dance master wonder trump senior organization band operation effort latest compared commercial passed impact cash lack beach protect spring older secret multiple wear imagine awesome commission competition grand details activities address direct necessary resources thus patients finish rich bought marriage easily analysis color supposed yesterday dream choose touch sweet skin anyway luck literally largest congress established overall professor disease trip greater damage shown caught doctor fish grow machine doubt notice drink glad japan texas associated smith plant crime captain winter carry highly spot fully basic effective male reality worse explain nation agreement award eventually peter comment equipment primary responsible challenge block theory broken teacher holy otherwise purpose shop advice sick economy agency executive drug trial coast mission produced hall mass politics status environment avoid weather cell foot therefore catch camera truly located division interview condition highest flight murder freedom complex evening activity heat location queen library application coffee northern fell exchange species royal religious attempt speech serve broke placed protection powerful traffic channel appear receive accept prior slow distance mobile screen tree glass ride actual wonderful southern investment airport demand raised begin square traditional twice famous benefits partner structure engine solution bottom animals wind everybody worry fourth appeared remain forced lake mostly separate critical score owner fresh scale digital surface count brand mentioned throw mental mouth realize wedding totally cent smart twitter rose village budget failed fund paris arms hill target seat larger louis estate push feature acting generation benefit jack sexual metal fashion faith pull profile click prime served rise authority employees foundation basis spread supply draw follows gain silver agent enter animal memory ring apply waste soul weird dude chairman senate prison institute winner mike smaller apparently artist stone strength wild engineering edition users grade option method healthy adult obviously window somebody television firm arrived camp prevent improve cast trouble leaves removed dangerous negative greatest extremely indeed spirit handle correct till dollars eastern fifth progress customers produce influence shooting items mary advantage decide marketing require shut apart wood function impossible aware dinner gift proud thousands labor carried leadership journal software host tough bridge background onto neither rare possibly birth garden length prove concept skills patient copy lucky dear managed fellow request vehicle volume balance connection horse alive wake apple easier boss magic birthday stick dress liked billion violence weapons investigation believed raise operating criminal concerned responsibility cultural develop youth driver farm slightly technical frank variety existing corner surprise file unique roll guide suggest busy beauty treat conversation parliament magazine ordered martin injury strategy henry prepared discovered edge stated wine religion iron reference bigger evil forever somewhere excited appreciate lovely nuclear democratic victory issued jones guard port mountain reduce presence sport audience medicine closer reaction core solid exist mention description shoot stress excellent taste honest quarter regional toward plane johnson mail emergency session fuel festival valley zone afternoon citizens introduced assistant prince initial failure massive willing upper electric classic transfer pair flat shape watched teaching harry kick entirely proper clothes plenty facts useful hello vice governor joint museum proposed industrial capacity climate accident advanced steel rain boat alternative purchase duty path remove bear hundred discussion promise warm anywhere feelings cheap tired terrible fantastic soldiers border republican intelligence profit command crowd crew environmental ensure intended forest limit suit ocean elements filled enemy labour moon fixed beer proof afraid noted domestic attorney debt supreme writer survey native grew launch appearance historical younger honor tech yellow expensive behavior jump minimum suddenly chair user update honestly formed illegal performed transport combined loan ancient contains selected restaurant express exercise flow sugar connected taught soft communication hero planet stuck girlfriend joke download email relations boston measures affairs confirmed route lawyer appeal squad grant golden scientific schedule drama entry grown walked factor platform pool device regarding appropriate mistake smoke feed legs lying shoes teach strike candidate sector concern discuss jersey storm facilities studio internal liberal relatively holiday abuse snow weak hole perform angry emotional comfortable payment lunch milk pack everywhere laugh finance confidence measure committed actor numerous advance task maintain urban split leads revealed chain apartment identity equal cook specifically quiet chapter journey twenty kitchen fake cute troops arrested residents".split(" ").filter(inLexicon);
   var POOL_INDEX = Object.create(null);
   for (var pi = 0; pi < SOLVE_WORDS.length; pi++) POOL_INDEX[SOLVE_WORDS[pi]] = pi;
-  /* ---------- heat: one ramp, legible on both grounds ---------- */
-  var FAR = [78, 111, 208], MID = [192, 138, 46], NEAR = [214, 64, 43];
+  /* ---------- heat: one ramp, legible on both grounds ----------
+     Saturation only, lightness untouched, so the light/dark contrast
+     balance the original values were tuned for doesn't shift. */
+  var FAR = [68, 106, 218], MID = [203, 141, 35], NEAR = [227, 54, 30];
 
   function closeness(rank) {
     var t = 1 - Math.log(Math.max(1, rank)) / Math.log(V);
