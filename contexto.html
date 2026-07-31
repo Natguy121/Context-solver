@@ -955,6 +955,31 @@
       </div>
     </div>
 
+    <div id="admin-spectate" hidden>
+      <button type="button" class="ghost" id="spectate-btn" data-i18n="spectate-room">Spectate a room</button>
+      <div id="spectate-box" hidden>
+        <div class="row">
+          <input class="grow code-input" id="spectate-code" placeholder="K7P2" maxlength="5"
+                 autocapitalize="characters" autocorrect="off" spellcheck="false" />
+          <button type="button" class="ghost" id="spectate-go" data-i18n="spectate-go">Spectate</button>
+        </div>
+        <ul class="shop-list" id="spectate-open-list"></ul>
+
+        <div id="spectate-live" hidden>
+          <p class="gloss">
+            <span data-i18n="spectating">Spectating</span> <code id="spectate-code-label"></code> —
+            <span id="spectate-visibility"></span>
+          </p>
+          <div class="row">
+            <button type="button" class="ghost" id="spectate-reveal" data-i18n="show-myself">Show myself</button>
+            <button type="button" class="ghost" id="spectate-stop" data-i18n="stop-spectating">Stop spectating</button>
+          </div>
+          <ul class="roster-list" id="spectate-roster"></ul>
+        </div>
+        <p class="gloss" id="spectate-notice" hidden></p>
+      </div>
+    </div>
+
     <div id="admin-requests" hidden>
       <span class="key" data-i18n="requests-bugs">requests &amp; bugs</span>
       <ul class="shop-list" id="admin-request-list"></ul>
@@ -1175,6 +1200,14 @@
     "add-item-key": "ajouter un article", "add-item": "Ajouter l'article", "reset-default": "Réinitialiser",
     "send-request": "envoyer une demande", "feature": "fonctionnalité", "bug": "bug",
     "everyone": "Tout le monde", "requests-bugs": "demandes et bugs", "admin-chat": "discussion admin",
+    "spectate-room": "Observer une partie", "spectate-go": "Observer", "spectating": "Observation de",
+    "show-myself": "Me montrer", "stop-spectating": "Arrêter d'observer",
+    "invisible": "invisible", "visible to players": "visible pour les joueurs",
+    "Spectate": "Observer", "Show myself": "Me montrer", "Hide myself": "Me cacher",
+    "Kick": "Expulser", "Delete": "Supprimer",
+    "Nobody here yet.": "Personne ici pour l'instant.",
+    "No games open right now.": "Aucune partie ouverte pour l'instant.",
+    "Live sync dropped — try spectating again.": "Synchronisation en direct interrompue — réessayez d'observer.",
     "close": "Fermer", "closest": "le plus proche", "(you)": "(vous)", "joined": "arrivé",
     "guessing…": "propose…", "waiting": "en attente",
 
@@ -1226,7 +1259,7 @@
     "Sent — thanks!": "Envoyé — merci !",
     "No account with that name — check the spelling.": "Aucun compte à ce nom — vérifiez l'orthographe.",
     "Couldn't send that. Try again in a moment.": "Échec de l'envoi. Réessayez dans un instant.",
-    "yes": "oui", "no": "non", "translated from French": "traduit du français",
+    "yes": "oui", "no": "non", "delete": "supprimer", "translated from French": "traduit du français",
     "translated from English": "traduit de l'anglais", "translating…": "traduction…"
   };
 
@@ -1643,6 +1676,7 @@
   function forgetAccount() {
     if (accountUnsub) { accountUnsub(); accountUnsub = null; }
     if (giftUnsub) { giftUnsub(); giftUnsub = null; }
+    if (window.LiveRoom) window.LiveRoom.stopSpectating();
     account = null;
     paintPurse();
     renderAccountPanel();
@@ -1873,11 +1907,14 @@
         }
       }
 
+      var canDelete = account && (m.uid === account.uid || myRole() === "admin");
+
       return '<li class="chat-line' + (account && m.name === account.name ? " mine" : "") + '" data-id="' + escapeHtml(m.id) + '">' +
         '<span class="from">' + escapeHtml(m.name) + '</span>' + escapeHtml(m.text) + translation +
         '<div class="votes">' +
           '<button type="button" class="vote-btn vote-yes' + (mine === "yes" ? " mine-yes" : "") + '">' + escapeHtml(t("yes")) + ' ' + yes + '</button>' +
           '<button type="button" class="vote-btn vote-no' + (mine === "no" ? " mine-no" : "") + '">' + escapeHtml(t("no")) + ' ' + no + '</button>' +
+          (canDelete ? '<button type="button" class="vote-btn delete-msg">' + escapeHtml(t("Delete")) + '</button>' : '') +
         '</div></li>';
     }).join("");
   }
@@ -1915,6 +1952,12 @@
     var li = btn.closest("li[data-id]");
     if (!li) return;
     var msgId = li.dataset.id;
+
+    if (btn.classList.contains("delete-msg")) {
+      window.AccountRoom.deleteGlobalChat(msgId).catch(function (e) { globalChatSay(authTrouble(e)); });
+      return;
+    }
+
     var msg = globalChatMessages.filter(function (m) { return m.id === msgId; })[0];
     var current = msg && msg.votes && msg.votes[account.uid];
     var choice = btn.classList.contains("vote-yes") ? "yes" : "no";
@@ -2018,6 +2061,7 @@
     $("admin-broadcast").hidden = role !== "admin";
     $("admin-shop-editor").hidden = role !== "admin";
     $("admin-everyone").hidden = role !== "admin";
+    $("admin-spectate").hidden = role !== "admin";
     $("admin-requests").hidden = role !== "admin";
     $("admin-request-form").hidden = role !== "assistant";
     adminSay("");
@@ -2155,6 +2199,112 @@
     window.AccountRoom.updateUser(uid, patch).then(function () {
       adminSay("Updated " + user.name + ".");
     }).catch(adminDbNote);
+  });
+
+  /* ---------- spectate: watch a room's roster without joining it ----------
+     An admin picks a code — typed in, or from the open-games list below —
+     and starts watching its roster with no presence entry of their own, so
+     nobody in that room can see them. "Show myself" adds one after the
+     fact; "Hide myself" takes it away again without leaving. Kicking just
+     removes someone else's presence entry from that same list. */
+  var spectateCode = null;
+  var spectateRoster = [];
+
+  function spectateSay(message) {
+    var node = $("spectate-notice");
+    node.textContent = t(message) || "";
+    node.hidden = !message;
+  }
+
+  function renderOpenGames(list) {
+    var ul = $("spectate-open-list");
+    ul.innerHTML = list.map(function (g) {
+      return '<li><div><span class="shop-name">' + escapeHtml(g.code) + '</span>' +
+        '<span class="shop-note">' + escapeHtml(t(g.level || "")) + '</span></div>' +
+        '<button type="button" class="ghost open-game-spectate" data-code="' + escapeHtml(g.code) + '">' +
+        escapeHtml(t("Spectate")) + '</button></li>';
+    }).join("") || '<li class="chat-empty">' + escapeHtml(t("No games open right now.")) + '</li>';
+  }
+
+  var openGamesUnsub = null;
+  function subscribeOpenGames() {
+    if (openGamesUnsub || !window.AccountRoom || !window.AccountRoom.ready) return;
+    openGamesUnsub = window.AccountRoom.onOpenGames(renderOpenGames);
+  }
+
+  function renderSpectateVisibility() {
+    var revealed = window.LiveRoom && window.LiveRoom.isRevealed && window.LiveRoom.isRevealed();
+    $("spectate-visibility").textContent = t(revealed ? "visible to players" : "invisible");
+    $("spectate-reveal").textContent = t(revealed ? "Hide myself" : "Show myself");
+  }
+
+  function renderSpectateRoster() {
+    var ul = $("spectate-roster");
+    var myId = window.LiveRoom && window.LiveRoom.spectatorId ? window.LiveRoom.spectatorId() : null;
+    ul.innerHTML = spectateRoster.map(function (p) {
+      var isMe = p.id === myId;
+      return '<li class="roster-item' + (isMe ? " is-me" : "") + '" data-id="' + escapeHtml(p.id) + '">' +
+        '<span class="who">' + escapeHtml(p.name) + (isMe ? " " + escapeHtml(t("(you)")) : "") + '</span>' +
+        '<span class="stat">' + tally(p.guesses, "guess", "guesses") + (p.best ? " · " + p.best : "") + '</span>' +
+        (isMe ? "" : '<button type="button" class="ghost kick-player">' + escapeHtml(t("Kick")) + '</button>') +
+        '</li>';
+    }).join("") || '<li class="chat-empty">' + escapeHtml(t("Nobody here yet.")) + '</li>';
+  }
+
+  function startSpectating(code) {
+    if (!window.LiveRoom || !window.LiveRoom.ready) { spectateSay("Can't reach the live service right now."); return; }
+    spectateCode = code;
+    spectateSay("");
+    window.LiveRoom.spectate(code, {
+      onPlayers: function (list) { spectateRoster = list; renderSpectateRoster(); },
+      onChat: function () {},
+      onGuesses: function () {},
+      onError: function () { spectateSay("Live sync dropped — try spectating again."); }
+    });
+    $("spectate-code-label").textContent = code;
+    $("spectate-live").hidden = false;
+    renderSpectateVisibility();
+  }
+
+  $("spectate-btn").addEventListener("click", function () {
+    var box = $("spectate-box");
+    box.hidden = !box.hidden;
+    if (!box.hidden) subscribeOpenGames();
+  });
+
+  $("spectate-go").addEventListener("click", function () {
+    var raw = $("spectate-code").value;
+    if (readCode(raw) === null) { spectateSay("That code doesn't work — check the four characters and try again."); return; }
+    startSpectating(String(raw).toUpperCase().replace(/[^0-9A-Z]/g, ""));
+  });
+
+  $("spectate-open-list").addEventListener("click", function (e) {
+    var btn = e.target.closest(".open-game-spectate");
+    if (!btn) return;
+    startSpectating(btn.dataset.code);
+  });
+
+  $("spectate-reveal").addEventListener("click", function () {
+    if (!spectateCode || !window.LiveRoom) return;
+    var revealed = window.LiveRoom.isRevealed && window.LiveRoom.isRevealed();
+    var action = revealed
+      ? window.LiveRoom.hideSpectator()
+      : window.LiveRoom.revealSpectator("(admin) " + (account ? account.name : "Admin"));
+    Promise.resolve(action).then(renderSpectateVisibility).catch(adminDbNote);
+  });
+
+  $("spectate-stop").addEventListener("click", function () {
+    if (window.LiveRoom) window.LiveRoom.stopSpectating();
+    spectateCode = null;
+    spectateRoster = [];
+    $("spectate-live").hidden = true;
+  });
+
+  $("spectate-roster").addEventListener("click", function (e) {
+    if (!e.target.classList.contains("kick-player") || !spectateCode || !window.LiveRoom) return;
+    var li = e.target.closest("li[data-id]");
+    if (!li) return;
+    window.LiveRoom.kick(spectateCode, li.dataset.id).catch(adminDbNote);
   });
 
   var reqType = "feature";
@@ -3555,7 +3705,8 @@
          "globalchat": {
            ".read": true,
            "$msgId": {
-             ".write": "auth != null && !data.exists()",
+             ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid || " +
+                        "root.child('admins').child(auth.uid).exists())",
              "votes": {
                "$uid": { ".write": "auth != null && auth.uid === $uid" }
              }
@@ -3603,6 +3754,9 @@
   var LiveRoom = {
     join: function () {}, leave: function () {}, updateProgress: function () {},
     sendChat: function () {}, addGuess: function () {},
+    spectate: function () {}, stopSpectating: function () {},
+    isRevealed: function () { return false; }, spectatorId: function () { return null; },
+    revealSpectator: offline, hideSpectator: function () { return Promise.resolve(); }, kick: offline,
     ready: false, unavailable: false
   };
 
@@ -3617,8 +3771,8 @@
     onProfile: noop, updateUser: offline, onAllUsers: noop,
     sendGift: offline, onGifts: noop, clearGift: offline,
     onAdmins: noop, onAssistants: noop, claimAdmin: offline, setAssistant: offline,
-    findOpenGame: offline, openGame: offline, closeGame: offline,
-    sendGlobalChat: offline, onGlobalChat: noop, voteGlobal: offline,
+    findOpenGame: offline, openGame: offline, closeGame: offline, onOpenGames: noop,
+    sendGlobalChat: offline, onGlobalChat: noop, voteGlobal: offline, deleteGlobalChat: offline,
     ready: false, unavailable: false
   };
 
@@ -3716,6 +3870,81 @@
         if (current) dbMod.push(dbMod.ref(db, "rooms/" + current.code + "/guesses"),
           { name: name, word: word, rank: rank, at: dbMod.serverTimestamp() });
       };
+
+      /* ---------- admin: watch a room without joining it ----------
+         The same players/chat/guesses subscriptions as join(), but no
+         presence entry — so nothing appears in anyone's roster. Revealing
+         adds a presence entry after the fact; hiding removes it again,
+         all while the subscriptions keep running. Kicking just removes
+         someone else's presence entry — the same write the rules already
+         let anyone make (this room system works without signing in at
+         all, so it was never going to be locked down to admins at the
+         database layer). The button is admin-only; the door isn't. */
+      var spectating = null;
+
+      function stopSpectating() {
+        if (!spectating) return;
+        spectating.unsubPlayers();
+        spectating.unsubChat();
+        spectating.unsubGuesses();
+        if (spectating.presenceRef) dbMod.remove(spectating.presenceRef).catch(function () {});
+        spectating = null;
+      }
+
+      function spectate(code, callbacks) {
+        stopSpectating();
+        var playersRef = dbMod.ref(db, "rooms/" + code + "/players");
+        var chatQuery = dbMod.query(dbMod.ref(db, "rooms/" + code + "/chat"), dbMod.limitToLast(50));
+        var guessesRef = dbMod.ref(db, "rooms/" + code + "/guesses");
+
+        var unsubPlayers = dbMod.onValue(playersRef, function (snap) {
+          var val = snap.val() || {};
+          callbacks.onPlayers(Object.keys(val).map(function (id) {
+            var p = val[id] || {};
+            return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null };
+          }));
+        }, function () { callbacks.onError && callbacks.onError(); });
+
+        var unsubChat = dbMod.onChildAdded(chatQuery, function (snap) { callbacks.onChat(snap.val()); });
+
+        var unsubGuesses = dbMod.onValue(guessesRef, function (snap) {
+          var val = snap.val() || {};
+          var list = Object.keys(val).map(function (id) {
+            var g = val[id] || {};
+            return { word: g.word, rank: g.rank, by: g.name, at: g.at || 0 };
+          });
+          list.sort(function (a, b) { return a.at - b.at; });
+          callbacks.onGuesses(list);
+        });
+
+        spectating = { code: code, presenceRef: null, myId: null,
+                        unsubPlayers: unsubPlayers, unsubChat: unsubChat, unsubGuesses: unsubGuesses };
+      }
+
+      LiveRoom.spectate = spectate;
+      LiveRoom.stopSpectating = stopSpectating;
+      LiveRoom.isRevealed = function () { return !!(spectating && spectating.presenceRef); };
+      LiveRoom.spectatorId = function () { return spectating ? spectating.myId : null; };
+      LiveRoom.revealSpectator = function (name) {
+        if (!spectating) return Promise.reject(new Error("not spectating"));
+        var myId = Math.random().toString(36).slice(2, 10);
+        var presenceRef = dbMod.ref(db, "rooms/" + spectating.code + "/players/" + myId);
+        spectating.presenceRef = presenceRef;
+        spectating.myId = myId;
+        dbMod.onDisconnect(presenceRef).remove();
+        return dbMod.set(presenceRef, { name: name, guesses: 0, best: null, joinedAt: dbMod.serverTimestamp() });
+      };
+      LiveRoom.hideSpectator = function () {
+        if (!spectating || !spectating.presenceRef) return Promise.resolve();
+        var ref = spectating.presenceRef;
+        spectating.presenceRef = null;
+        spectating.myId = null;
+        return dbMod.remove(ref);
+      };
+      LiveRoom.kick = function (code, playerId) {
+        return dbMod.remove(dbMod.ref(db, "rooms/" + code + "/players/" + playerId));
+      };
+
       LiveRoom.ready = true;
       window.dispatchEvent(new Event("liveroom-ready"));
 
@@ -3813,18 +4042,33 @@
       AccountRoom.closeGame = function (code) {
         return dbMod.remove(dbMod.ref(db, "lobby/" + code));
       };
+      // Everything currently listed as open to auto-match into — a room can
+      // still have people in it after it drops off here, so this is a
+      // shortcut for finding one, not a full census.
+      AccountRoom.onOpenGames = function (cb) {
+        return dbMod.onValue(dbMod.ref(db, "lobby"), function (s) {
+          var val = s.val() || {};
+          var list = Object.keys(val).map(function (code) { return val[code]; })
+            .filter(function (g) { return g && g.code; })
+            .sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+          cb(list);
+        }, function () { cb([]); });
+      };
 
       var globalChatRef = dbMod.ref(db, "globalchat");
       AccountRoom.sendGlobalChat = function (name, text) {
         var msgRef = dbMod.push(globalChatRef);
-        return dbMod.set(msgRef, { name: name, text: text, at: dbMod.serverTimestamp() });
+        return dbMod.set(msgRef, { name: name, text: text, uid: Auth.uid(), at: dbMod.serverTimestamp() });
+      };
+      AccountRoom.deleteGlobalChat = function (msgId) {
+        return dbMod.remove(dbMod.ref(db, "globalchat/" + msgId));
       };
       AccountRoom.onGlobalChat = function (cb) {
         return dbMod.onValue(dbMod.query(globalChatRef, dbMod.limitToLast(50)), function (s) {
           var val = s.val() || {};
           var list = Object.keys(val).map(function (id) {
             var m = val[id] || {};
-            return { id: id, name: m.name, text: m.text, at: m.at || 0, votes: m.votes || {} };
+            return { id: id, name: m.name, text: m.text, uid: m.uid, at: m.at || 0, votes: m.votes || {} };
           });
           list.sort(function (a, b) { return a.at - b.at; });
           cb(list);
