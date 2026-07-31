@@ -537,6 +537,23 @@
   .chat-line.mine .from { color: var(--accent); }
   .chat-empty { font-size: var(--micro); color: var(--muted); }
 
+  .chat-line .votes { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; }
+  .chat-line .vote-btn {
+    font-size: var(--micro);
+    font-family: var(--mono);
+    border: 1px solid var(--rule);
+    background: none;
+    color: var(--muted);
+    padding: 0.125rem 0.5rem;
+    cursor: pointer;
+  }
+  .chat-line .vote-btn.mine-yes { border-color: var(--accent); color: var(--accent); }
+  .chat-line .vote-btn.mine-no { border-color: var(--ink); color: var(--ink); }
+
+  #global-chat-log { max-height: 16rem; }
+  #panel-community .row { margin-top: 0.5rem; }
+  #suggest-feature-box { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+
   #chat-box .row { margin-top: 0.5rem; }
   #chat-box input { font-size: var(--micro); }
 
@@ -687,6 +704,7 @@
     <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve">solver</button>
     <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="panel-compare">compare</button>
     <button class="tab" role="tab" id="tab-shop" aria-selected="false" aria-controls="panel-shop">shop</button>
+    <button class="tab" role="tab" id="tab-community" aria-selected="false" aria-controls="panel-community">chat</button>
   </nav>
 
   <!-- ============ PLAY ============ -->
@@ -860,6 +878,26 @@
         <button type="button" class="ghost" id="gift-send">Send gift</button>
       </div>
       <p class="gloss" id="gift-notice" hidden></p>
+    </div>
+  </section>
+
+  <!-- ============ COMMUNITY ============ -->
+  <section class="panel" id="panel-community" role="tabpanel" aria-labelledby="tab-community" hidden>
+    <p class="gloss">Everyone signed in can post here and vote yes or no on what others say.</p>
+    <ul class="chat-log" id="global-chat-log"><li class="chat-empty">No messages yet.</li></ul>
+    <div class="row">
+      <input class="grow" id="global-chat-input" placeholder="say something" maxlength="200" autocomplete="off" />
+      <button type="button" class="ghost" id="global-chat-send">Send</button>
+    </div>
+    <p class="gloss" id="global-chat-notice" hidden></p>
+
+    <div class="field">
+      <button type="button" class="wide ghost" id="suggest-feature-btn">Suggest a feature</button>
+      <div id="suggest-feature-box" hidden>
+        <textarea id="suggest-feature-text" rows="3" placeholder="What should be added?"></textarea>
+        <button type="button" id="suggest-feature-send">Send to the admins</button>
+        <p class="gloss" id="suggest-feature-notice" hidden></p>
+      </div>
     </div>
   </section>
 
@@ -1173,7 +1211,8 @@
     { tab: "tab-play", panel: "panel-play" },
     { tab: "tab-solve", panel: "panel-solve" },
     { tab: "tab-compare", panel: "panel-compare" },
-    { tab: "tab-shop", panel: "panel-shop" }
+    { tab: "tab-shop", panel: "panel-shop" },
+    { tab: "tab-community", panel: "panel-community" }
   ];
 
   TABS.forEach(function (entry) {
@@ -1611,6 +1650,101 @@
         ? "No account with that name — check the spelling."
         : "Couldn't send that. Try again in a moment.");
     });
+  });
+
+  /* ---------- global chat ----------
+     Open to every signed-in account, not just admins. Each message can be
+     voted yes or no by anyone; a second click on the same choice takes the
+     vote back, a click on the other choice switches it. The rules let you
+     write only your own vote, so counts stay one-per-person. */
+  var globalChatMessages = [];
+
+  function globalChatSay(message) {
+    var node = $("global-chat-notice");
+    node.textContent = message || "";
+    node.hidden = !message;
+  }
+
+  function renderGlobalChat() {
+    var log = $("global-chat-log");
+    if (!globalChatMessages.length) {
+      log.innerHTML = '<li class="chat-empty">No messages yet.</li>';
+      return;
+    }
+    log.innerHTML = globalChatMessages.map(function (m) {
+      var votes = m.votes || {};
+      var yes = 0, no = 0, mine = account && votes[account.uid];
+      Object.keys(votes).forEach(function (uid) {
+        if (votes[uid] === "yes") yes++; else if (votes[uid] === "no") no++;
+      });
+      return '<li class="chat-line' + (account && m.name === account.name ? " mine" : "") + '" data-id="' + escapeHtml(m.id) + '">' +
+        '<span class="from">' + escapeHtml(m.name) + '</span>' + escapeHtml(m.text) +
+        '<div class="votes">' +
+          '<button type="button" class="vote-btn vote-yes' + (mine === "yes" ? " mine-yes" : "") + '">yes ' + yes + '</button>' +
+          '<button type="button" class="vote-btn vote-no' + (mine === "no" ? " mine-no" : "") + '">no ' + no + '</button>' +
+        '</div></li>';
+    }).join("");
+  }
+
+  function subscribeGlobalChat() {
+    if (!window.AccountRoom || !window.AccountRoom.ready) return;
+    window.AccountRoom.onGlobalChat(function (list) {
+      globalChatMessages = list;
+      renderGlobalChat();
+    });
+  }
+
+  window.addEventListener("accountroom-ready", subscribeGlobalChat);
+
+  function sendGlobalChat() {
+    var input = $("global-chat-input");
+    var text = input.value.trim();
+    if (!text) return;
+    if (!account) { globalChatSay("Sign in first to post here."); return; }
+    if (!window.AccountRoom || !window.AccountRoom.ready) { globalChatSay("Can't reach the chat right now."); return; }
+    globalChatSay("");
+    window.AccountRoom.sendGlobalChat(account.name, text).then(function () {
+      input.value = "";
+    }).catch(function () { globalChatSay("Couldn't send that. Try again in a moment."); });
+  }
+
+  $("global-chat-send").addEventListener("click", sendGlobalChat);
+  $("global-chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendGlobalChat(); });
+
+  $("global-chat-log").addEventListener("click", function (e) {
+    var btn = e.target.closest(".vote-btn");
+    if (!btn) return;
+    if (!account) { globalChatSay("Sign in first to vote."); return; }
+    if (!window.AccountRoom || !window.AccountRoom.ready) return;
+    var li = btn.closest("li[data-id]");
+    if (!li) return;
+    var msgId = li.dataset.id;
+    var msg = globalChatMessages.filter(function (m) { return m.id === msgId; })[0];
+    var current = msg && msg.votes && msg.votes[account.uid];
+    var choice = btn.classList.contains("vote-yes") ? "yes" : "no";
+    window.AccountRoom.voteGlobal(msgId, account.uid, current === choice ? null : choice).catch(function () {});
+  });
+
+  /* ---------- suggest a feature ----------
+     Open to any signed-in account — not gated behind admin or assistant —
+     writing into the same request queue the admin panel reads from. */
+  $("suggest-feature-btn").addEventListener("click", function () {
+    var box = $("suggest-feature-box");
+    box.hidden = !box.hidden;
+  });
+
+  $("suggest-feature-send").addEventListener("click", function () {
+    var node = $("suggest-feature-notice");
+    var say = function (m) { node.textContent = m || ""; node.hidden = !m; };
+    var text = $("suggest-feature-text").value.trim();
+    if (!text) { say("Write your idea first."); return; }
+    if (!account) { say("Sign in first — that way the admins know who to thank."); return; }
+    if (!window.AdminRoom || !window.AdminRoom.ready) { say("Can't reach the request queue right now."); return; }
+    say("Sending…");
+    window.AdminRoom.submitRequest("feature", text, account.name).then(function () {
+      $("suggest-feature-text").value = "";
+      say("Sent — thanks!");
+    }).catch(function () { say("Couldn't send that. Try again in a moment."); });
   });
 
   /* ================================================================
@@ -3213,11 +3347,20 @@
 
          "requests": {
            ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())",
-           ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())"
+           ".write": "auth != null"
          },
          "adminchat": {
            ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())",
            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())"
+         },
+         "globalchat": {
+           ".read": true,
+           "$msgId": {
+             ".write": "auth != null && !data.exists()",
+             "votes": {
+               "$uid": { ".write": "auth != null && auth.uid === $uid" }
+             }
+           }
          }
        }
      }
@@ -3234,6 +3377,10 @@
          that the node can only be changed from the Firebase console.
        - A gift is a note left in the recipient's inbox, which only they
          can read and clear. Nobody reaches into anyone's balance.
+       - Any signed-in account can send a feature/bug request, and post
+         or vote in global chat, but only an admin or assistant can read
+         the request queue. A global chat message can't be edited once
+         posted; a vote is writable only by the uid it belongs to.
        - What is still NOT enforced is a player's own balance. Their
          browser writes their own coins, so a determined person can give
          themselves coins. Stopping that needs code running somewhere
@@ -3272,6 +3419,7 @@
     sendGift: offline, onGifts: noop, clearGift: offline,
     onAdmins: noop, onAssistants: noop, claimAdmin: offline, setAssistant: offline,
     findOpenGame: offline, openGame: offline, closeGame: offline,
+    sendGlobalChat: offline, onGlobalChat: noop, voteGlobal: offline,
     ready: false, unavailable: false
   };
 
@@ -3466,6 +3614,28 @@
       AccountRoom.closeGame = function (code) {
         return dbMod.remove(dbMod.ref(db, "lobby/" + code));
       };
+
+      var globalChatRef = dbMod.ref(db, "globalchat");
+      AccountRoom.sendGlobalChat = function (name, text) {
+        var msgRef = dbMod.push(globalChatRef);
+        return dbMod.set(msgRef, { name: name, text: text, at: dbMod.serverTimestamp() });
+      };
+      AccountRoom.onGlobalChat = function (cb) {
+        return dbMod.onValue(dbMod.query(globalChatRef, dbMod.limitToLast(50)), function (s) {
+          var val = s.val() || {};
+          var list = Object.keys(val).map(function (id) {
+            var m = val[id] || {};
+            return { id: id, name: m.name, text: m.text, at: m.at || 0, votes: m.votes || {} };
+          });
+          list.sort(function (a, b) { return a.at - b.at; });
+          cb(list);
+        }, function () { cb([]); });
+      };
+      AccountRoom.voteGlobal = function (msgId, uid, choice) {
+        var voteRef = dbMod.ref(db, "globalchat/" + msgId + "/votes/" + uid);
+        return choice ? dbMod.set(voteRef, choice) : dbMod.remove(voteRef);
+      };
+
       AccountRoom.ready = true;
       window.dispatchEvent(new Event("accountroom-ready"));
 
