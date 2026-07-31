@@ -739,12 +739,8 @@
           <input id="online-name" placeholder="Player" autocapitalize="words" spellcheck="false" />
         </div>
 
-        <button class="wide" id="join-any">Join an online game</button>
-        <p class="gloss">Drops you into a game someone else has open. If nobody's around, you'll
-          be matched with other players to race against.</p>
-
-        <button class="wide ghost" id="browse-rooms">Browse rooms</button>
-        <ul class="shop-list" id="rooms-list" hidden></ul>
+        <button class="wide" id="join-any">Join the last online game</button>
+        <p class="gloss">Joins the most recent game in progress. If nobody's playing, you start a new one.</p>
 
         <button class="wide ghost" id="make-code">Hide a word and get a code</button>
         <div id="code-out"></div>
@@ -2197,6 +2193,19 @@
       say($("live-notice"), "");
       window.LiveRoom.join(code, name, {
         onPlayers: function (list) {
+          // Room capacity: if 10 or more players are in this room, it's full.
+          // Leave and host a new game instead.
+          if (list && list.length >= 10 && play.code) {
+            window.LiveRoom.leave();
+            closeMyOpenGame();
+            var secret = pickSecret();
+            var newCode = makeCode(WORDS.indexOf(secret));
+            beginGame(secret, newCode);
+            if (window.AccountRoom && window.AccountRoom.ready) {
+              window.AccountRoom.openGame(newCode, play.level).catch(function () {});
+            }
+            return;
+          }
           play.live = list;
           refreshPlay();
         },
@@ -2284,79 +2293,7 @@
     $("code-out").appendChild(card);
   }
 
-  /* ---------- browsing rooms ----------
-     A room list somebody can pick from, rather than only ever being auto-
-     matched into the one open game. Each row is a real, openable code —
-     makeCode(index) is deterministic — paired with a bot headcount, chosen
-     fresh every time the list is opened. */
-  var ROOM_COUNT = 40;
-  var browsedRooms = [];
-
-  function generateRooms() {
-    var pool = POOLS[play.level].filter(function (w) {
-      return inLexicon(w) && INDEX[w] < CODE_M;
-    });
-    var picks = pool.slice();
-    var n = Math.min(ROOM_COUNT, picks.length);
-    for (var i = 0; i < n; i++) {
-      var j = i + Math.floor(Math.random() * (picks.length - i));
-      var tmp = picks[i]; picks[i] = picks[j]; picks[j] = tmp;
-    }
-    return picks.slice(0, n).map(function (w) {
-      return { code: makeCode(INDEX[w]), secret: w, bots: 1 + Math.floor(Math.random() * 4) };
-    });
-  }
-
-  function renderRooms() {
-    browsedRooms = generateRooms();
-    $("rooms-list").innerHTML = browsedRooms.map(function (r, i) {
-      return '<li data-i="' + i + '"><div><span class="shop-name">' + escapeHtml(r.code) + '</span>' +
-        '<span class="shop-note">' + tally(r.bots, "player", "players") + '</span></div>' +
-        '<button type="button" class="ghost join-room">Join</button></li>';
-    }).join("");
-  }
-
-  $("browse-rooms").addEventListener("click", function () {
-    var list = $("rooms-list");
-    list.hidden = !list.hidden;
-    if (!list.hidden) renderRooms();
-  });
-
-  $("rooms-list").addEventListener("click", function (e) {
-    if (!e.target.classList.contains("join-room")) return;
-    var li = e.target.closest("li[data-i]");
-    var room = li && browsedRooms[+li.dataset.i];
-    if (!room) return;
-    $("rooms-list").hidden = true;
-    beginGame(room.secret, room.code);
-    spawnBots(room.bots);
-  });
-
-  /* ---------- filling out a quiet room ----------
-     An empty online game is worse than no online game: you sit in a lobby of
-     one, watching nothing happen. So a room that stays empty gets other
-     racers in it, closing on the word at their own pace beside you.
-
-     They show in the roster only, never in the shared ladder — their guesses
-     would otherwise hand you the answer — so what shows next to a bot is a
-     flavor word, never one that's actually close to the secret. The round
-     stays yours to finish. */
-  var BOT_NAMES = ["Maya", "Daniel", "Priya", "Omar", "Sofia", "Liam", "Noor", "Ethan",
-                   "Amara", "Lucas", "Hana", "Marco", "Zoe", "Idris", "Elena", "Theo",
-                   "Ava", "Rafael", "Nina", "Jonas", "Leila", "Felix"];
-  var BOT_GUESS_WORDS = ["time", "water", "house", "money", "idea", "music", "light", "power",
-    "family", "story", "color", "dream", "energy", "shadow", "mountain", "ocean", "forest",
-    "system", "pattern", "silence", "garden", "bridge", "mirror", "engine", "harvest", "signal",
-    "canvas", "desert", "rhythm", "anchor", "compass", "lantern", "horizon", "current", "echo",
-    "frost", "ember", "tide", "spark", "drift"];
   var bots = { list: [], tick: null, watch: null };
-
-  function pickFlavorWord(exclude) {
-    var w;
-    do { w = BOT_GUESS_WORDS[Math.floor(Math.random() * BOT_GUESS_WORDS.length)]; }
-    while (w === exclude && BOT_GUESS_WORDS.length > 1);
-    return w;
-  }
 
   function stopBots() {
     if (bots.tick) { clearInterval(bots.tick); bots.tick = null; }
@@ -2364,49 +2301,8 @@
     bots.list = [];
   }
 
-  function spawnBots(count) {
-    var pool = BOT_NAMES.slice();
-    count = Math.max(1, Math.min(count || (2 + Math.floor(Math.random() * 2)), pool.length));
-    bots.list = [];
-    for (var i = 0; i < count; i++) {
-      bots.list.push({
-        name: pool.splice(Math.floor(Math.random() * pool.length), 1)[0],
-        guesses: 0,
-        best: null,
-        word: null,
-        pace: 0.55 + Math.random() * 0.25,       // how sharply this one closes in
-        next: Date.now() + 2000 + Math.random() * 6000
-      });
-    }
-    if (bots.tick) clearInterval(bots.tick);
-    bots.tick = setInterval(botTick, 1000);
-    refreshPlay();
-  }
-
-  function botTick() {
-    if (play.done || play.mode !== "online") { stopBots(); return; }
-    var now = Date.now(), moved = false;
-    bots.list.forEach(function (b) {
-      if (now < b.next) return;
-      b.guesses++;
-      b.best = b.best === null
-        ? 900 + Math.floor(Math.random() * 6000)
-        : Math.max(2, Math.round(b.best * b.pace));
-      b.word = pickFlavorWord(b.word);
-      b.next = now + 4000 + Math.random() * 6000;
-      moved = true;
-    });
-    if (moved) refreshPlay();
-  }
-
-  // Give the room a moment to fill with actual people before standing anyone in.
   function armBots() {
-    if (bots.watch) clearTimeout(bots.watch);
-    bots.watch = setTimeout(function () {
-      if (play.done || play.mode !== "online") return;
-      var others = (play.live || []).filter(function (p) { return !p.isMe; }).length;
-      if (!others) spawnBots();
-    }, 8000);
+    // No auto-spawn of bots; wait for real players only.
   }
 
   function refreshPlay() {
@@ -2436,9 +2332,6 @@
 
       if (isOnline) {
         var live = play.live || [{ name: play.myName, guesses: play.rows.length, best: best ? best.rank : null, isMe: true }];
-        live = live.concat(bots.list.map(function (b) {
-          return { name: b.name, guesses: b.guesses, best: b.best, word: b.word, isMe: false, isBot: true };
-        }));
         live.forEach(function (p) {
           var li = document.createElement("li");
           li.className = "roster-item" + (p.isMe ? " is-me" : "");
@@ -2450,9 +2343,8 @@
 
           var stat = document.createElement("span");
           stat.className = "stat";
-          var extra = p.isBot ? (p.word ? " · " + p.word : "") : (p.best ? " · " + p.best : "");
           stat.textContent = p.guesses
-            ? p.guesses + (p.guesses === 1 ? " guess" : " guesses") + extra
+            ? p.guesses + (p.guesses === 1 ? " guess" : " guesses") + (p.best ? " · " + p.best : "")
             : "joined";
           li.appendChild(stat);
 
