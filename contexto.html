@@ -239,6 +239,17 @@
     border: 1px solid var(--rule);
     border-left: 3px solid var(--accent);
   }
+  .announce {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 1rem;
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+  }
+  .announce .chat-log { max-height: none; }
+  .announce .chat-line { font-size: var(--step-0); line-height: 1.5; }
   .admin-item-row {
     display: flex;
     flex-direction: column;
@@ -609,6 +620,13 @@
     </p>
   </header>
 
+  <!-- Read by every visitor, no login needed. Only the admin can post to it
+       — see admin-broadcast in the Admin panel below. -->
+  <section class="announce" id="announce-panel" hidden>
+    <div class="eyebrow">updates</div>
+    <ul class="chat-log" id="announce-log"></ul>
+  </section>
+
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play">play</button>
     <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve">solver</button>
@@ -780,6 +798,14 @@
   <section class="panel admin-panel" id="admin-panel" hidden>
     <div class="eyebrow">admin</div>
     <p class="gloss" id="admin-role-note"></p>
+
+    <div id="admin-broadcast" hidden>
+      <div class="field">
+        <span class="key">post an update — every visitor sees this, only you can post it</span>
+        <textarea id="admin-broadcast-text" rows="2" placeholder="What's new?"></textarea>
+      </div>
+      <button type="button" id="admin-broadcast-send">Post to everyone</button>
+    </div>
 
     <div id="admin-shop-editor" hidden>
       <div class="field">
@@ -1292,8 +1318,9 @@
   function renderAdminPanel() {
     var role = adminRole();
     $("admin-role-note").textContent = role === "admin"
-      ? "Full admin — edit the shop, and see requests and bugs sent in."
+      ? "Full admin — post updates everyone sees, edit the shop, and see requests and bugs sent in."
       : "Assistant admin — send feature requests and bug reports, and chat here.";
+    $("admin-broadcast").hidden = role !== "admin";
     $("admin-shop-editor").hidden = role !== "admin";
     $("admin-requests").hidden = role !== "admin";
     $("admin-request-form").hidden = role !== "assistant";
@@ -1437,10 +1464,34 @@
   $("admin-chat-send").addEventListener("click", sendAdminChat);
   $("admin-chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendAdminChat(); });
 
-  // The shop is the same for every visitor, admin or not, so it syncs as
-  // soon as the shared database answers — no password needed to read it,
-  // only to change it. Chat and the request queue are admin-only, and only
-  // start listening once someone has actually signed in.
+  // Read by every visitor, no password needed — only postAnnouncement (below,
+  // gated to the admin role) ever writes here.
+  function appendAnnounceLine(msg) {
+    var panel = $("announce-panel");
+    panel.hidden = false;
+    var log = $("announce-log");
+    var li = document.createElement("li");
+    li.className = "chat-line";
+    li.textContent = msg.text;
+    log.appendChild(li);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  $("admin-broadcast-send").addEventListener("click", function () {
+    var text = $("admin-broadcast-text").value.trim();
+    if (!text) { adminSay("Write something first."); return; }
+    if (!window.AdminRoom) { adminDbNote(); return; }
+    window.AdminRoom.postAnnouncement(text).then(function () {
+      $("admin-broadcast-text").value = "";
+      adminSay("Posted — every visitor will see it.");
+    }).catch(adminDbNote);
+  });
+
+  // The shop and the announcements feed are the same for every visitor,
+  // admin or not, so they sync as soon as the shared database answers — no
+  // password needed to read either, only to change them. Chat and the
+  // request queue are admin-only, and only start listening once someone
+  // has actually signed in.
   function subscribeShopSync() {
     window.AdminRoom.onShopItems(function (items) {
       if (!items) return;
@@ -1449,6 +1500,7 @@
       renderShopList();
       if (adminRole() === "admin" && !$("admin-panel").hidden) renderAdminItemList();
     });
+    window.AdminRoom.onAnnouncements(appendAnnounceLine);
   }
 
   function subscribeAdminChannels() {
@@ -2637,6 +2689,8 @@
     deleteRequest: function () { return Promise.reject(new Error("offline")); },
     setShopItems: function () { return Promise.reject(new Error("offline")); },
     onShopItems: function () {},
+    postAnnouncement: function () { return Promise.reject(new Error("offline")); },
+    onAnnouncements: function () {},
     ready: false, unavailable: false
   };
   window.AdminRoom = AdminRoom;
@@ -2725,6 +2779,7 @@
       var adminChatQuery = dbMod.query(dbMod.ref(db, "admin/chat"), dbMod.limitToLast(50));
       var adminRequestsRef = dbMod.ref(db, "admin/requests");
       var adminShopRef = dbMod.ref(db, "admin/shop/items");
+      var adminAnnouncementsQuery = dbMod.query(dbMod.ref(db, "admin/announcements"), dbMod.limitToLast(20));
 
       AdminRoom.sendChat = function (name, text) {
         return dbMod.push(dbMod.ref(db, "admin/chat"), { name: name, text: text, at: dbMod.serverTimestamp() });
@@ -2760,6 +2815,13 @@
           var val = snap.val();
           cb(Array.isArray(val) && val.length ? val : null);
         });
+      };
+      // Everyone can read this — only the admin panel ever calls postAnnouncement.
+      AdminRoom.postAnnouncement = function (text) {
+        return dbMod.push(dbMod.ref(db, "admin/announcements"), { text: text, at: dbMod.serverTimestamp() });
+      };
+      AdminRoom.onAnnouncements = function (cb) {
+        return dbMod.onChildAdded(adminAnnouncementsQuery, function (snap) { cb(snap.val()); });
       };
       AdminRoom.ready = true;
       window.dispatchEvent(new Event("adminroom-ready"));
