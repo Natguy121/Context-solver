@@ -2967,8 +2967,12 @@
 
     var tried = Object.create(null);
     rows.forEach(function (r) { tried[r.word] = true; });
-    var obs = rows.map(function (r) { return { word: r.word, rank: r.rank }; });
-    var next = suggestNext(believe(obs, V, tried), tried);
+
+    // A hint is one of the 50 closest words to the secret, picked at random
+    // among whichever of those haven't been tried yet — close enough to be
+    // useful, never the word itself.
+    var near = nearestTo(play.secret, 49).filter(function (w) { return !tried[w]; });
+    var next = near.length ? near[Math.floor(Math.random() * near.length)] : null;
 
     // Only charge for a hint that actually said something.
     if (next) {
@@ -2977,8 +2981,8 @@
     }
 
     say($("play-notice"), next
-      ? "Try " + next + " — of everything left, that one's rank would tell you the most."
-      : "Nothing useful left to suggest — you've already tried the words that would narrow it.");
+      ? "Try " + next + " — it's among the 50 closest words."
+      : "Nothing useful left to suggest — you've already tried the closest words.");
   }
 
   /* ---------- the tour: a real round, narrated ---------- */
