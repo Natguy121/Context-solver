@@ -640,7 +640,56 @@
   }
   .colophon p { margin: 0; }
   .colophon b { font-weight: 600; color: var(--ink); }
+
+  /* ---------- win flash: a bought cosmetic, not a gameplay signal ----------
+     Two bright pulses about a second apart, well under the ~3/second rate
+     flagged as a photosensitive-seizure risk, then the word holds steady
+     until it's dismissed. Reduced-motion gets a plain, static reveal. */
+  .win-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .win-flash.playing { animation: win-flash-bg 1.8s ease-out; }
+  .win-flash-word {
+    font-family: var(--serif);
+    font-size: clamp(2.5rem, 12vw, 6rem);
+    font-weight: 700;
+    color: var(--ink);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+    opacity: 0;
+    padding: 0 1rem;
+  }
+  .win-flash.playing .win-flash-word { animation: win-flash-word 1.8s ease-out; }
+  @keyframes win-flash-bg {
+    0%   { background: rgba(255, 255, 255, 0); }
+    12%  { background: rgba(255, 255, 255, 0.92); }
+    24%  { background: rgba(255, 255, 255, 0.12); }
+    36%  { background: rgba(255, 255, 255, 0.92); }
+    50%  { background: rgba(255, 255, 255, 0.2); }
+    100% { background: rgba(255, 255, 255, 0.2); }
+  }
+  @keyframes win-flash-word {
+    0%   { opacity: 0; transform: scale(0.8); }
+    12%  { opacity: 0; }
+    24%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .win-flash.playing { animation: none; background: rgba(255, 255, 255, 0.92); }
+    .win-flash.playing .win-flash-word { animation: none; opacity: 1; }
+  }
 </style>
+
+<div id="win-flash" class="win-flash" hidden aria-hidden="true">
+  <div class="win-flash-word"></div>
+</div>
 
 <div class="wrap">
   <header class="masthead">
@@ -1212,6 +1261,8 @@
     "guessing…": "propose…", "waiting": "en attente",
 
     "Not enough coins yet — one comes with every word you find.": "Pas encore assez de pièces — vous en gagnez une à chaque mot trouvé.",
+    "Owned": "Déjà possédé",
+    "Bought it. The word flashes across the screen the next time you win.": "Acheté. Le mot s'affichera en grand à votre prochaine victoire.",
     "Pick a username — letters, numbers, dashes.": "Choisissez un nom d'utilisateur — lettres, chiffres, tirets.",
     "Firebase asks for at least six characters in a password.": "Firebase demande au moins six caractères pour un mot de passe.",
     "Signed out. Coins earned from here on stay on this device.": "Déconnecté. Les pièces gagnées à partir de maintenant restent sur cet appareil.",
@@ -1437,9 +1488,23 @@
   var HINT_KEY = "contexto-hints";
   var HINT_START = 3;
   var SHOP_CACHE_KEY = "contexto-shop-items";
+  var FLASH_KEY = "contexto-flash";
   var DEFAULT_SHOP_ITEMS = [
     { id: "starter-hints", name: "2 hints", note: "A hint names the word worth guessing next.", price: 3, hints: 2 }
   ];
+
+  // A fixed cosmetic, not a hint bundle — never part of the admin-editable,
+  // Firebase-synced catalog, so it can't be priced or removed by an admin
+  // through the item editor, and can't end up in the gift picker, which
+  // only knows how to send a count of hints. Always tacked onto whatever
+  // the live shop list is, purely for the buy list a player sees.
+  var FLASH_ITEM = {
+    id: "win-flash", name: "Win flash",
+    note: "A one-time buy: the next time you win, the word flashes across the whole screen.",
+    price: 5, hints: 0, effect: "flash"
+  };
+
+  function shopCatalog() { return shopItems.concat([FLASH_ITEM]); }
 
   // Set while signed in: { key, name, coins, hints }. The balance here mirrors
   // the account's row in the database, kept current by a live subscription, so
@@ -1472,6 +1537,22 @@
       try { localStorage.setItem(key, String(n)); } catch (e) {}
     }
     paintPurse();
+  }
+
+  // A one-time cosmetic unlock rather than a consumable, so it's a flag, not
+  // a count — owning it follows the account the same way coins do.
+  function ownsFlash() {
+    if (account) return !!account.flash;
+    try { return localStorage.getItem(FLASH_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  function setOwnsFlash() {
+    if (account) {
+      account.flash = true;
+      if (window.AccountRoom) window.AccountRoom.updateUser(account.uid, { flash: true }).catch(function () {});
+    } else {
+      try { localStorage.setItem(FLASH_KEY, "1"); } catch (e) {}
+    }
   }
 
   function tally(n, one, many) {
@@ -1507,30 +1588,42 @@
 
   function renderShopList() {
     var ul = $("shop-list-live");
-    if (!shopItems.length) {
+    var catalog = shopCatalog();
+    if (!catalog.length) {
       ul.innerHTML = '<li class="chat-empty">Nothing in the shop right now.</li>';
       return;
     }
-    ul.innerHTML = shopItems.map(function (item, idx) {
+    ul.innerHTML = catalog.map(function (item, idx) {
+      var owned = item.effect === "flash" && ownsFlash();
       return '<li><div><span class="shop-name">' + escapeHtml(item.name) + '</span>' +
         '<span class="shop-note">' + escapeHtml(item.note) + '</span></div>' +
-        '<button type="button" class="buy-item" data-idx="' + idx + '"' +
-        (purse() < item.price ? " disabled" : "") + '>' + tally(item.price, "coin", "coins") + '</button></li>';
+        (owned
+          ? '<button type="button" class="buy-item" disabled>' + escapeHtml(t("Owned")) + '</button>'
+          : '<button type="button" class="buy-item" data-idx="' + idx + '"' +
+            (purse() < item.price ? " disabled" : "") + '>' + tally(item.price, "coin", "coins") + '</button>') +
+        '</li>';
     }).join("");
   }
 
   $("shop-list-live").addEventListener("click", function (e) {
     if (!e.target.classList.contains("buy-item")) return;
-    buyItem(shopItems[+e.target.dataset.idx]);
+    buyItem(shopCatalog()[+e.target.dataset.idx]);
   });
 
   function buyItem(item) {
     if (!item) return;
+    if (item.effect === "flash" && ownsFlash()) return;
     if (purse() < item.price) {
       shopSay("Not enough coins yet — one comes with every word you find.");
       return;
     }
     store(PURSE_KEY, purse() - item.price);
+    if (item.effect === "flash") {
+      setOwnsFlash();
+      renderShopList();
+      shopSay("Bought it. The word flashes across the screen the next time you win.");
+      return;
+    }
     store(HINT_KEY, hints() + item.hints);
     shopSay("Bought " + tally(item.hints, "hint", "hints") + ". " + tally(purse(), "coin", "coins") + " left.");
   }
@@ -1656,7 +1749,7 @@
 
   function watchAccount(uid) {
     if (accountUnsub) { accountUnsub(); accountUnsub = null; }
-    account = { uid: uid, name: uid.slice(0, 6), coins: 0, hints: 0 };
+    account = { uid: uid, name: uid.slice(0, 6), coins: 0, hints: 0, flash: false };
     if (!window.AccountRoom || !window.AccountRoom.ready) { paintPurse(); return; }
 
     accountUnsub = window.AccountRoom.onProfile(uid, function (rec) {
@@ -1665,6 +1758,7 @@
         account.name = rec.name || account.name;
         account.coins = rec.coins || 0;
         account.hints = rec.hints || 0;
+        account.flash = !!rec.flash;
       }
       paintPurse();
       renderAccountPanel();
@@ -1733,12 +1827,12 @@
     var f = accountFields();
     if (!f) return;
     accountSay("Creating…");
-    var carried = { coins: purse(), hints: hints() };
+    var carried = { coins: purse(), hints: hints(), flash: ownsFlash() };
     window.Auth.signUp(f.name, f.pass).then(function (uid) {
       // Written after sign-up, so the rules see it coming from the account
       // it belongs to.
       return window.AccountRoom.updateUser(uid, {
-        name: f.display || f.name, coins: carried.coins, hints: carried.hints, at: Date.now()
+        name: f.display || f.name, coins: carried.coins, hints: carried.hints, flash: carried.flash, at: Date.now()
       });
     }).then(function () {
       $("account-pass").value = "";
@@ -2900,6 +2994,19 @@
     return title + "\nfound in " + play.rows.length + "\n" + trail;
   }
 
+  function playWinFlash(word) {
+    var flash = $("win-flash");
+    flash.querySelector(".win-flash-word").textContent = word;
+    flash.hidden = false;
+    flash.classList.remove("playing");
+    void flash.offsetWidth; // force a reflow so the animation restarts on a repeat win
+    flash.classList.add("playing");
+    setTimeout(function () {
+      flash.hidden = true;
+      flash.classList.remove("playing");
+    }, 1850);
+  }
+
   function finish(won, who, ranOut) {
     play.done = true;
     stopClock();
@@ -2908,6 +3015,7 @@
     $("play-clock").hidden = true;
     $("tab-solve").hidden = false;
     if (won) earnCoin();
+    if (won && ownsFlash()) playWinFlash(play.secret);
     $("play-controls").hidden = true;
     $("play-quit").hidden = true;
     $("roster").hidden = true;
