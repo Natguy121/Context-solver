@@ -239,6 +239,28 @@
     border: 1px solid var(--rule);
     border-left: 3px solid var(--accent);
   }
+  .masthead-right { display: flex; align-items: baseline; gap: 0.875rem; flex: none; }
+  .account-panel { border-left: 3px solid var(--accent); }
+  .user-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .user-row .who {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .user-row .who b { color: var(--accent); font-weight: 600; }
+  .user-row .row input { width: auto; }
+
   .announce {
     display: flex;
     flex-direction: column;
@@ -607,7 +629,10 @@
         <button type="button" class="admin-btn" id="admin-btn" title="Admin">Admin</button>
         <div class="eyebrow" id="dictline">dictionary loading</div>
       </div>
-      <button type="button" class="purse" id="purse" aria-expanded="false">0 coins</button>
+      <div class="masthead-right">
+        <button type="button" class="purse" id="purse" aria-expanded="false">0 coins</button>
+        <button type="button" class="admin-btn" id="account-btn">Sign in</button>
+      </div>
     </div>
     <h1>Contexto</h1>
     <p class="standfirst">A word is hidden. Every guess comes back with its distance from it.</p>
@@ -625,6 +650,34 @@
   <section class="announce" id="announce-panel" hidden>
     <div class="eyebrow">updates</div>
     <ul class="chat-log" id="announce-log"></ul>
+  </section>
+
+  <section class="panel admin-panel account-panel" id="account-panel" hidden>
+    <div class="eyebrow">account</div>
+
+    <div id="account-signed-out">
+      <p class="gloss">An account keeps your coins and hints with you on any device, and lets
+        other players send you gifts.</p>
+      <div class="field">
+        <label class="key" for="account-name">username</label>
+        <input id="account-name" placeholder="yourname" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" />
+      </div>
+      <div class="field">
+        <label class="key" for="account-pass">password</label>
+        <input id="account-pass" type="password" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <div class="row">
+        <button type="button" class="grow" id="account-signin">Sign in</button>
+        <button type="button" class="ghost grow" id="account-create">Create account</button>
+      </div>
+    </div>
+
+    <div id="account-signed-in" hidden>
+      <p class="gloss" id="account-who"></p>
+      <button type="button" class="linkish" id="account-signout">Sign out</button>
+    </div>
+
+    <p class="gloss" id="account-notice" hidden></p>
   </section>
 
   <nav class="tabs" role="tablist">
@@ -684,7 +737,11 @@
           <input id="online-name" placeholder="Player" autocapitalize="words" spellcheck="false" />
         </div>
 
-        <button class="wide" id="make-code">Hide a word and get a code</button>
+        <button class="wide" id="join-any">Join an online game</button>
+        <p class="gloss">Drops you into a game someone else has open. If nobody's around, you'll
+          be matched with other players to race against.</p>
+
+        <button class="wide ghost" id="make-code">Hide a word and get a code</button>
         <div id="code-out"></div>
 
         <div class="field">
@@ -792,6 +849,17 @@
     <p class="gloss">Spend coins to boost your hints and game settings.</p>
     <ul class="shop-list" id="shop-list-live"></ul>
     <p class="gloss" id="shop-notice" hidden></p>
+
+    <div class="field">
+      <span class="key">send one as a gift</span>
+      <p class="gloss" id="gift-note">You pay the coins; the hints land in their account.</p>
+      <input id="gift-to" placeholder="their username" autocapitalize="none" autocorrect="off" spellcheck="false" />
+      <div class="row">
+        <select id="gift-item" class="grow"></select>
+        <button type="button" class="ghost" id="gift-send">Send gift</button>
+      </div>
+      <p class="gloss" id="gift-notice" hidden></p>
+    </div>
   </section>
 
   <!-- ============ ADMIN ============ -->
@@ -835,6 +903,13 @@
         <textarea id="admin-req-text" rows="3" placeholder="What should be added, or what's broken?"></textarea>
       </div>
       <button type="button" id="admin-req-send">Send</button>
+    </div>
+
+    <div id="admin-everyone" hidden>
+      <button type="button" class="ghost" id="everyone-btn">Everyone</button>
+      <div id="everyone-box" hidden>
+        <ul class="shop-list" id="everyone-list"></ul>
+      </div>
     </div>
 
     <div id="admin-requests" hidden>
@@ -1103,6 +1178,7 @@
   TABS.forEach(function (entry) {
     $(entry.tab).addEventListener("click", function () {
       $("admin-panel").hidden = true;
+      $("account-panel").hidden = true;
       TABS.forEach(function (other) {
         var on = other === entry;
         $(other.tab).setAttribute("aria-selected", on ? "true" : "false");
@@ -1142,11 +1218,12 @@
     });
   });
 
-  // Coins live on this device only — nothing about them is sent anywhere, and
-  // clearing the browser's storage clears them. The shop's item list is
-  // different: it's meant to be the same for everyone, so it's kept in the
-  // shared Firebase database (see AdminRoom below) and only cached here for
-  // when that database can't be reached.
+  // Signed out, coins live on this device only — nothing about them is sent
+  // anywhere, and clearing the browser's storage clears them. Signed in, they
+  // live on the account instead, so they follow you between devices and the
+  // admin can top them up or take them away. The shop's item list is kept in
+  // the shared database either way (see AdminRoom below), and only cached
+  // here for when that database can't be reached.
   var PURSE_KEY = "contexto-coins";
   var HINT_KEY = "contexto-hints";
   var HINT_START = 3;
@@ -1155,13 +1232,20 @@
     { id: "starter-hints", name: "2 hints", note: "A hint names the word worth guessing next.", price: 3, hints: 2 }
   ];
 
+  // Set while signed in: { key, name, coins, hints }. The balance here mirrors
+  // the account's row in the database, kept current by a live subscription, so
+  // a coin the admin grants shows up without a reload.
+  var account = null;
+
   function purse() {
+    if (account) return account.coins || 0;
     try { return parseInt(localStorage.getItem(PURSE_KEY), 10) || 0; } catch (e) { return 0; }
   }
 
   // A first-time player starts with a few hints in hand, so the tour's promise
   // that Hint exists isn't immediately worthless.
   function hints() {
+    if (account) return account.hints || 0;
     try {
       var raw = localStorage.getItem(HINT_KEY);
       return raw === null ? HINT_START : (parseInt(raw, 10) || 0);
@@ -1169,7 +1253,15 @@
   }
 
   function store(key, n) {
-    try { localStorage.setItem(key, String(Math.max(0, n))); } catch (e) {}
+    n = Math.max(0, n);
+    if (account) {
+      var patch = {};
+      if (key === PURSE_KEY) { account.coins = n; patch.coins = n; }
+      else { account.hints = n; patch.hints = n; }
+      if (window.AccountRoom) window.AccountRoom.updateUser(account.key, patch).catch(function () {});
+    } else {
+      try { localStorage.setItem(key, String(n)); } catch (e) {}
+    }
     paintPurse();
   }
 
@@ -1235,7 +1327,10 @@
     var coins = purse(), left = hints();
     $("purse").textContent = tally(coins, "coin", "coins") + " · " + tally(left, "hint", "hints");
     $("play-hint").textContent = left > 0 ? "Hint · " + left : "Hint";
+    $("account-btn").textContent = account ? account.name : "Sign in";
+    $("account-btn").classList.toggle("is-on", !!account);
     renderShopList();
+    renderGiftItems();
   }
 
   function earnCoin() { store(PURSE_KEY, purse() + 1); }
@@ -1248,6 +1343,219 @@
 
   $("purse").addEventListener("click", function () {
     $("tab-shop").click();
+  });
+
+  /* ================================================================
+     ACCOUNTS — a name, a password, and a balance that follows you
+     between devices.
+
+     The password is never stored or sent: what goes into the database
+     is PBKDF2-SHA256 over it, 150,000 rounds, with a random salt per
+     account. So a person who reads the accounts table can't recover
+     anyone's password from it.
+
+     What that does NOT do is make an account tamper-proof. This page
+     has no server, so the database has to be writable by whoever holds
+     it, and someone determined can write to another account's row
+     directly. The hash protects the password itself — that matters
+     most, since people reuse them — not the coins beside it. Firebase
+     Authentication with per-user security rules is the real fix, and
+     needs a console change rather than a change here.
+     ================================================================ */
+  var ACCOUNT_KEY = "contexto-account";
+  var PBKDF2_ROUNDS = 150000;
+  var accountUnsub = null;
+
+  function accountKey(name) {
+    return String(name || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  }
+
+  function hexOf(buf) {
+    return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+      return ("0" + b.toString(16)).slice(-2);
+    }).join("");
+  }
+
+  function hashPassword(password, saltHex) {
+    var crypto = window.crypto && window.crypto.subtle;
+    if (!crypto) return Promise.reject(new Error("nocrypto"));
+    var salt = new Uint8Array(saltHex.match(/../g).map(function (h) { return parseInt(h, 16); }));
+    return crypto.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"])
+      .then(function (key) {
+        return crypto.deriveBits(
+          { name: "PBKDF2", salt: salt, iterations: PBKDF2_ROUNDS, hash: "SHA-256" }, key, 256);
+      }).then(hexOf);
+  }
+
+  function newSalt() {
+    var bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    return hexOf(bytes);
+  }
+
+  function accountSay(message) {
+    var node = $("account-notice");
+    node.textContent = message || "";
+    node.hidden = !message;
+  }
+
+  function renderAccountPanel() {
+    $("account-signed-out").hidden = !!account;
+    $("account-signed-in").hidden = !account;
+    if (account) {
+      $("account-who").textContent = "Signed in as " + account.name + ". Your coins and hints " +
+        "follow this account, so they're the same on any device you sign in on.";
+    }
+  }
+
+  function openAccountPanel() {
+    TABS.forEach(function (entry) {
+      $(entry.tab).setAttribute("aria-selected", "false");
+      $(entry.panel).hidden = true;
+    });
+    $("admin-panel").hidden = true;
+    $("account-panel").hidden = false;
+    accountSay("");
+    renderAccountPanel();
+  }
+
+  // Signing in re-points the purse at the account's row and follows it live,
+  // so a coin granted from the admin's Everyone list lands without a reload.
+  function watchAccount(key, name) {
+    account = { key: key, name: name, coins: 0, hints: 0 };
+    try { localStorage.setItem(ACCOUNT_KEY, key); } catch (e) {}
+    if (accountUnsub) { accountUnsub(); accountUnsub = null; }
+    if (window.AccountRoom && window.AccountRoom.ready) {
+      accountUnsub = window.AccountRoom.onUser(key, function (rec) {
+        if (!rec) return;
+        account.name = rec.name || key;
+        account.coins = rec.coins || 0;
+        account.hints = rec.hints || 0;
+        paintPurse();
+        renderAccountPanel();
+      });
+    }
+    paintPurse();
+    renderAccountPanel();
+  }
+
+  function signOut() {
+    if (accountUnsub) { accountUnsub(); accountUnsub = null; }
+    account = null;
+    try { localStorage.removeItem(ACCOUNT_KEY); } catch (e) {}
+    paintPurse();
+    renderAccountPanel();
+  }
+
+  function accountFields() {
+    var name = $("account-name").value.trim();
+    var key = accountKey(name);
+    var pass = $("account-pass").value;
+    if (!key) { accountSay("Pick a username — letters, numbers, dashes."); return null; }
+    if (pass.length < 4) { accountSay("Use a password of at least four characters."); return null; }
+    if (!window.AccountRoom || !window.AccountRoom.ready) {
+      accountSay("Can't reach the accounts database from here, so signing in isn't possible " +
+                 "right now. Your coins still work on this device.");
+      return null;
+    }
+    return { name: name, key: key, pass: pass };
+  }
+
+  $("account-btn").addEventListener("click", openAccountPanel);
+  $("account-signout").addEventListener("click", function () {
+    signOut();
+    accountSay("Signed out. Coins earned from here on stay on this device.");
+  });
+
+  $("account-create").addEventListener("click", function () {
+    var f = accountFields();
+    if (!f) return;
+    accountSay("Creating…");
+    var salt = newSalt();
+    hashPassword(f.pass, salt).then(function (hash) {
+      return window.AccountRoom.createUser(f.key, {
+        name: f.name, salt: salt, hash: hash,
+        coins: purse(), hints: hints(), at: Date.now()
+      });
+    }).then(function () {
+      $("account-pass").value = "";
+      watchAccount(f.key, f.name);
+      accountSay("Account made. The coins you already had came with you.");
+    }).catch(function (e) {
+      accountSay(e && e.message === "taken"
+        ? "That username is taken — try another."
+        : "Couldn't create the account. Check the connection and try again.");
+    });
+  });
+
+  $("account-signin").addEventListener("click", function () {
+    var f = accountFields();
+    if (!f) return;
+    accountSay("Checking…");
+    window.AccountRoom.getUser(f.key).then(function (rec) {
+      if (!rec || !rec.salt) throw new Error("nouser");
+      return hashPassword(f.pass, rec.salt).then(function (hash) {
+        if (hash !== rec.hash) throw new Error("wrong");
+        $("account-pass").value = "";
+        watchAccount(f.key, rec.name || f.name);
+        accountSay("");
+        $("tab-play").click();
+      });
+    }).catch(function (e) {
+      var why = e && e.message;
+      accountSay(why === "nouser" ? "No account with that name yet — Create account makes one."
+               : why === "wrong" ? "That password doesn't match."
+               : "Couldn't sign in. Check the connection and try again.");
+    });
+  });
+
+  $("account-pass").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") $("account-signin").click();
+  });
+
+  /* ---------- gifting ---------- */
+  function renderGiftItems() {
+    var sel = $("gift-item");
+    if (sel.dataset.stamp === String(shopItems.length) + ":" + shopItems.map(function (i) { return i.id; }).join(",")) return;
+    sel.dataset.stamp = String(shopItems.length) + ":" + shopItems.map(function (i) { return i.id; }).join(",");
+    sel.innerHTML = shopItems.map(function (item, idx) {
+      return '<option value="' + idx + '">' + escapeHtml(item.name) + " — " +
+             tally(item.price, "coin", "coins") + "</option>";
+    }).join("");
+  }
+
+  function giftSay(message) {
+    var node = $("gift-notice");
+    node.textContent = message || "";
+    node.hidden = !message;
+  }
+
+  $("gift-send").addEventListener("click", function () {
+    var item = shopItems[+$("gift-item").value];
+    var toKey = accountKey($("gift-to").value);
+    if (!item) { giftSay("Pick something to send."); return; }
+    if (!toKey) { giftSay("Who's it for? Type their username."); return; }
+    if (!account) { giftSay("Sign in first — a gift comes out of your own coins."); return; }
+    if (toKey === account.key) { giftSay("That's you. Buying it outright is the same thing."); return; }
+    if (purse() < item.price) { giftSay("Not enough coins for that one."); return; }
+    if (!window.AccountRoom || !window.AccountRoom.ready) { giftSay("Can't reach the accounts database right now."); return; }
+
+    giftSay("Sending…");
+    window.AccountRoom.getUser(toKey).then(function (rec) {
+      if (!rec) throw new Error("nouser");
+      // Charge only once the recipient is known to exist, so a typo can't
+      // quietly cost coins.
+      return window.AccountRoom.updateUser(toKey, { hints: (rec.hints || 0) + item.hints })
+        .then(function () {
+          store(PURSE_KEY, purse() - item.price);
+          $("gift-to").value = "";
+          giftSay("Sent " + tally(item.hints, "hint", "hints") + " to " + (rec.name || toKey) + ".");
+        });
+    }).catch(function (e) {
+      giftSay(e && e.message === "nouser"
+        ? "No account with that name — check the spelling."
+        : "Couldn't send that. Try again in a moment.");
+    });
   });
 
   /* ================================================================
@@ -1322,10 +1630,11 @@
       : "Assistant admin — send feature requests and bug reports, and chat here.";
     $("admin-broadcast").hidden = role !== "admin";
     $("admin-shop-editor").hidden = role !== "admin";
+    $("admin-everyone").hidden = role !== "admin";
     $("admin-requests").hidden = role !== "admin";
     $("admin-request-form").hidden = role !== "assistant";
     adminSay("");
-    if (role === "admin") { renderAdminItemList(); renderAdminRequestList(); }
+    if (role === "admin") { renderAdminItemList(); renderAdminRequestList(); renderEveryone(); }
   }
 
   function persistShopItems() {
@@ -1409,6 +1718,49 @@
     persistShopItems();
     renderAdminItemList();
     adminSay("Back to the default shop.");
+  });
+
+  /* ---------- everyone: the admin's view of all accounts ---------- */
+  var allUsers = [];
+
+  function renderEveryone() {
+    var ul = $("everyone-list");
+    ul.innerHTML = allUsers.map(function (u) {
+      return '<li class="user-row" data-key="' + escapeHtml(u.key) + '">' +
+        '<span class="who"><span>' + escapeHtml(u.name) + '</span>' +
+        '<b>' + tally(u.coins, "coin", "coins") + " · " + tally(u.hints, "hint", "hints") + '</b></span>' +
+        '<div class="row">' +
+          '<input class="num fixed give-amount" type="number" min="1" value="1" />' +
+          '<button type="button" class="ghost grow give-coins">Give coins</button>' +
+          '<button type="button" class="ghost grow take-coins">Take coins</button>' +
+          '<button type="button" class="ghost grow give-hints">Give hints</button>' +
+        '</div></li>';
+    }).join("") || '<li class="chat-empty">Nobody has made an account yet.</li>';
+  }
+
+  $("everyone-btn").addEventListener("click", function () {
+    var box = $("everyone-box");
+    box.hidden = !box.hidden;
+    if (!box.hidden) renderEveryone();
+  });
+
+  $("everyone-list").addEventListener("click", function (e) {
+    var li = e.target.closest("li[data-key]");
+    if (!li || !window.AccountRoom) return;
+    var key = li.dataset.key;
+    var user = allUsers.filter(function (u) { return u.key === key; })[0];
+    if (!user) return;
+    var amount = Math.max(1, parseInt(li.querySelector(".give-amount").value, 10) || 1);
+
+    var patch = null;
+    if (e.target.classList.contains("give-coins")) patch = { coins: user.coins + amount };
+    else if (e.target.classList.contains("take-coins")) patch = { coins: Math.max(0, user.coins - amount) };
+    else if (e.target.classList.contains("give-hints")) patch = { hints: user.hints + amount };
+    if (!patch) return;
+
+    window.AccountRoom.updateUser(key, patch).then(function () {
+      adminSay("Updated " + user.name + ".");
+    }).catch(adminDbNote);
   });
 
   var reqType = "feature";
@@ -1518,6 +1870,23 @@
     subscribeAdminChannels();
   });
 
+  // The account roster feeds the admin's Everyone list; the remembered
+  // sign-in is picked back up as soon as the database can answer for it.
+  window.addEventListener("accountroom-ready", function () {
+    window.AccountRoom.onAllUsers(function (list) {
+      allUsers = list;
+      if (adminRole() === "admin" && !$("admin-panel").hidden && !$("everyone-box").hidden) renderEveryone();
+    });
+    var remembered = null;
+    try { remembered = localStorage.getItem(ACCOUNT_KEY); } catch (e) {}
+    if (remembered) {
+      window.AccountRoom.getUser(remembered).then(function (rec) {
+        if (rec) watchAccount(remembered, rec.name || remembered);
+        else { try { localStorage.removeItem(ACCOUNT_KEY); } catch (e) {} }
+      }).catch(function () {});
+    }
+  });
+
   // Each difficulty gets its own clock. Running out ends the game the way
   // giving up does: the word is shown, and no coin is earned.
   var LIMITS = { easy: 7 * 60, normal: 10 * 60, hard: 12 * 60, nightmare: 17 * 60 };
@@ -1611,7 +1980,7 @@
   }
 
   function myOnlineName() {
-    return $("online-name").value.trim() || "Player";
+    return $("online-name").value.trim() || (account && account.name) || "Player";
   }
 
   pressGroup($("modes"), "mode", function (mode) {
@@ -1698,6 +2067,8 @@
 
   function beginGame(secret, code) {
     if (window.LiveRoom) window.LiveRoom.leave();
+    stopBots();
+    closeMyOpenGame();
 
     play.secret = secret;
     play.code = code || null;
@@ -1839,6 +2210,68 @@
     $("code-out").appendChild(card);
   }
 
+  /* ---------- filling out a quiet room ----------
+     An empty online game is worse than no online game: you sit in a lobby of
+     one, watching nothing happen. So a room that stays empty gets other
+     racers in it, closing on the word at their own pace beside you.
+
+     They show in the roster only, never in the shared ladder — their guesses
+     would otherwise hand you the answer — and they stop short of rank 1. The
+     round stays yours to finish. */
+  var BOT_NAMES = ["Maya", "Daniel", "Priya", "Omar", "Sofia", "Liam", "Noor", "Ethan",
+                   "Amara", "Lucas", "Hana", "Marco", "Zoe", "Idris", "Elena", "Theo",
+                   "Ava", "Rafael", "Nina", "Jonas", "Leila", "Felix"];
+  var bots = { list: [], tick: null, watch: null };
+
+  function stopBots() {
+    if (bots.tick) { clearInterval(bots.tick); bots.tick = null; }
+    if (bots.watch) { clearTimeout(bots.watch); bots.watch = null; }
+    bots.list = [];
+  }
+
+  function spawnBots() {
+    var pool = BOT_NAMES.slice();
+    var count = 2 + Math.floor(Math.random() * 2);
+    bots.list = [];
+    for (var i = 0; i < count; i++) {
+      bots.list.push({
+        name: pool.splice(Math.floor(Math.random() * pool.length), 1)[0],
+        guesses: 0,
+        best: null,
+        pace: 0.55 + Math.random() * 0.25,       // how sharply this one closes in
+        next: Date.now() + 2000 + Math.random() * 6000
+      });
+    }
+    if (bots.tick) clearInterval(bots.tick);
+    bots.tick = setInterval(botTick, 1000);
+    refreshPlay();
+  }
+
+  function botTick() {
+    if (play.done || play.mode !== "online") { stopBots(); return; }
+    var now = Date.now(), moved = false;
+    bots.list.forEach(function (b) {
+      if (now < b.next) return;
+      b.guesses++;
+      b.best = b.best === null
+        ? 900 + Math.floor(Math.random() * 6000)
+        : Math.max(2, Math.round(b.best * b.pace));
+      b.next = now + 4000 + Math.random() * 6000;
+      moved = true;
+    });
+    if (moved) refreshPlay();
+  }
+
+  // Give the room a moment to fill with actual people before standing anyone in.
+  function armBots() {
+    if (bots.watch) clearTimeout(bots.watch);
+    bots.watch = setTimeout(function () {
+      if (play.done || play.mode !== "online") return;
+      var others = (play.live || []).filter(function (p) { return !p.isMe; }).length;
+      if (!others) spawnBots();
+    }, 8000);
+  }
+
   function refreshPlay() {
     var isOnline = play.mode === "online";
     var ladderRows = isOnline && play.liveRows ? play.liveRows : play.rows;
@@ -1866,6 +2299,9 @@
 
       if (isOnline) {
         var live = play.live || [{ name: play.myName, guesses: play.rows.length, best: best ? best.rank : null, isMe: true }];
+        live = live.concat(bots.list.map(function (b) {
+          return { name: b.name, guesses: b.guesses, best: b.best, isMe: false };
+        }));
         live.forEach(function (p) {
           var li = document.createElement("li");
           li.className = "roster-item" + (p.isMe ? " is-me" : "");
@@ -1949,6 +2385,8 @@
     $("roster").hidden = true;
     $("chat-box").hidden = true;
     if (window.LiveRoom) window.LiveRoom.leave();
+    stopBots();
+    closeMyOpenGame();
 
     var shared = play.players.length > 1;
     var count = play.rows.length + (play.rows.length === 1 ? " guess" : " guesses");
@@ -2083,6 +2521,45 @@
   }
 
   $("start").addEventListener("click", function () { beginGame(pickSecret(), null); });
+
+  /* ---------- joining whatever is going on ----------
+     A game somebody else has open, if there is one; otherwise a fresh one,
+     listed so the next person through the door lands in it rather than
+     starting their own. */
+  var myOpenGame = null;
+
+  function closeMyOpenGame() {
+    if (myOpenGame && window.AccountRoom) window.AccountRoom.closeGame(myOpenGame).catch(function () {});
+    myOpenGame = null;
+  }
+
+  function hostNewGame(level) {
+    var secret = pickSecret();
+    var code = makeCode(WORDS.indexOf(secret));
+    beginGame(secret, code);
+    if (window.AccountRoom && window.AccountRoom.ready) {
+      window.AccountRoom.openGame(code, level).then(function () { myOpenGame = code; }).catch(function () {});
+    }
+    armBots();
+  }
+
+  $("join-any").addEventListener("click", function () {
+    say($("code-notice"), "");
+    var level = play.level;
+    var AR = window.AccountRoom;
+    if (!AR || !AR.ready) { hostNewGame(level); return; }
+
+    var button = $("join-any");
+    button.disabled = true;
+    AR.findOpenGame(level).then(function (game) {
+      var idx = game ? readCode(game.code) : null;
+      if (idx === null) { hostNewGame(level); return; }
+      beginGame(WORDS[idx], game.code);
+      armBots();
+    }).catch(function () {
+      hostNewGame(level);
+    }).then(function () { button.disabled = false; });
+  });
 
   $("make-code").addEventListener("click", function () {
     var secret = pickSecret();
@@ -2681,6 +3158,19 @@
   var LiveRoom = { join: function () {}, leave: function () {}, updateProgress: function () {}, sendChat: function () {}, addGuess: function () {}, ready: false, unavailable: false };
   window.LiveRoom = LiveRoom;
 
+  var AccountRoom = {
+    getUser: function () { return Promise.reject(new Error("offline")); },
+    createUser: function () { return Promise.reject(new Error("offline")); },
+    updateUser: function () { return Promise.reject(new Error("offline")); },
+    onUser: function () {},
+    onAllUsers: function () {},
+    findOpenGame: function () { return Promise.reject(new Error("offline")); },
+    openGame: function () { return Promise.reject(new Error("offline")); },
+    closeGame: function () { return Promise.reject(new Error("offline")); },
+    ready: false, unavailable: false
+  };
+  window.AccountRoom = AccountRoom;
+
   var AdminRoom = {
     sendChat: function () { return Promise.reject(new Error("offline")); }, onChat: function () {},
     submitRequest: function () { return Promise.reject(new Error("offline")); },
@@ -2825,16 +3315,74 @@
       };
       AdminRoom.ready = true;
       window.dispatchEvent(new Event("adminroom-ready"));
+
+      // Accounts and the open-game lobby both sit under the same "admin"
+      // branch, so they need no database rule beyond the one already
+      // documented above FIREBASE_CONFIG.
+      var usersRef = dbMod.ref(db, "admin/users");
+      var lobbyRef = dbMod.ref(db, "admin/lobby");
+
+      AccountRoom.getUser = function (key) {
+        return dbMod.get(dbMod.ref(db, "admin/users/" + key)).then(function (s) { return s.val(); });
+      };
+      AccountRoom.createUser = function (key, rec) {
+        return dbMod.get(dbMod.ref(db, "admin/users/" + key)).then(function (s) {
+          if (s.val()) throw new Error("taken");
+          return dbMod.set(dbMod.ref(db, "admin/users/" + key), rec);
+        });
+      };
+      AccountRoom.updateUser = function (key, patch) {
+        return dbMod.update(dbMod.ref(db, "admin/users/" + key), patch);
+      };
+      AccountRoom.onUser = function (key, cb) {
+        return dbMod.onValue(dbMod.ref(db, "admin/users/" + key), function (s) { cb(s.val()); });
+      };
+      AccountRoom.onAllUsers = function (cb) {
+        return dbMod.onValue(usersRef, function (s) {
+          var val = s.val() || {};
+          cb(Object.keys(val).map(function (k) {
+            var u = val[k] || {};
+            return { key: k, name: u.name || k, coins: u.coins || 0, hints: u.hints || 0, at: u.at || 0 };
+          }).sort(function (a, b) { return a.at - b.at; }));
+        });
+      };
+
+      // An open game is one somebody started and is still sitting in, waiting.
+      // Anything older than a few minutes is stale — whoever opened it has
+      // long since finished or closed the tab — so it never gets handed out.
+      var GAME_FRESH_MS = 4 * 60 * 1000;
+      AccountRoom.findOpenGame = function (level) {
+        return dbMod.get(lobbyRef).then(function (s) {
+          var val = s.val() || {}, now = Date.now();
+          var open = Object.keys(val).map(function (k) { return val[k]; }).filter(function (g) {
+            return g && g.code && g.level === level && (now - (g.at || 0)) < GAME_FRESH_MS;
+          });
+          return open.length ? open[Math.floor(Math.random() * open.length)] : null;
+        });
+      };
+      AccountRoom.openGame = function (code, level) {
+        return dbMod.set(dbMod.ref(db, "admin/lobby/" + code), { code: code, level: level, at: Date.now() });
+      };
+      AccountRoom.closeGame = function (code) {
+        return dbMod.remove(dbMod.ref(db, "admin/lobby/" + code));
+      };
+
+      AccountRoom.ready = true;
+      window.dispatchEvent(new Event("accountroom-ready"));
     }).catch(function () {
       LiveRoom.unavailable = true;
       window.dispatchEvent(new Event("liveroom-unavailable"));
       AdminRoom.unavailable = true;
       window.dispatchEvent(new Event("adminroom-unavailable"));
+      AccountRoom.unavailable = true;
+      window.dispatchEvent(new Event("accountroom-unavailable"));
     });
   } else {
     LiveRoom.unavailable = true;
     window.dispatchEvent(new Event("liveroom-unavailable"));
     AdminRoom.unavailable = true;
     window.dispatchEvent(new Event("adminroom-unavailable"));
+    AccountRoom.unavailable = true;
+    window.dispatchEvent(new Event("accountroom-unavailable"));
   }
 </script>
