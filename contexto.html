@@ -537,6 +537,26 @@
   .chat-line.mine .from { color: var(--accent); }
   .chat-empty { font-size: var(--micro); color: var(--muted); }
 
+  .chat-line .votes { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; }
+  .chat-line .vote-btn {
+    font-size: var(--micro);
+    font-family: var(--mono);
+    border: 1px solid var(--rule);
+    background: none;
+    color: var(--muted);
+    padding: 0.125rem 0.5rem;
+    cursor: pointer;
+  }
+  .chat-line .vote-btn.mine-yes { border-color: var(--accent); color: var(--accent); }
+  .chat-line .vote-btn.mine-no { border-color: var(--ink); color: var(--ink); }
+
+  .chat-line .translated { margin-top: 0.25rem; color: var(--muted); font-style: italic; }
+  .chat-line .translated .from-lang { font-style: normal; font-size: var(--micro); }
+
+  #global-chat-log { max-height: 16rem; }
+  #panel-community .row { margin-top: 0.5rem; }
+  #suggest-feature-box { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+
   #chat-box .row { margin-top: 0.5rem; }
   #chat-box input { font-size: var(--micro); }
 
@@ -620,7 +640,56 @@
   }
   .colophon p { margin: 0; }
   .colophon b { font-weight: 600; color: var(--ink); }
+
+  /* ---------- win flash: a bought cosmetic, not a gameplay signal ----------
+     Two bright pulses about a second apart, well under the ~3/second rate
+     flagged as a photosensitive-seizure risk, then the word holds steady
+     until it's dismissed. Reduced-motion gets a plain, static reveal. */
+  .win-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .win-flash.playing { animation: win-flash-bg 1.8s ease-out; }
+  .win-flash-word {
+    font-family: var(--serif);
+    font-size: clamp(2.5rem, 12vw, 6rem);
+    font-weight: 700;
+    color: var(--ink);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+    opacity: 0;
+    padding: 0 1rem;
+  }
+  .win-flash.playing .win-flash-word { animation: win-flash-word 1.8s ease-out; }
+  @keyframes win-flash-bg {
+    0%   { background: rgba(255, 255, 255, 0); }
+    12%  { background: rgba(255, 255, 255, 0.92); }
+    24%  { background: rgba(255, 255, 255, 0.12); }
+    36%  { background: rgba(255, 255, 255, 0.92); }
+    50%  { background: rgba(255, 255, 255, 0.2); }
+    100% { background: rgba(255, 255, 255, 0.2); }
+  }
+  @keyframes win-flash-word {
+    0%   { opacity: 0; transform: scale(0.8); }
+    12%  { opacity: 0; }
+    24%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .win-flash.playing { animation: none; background: rgba(255, 255, 255, 0.92); }
+    .win-flash.playing .win-flash-word { animation: none; opacity: 1; }
+  }
 </style>
+
+<div id="win-flash" class="win-flash" hidden aria-hidden="true">
+  <div class="win-flash-word"></div>
+</div>
 
 <div class="wrap">
   <header class="masthead">
@@ -630,93 +699,95 @@
         <div class="eyebrow" id="dictline">dictionary loading</div>
       </div>
       <div class="masthead-right">
+        <button type="button" class="admin-btn" id="lang-btn" title="Français" aria-pressed="false">FR</button>
         <button type="button" class="purse" id="purse" aria-expanded="false">0 coins</button>
-        <button type="button" class="admin-btn" id="account-btn">Sign in</button>
+        <button type="button" class="admin-btn" id="account-btn" data-i18n="sign-in">Sign in</button>
       </div>
     </div>
-    <h1>Contexto</h1>
-    <p class="standfirst">A word is hidden. Every guess comes back with its distance from it.</p>
+    <h1 data-i18n="title">Contexto</h1>
+    <p class="standfirst" data-i18n="standfirst">A word is hidden. Every guess comes back with its distance from it.</p>
     <p class="gloss">
-      New here? <a href="#" id="start-tour">Take the tour</a> — it deals you a real round and
+      New here? <a href="#" id="start-tour" data-i18n="take-tour">Take the tour</a> — it deals you a real round and
       talks you through it.
     </p>
     <p class="gloss">
-      <a href="#" id="save-copy">Save this page</a> to play with no connection, no account, on any device.
+      <a href="#" id="save-copy" data-i18n="save-page">Save this page</a> to play with no connection, no account, on any device.
     </p>
   </header>
 
   <!-- Read by every visitor, no login needed. Only the admin can post to it
        — see admin-broadcast in the Admin panel below. -->
   <section class="announce" id="announce-panel" hidden>
-    <div class="eyebrow">updates</div>
+    <div class="eyebrow" data-i18n="updates">updates</div>
     <ul class="chat-log" id="announce-log"></ul>
   </section>
 
   <section class="panel admin-panel account-panel" id="account-panel" hidden>
-    <div class="eyebrow">account</div>
+    <div class="eyebrow" data-i18n="account">account</div>
 
     <div id="account-signed-out">
-      <p class="gloss">An account keeps your coins and hints with you on any device, and lets
+      <p class="gloss" data-i18n="account-blurb">An account keeps your coins and hints with you on any device, and lets
         other players send you gifts.</p>
       <div class="field">
-        <label class="key" for="account-name">username</label>
+        <label class="key" for="account-name" data-i18n="username">username</label>
         <input id="account-name" placeholder="yourname" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" />
       </div>
       <div class="field">
-        <label class="key" for="account-pass">password</label>
+        <label class="key" for="account-pass" data-i18n="password">password</label>
         <input id="account-pass" type="password" placeholder="••••••••" autocomplete="current-password" />
       </div>
       <div class="row">
-        <button type="button" class="grow" id="account-signin">Sign in</button>
-        <button type="button" class="ghost grow" id="account-create">Create account</button>
+        <button type="button" class="grow" id="account-signin" data-i18n="sign-in">Sign in</button>
+        <button type="button" class="ghost grow" id="account-create" data-i18n="create-account">Create account</button>
       </div>
     </div>
 
     <div id="account-signed-in" hidden>
       <p class="gloss" id="account-who"></p>
-      <p class="gloss">Your account id: <code id="account-uid"></code></p>
-      <button type="button" id="claim-admin" hidden>Claim admin</button>
-      <button type="button" class="linkish" id="account-signout">Sign out</button>
+      <p class="gloss"><span data-i18n="account-id">Your account id:</span> <code id="account-uid"></code></p>
+      <button type="button" id="claim-admin" hidden data-i18n="claim-admin">Claim admin</button>
+      <button type="button" class="linkish" id="account-signout" data-i18n="sign-out">Sign out</button>
     </div>
 
     <p class="gloss" id="account-notice" hidden></p>
   </section>
 
   <nav class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play">play</button>
-    <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve">solver</button>
-    <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="panel-compare">compare</button>
-    <button class="tab" role="tab" id="tab-shop" aria-selected="false" aria-controls="panel-shop">shop</button>
+    <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play" data-i18n="tab-play">play</button>
+    <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve" data-i18n="tab-solve">solver</button>
+    <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="panel-compare" data-i18n="tab-compare">compare</button>
+    <button class="tab" role="tab" id="tab-shop" aria-selected="false" aria-controls="panel-shop" data-i18n="tab-shop">shop</button>
+    <button class="tab" role="tab" id="tab-community" aria-selected="false" aria-controls="panel-community" data-i18n="tab-chat">chat</button>
   </nav>
 
   <!-- ============ PLAY ============ -->
   <section class="panel" id="panel-play" role="tabpanel" aria-labelledby="tab-play">
     <div id="play-setup" class="panel">
       <div class="field">
-        <span class="key">how you're playing</span>
+        <span class="key" data-i18n="how-playing">how you're playing</span>
         <div class="segmented" id="modes">
-          <button type="button" aria-pressed="true" data-mode="offline">offline</button>
-          <button type="button" aria-pressed="false" data-mode="online">online</button>
+          <button type="button" aria-pressed="true" data-mode="offline" data-i18n="offline">offline</button>
+          <button type="button" aria-pressed="false" data-mode="online" data-i18n="online">online</button>
         </div>
-        <p class="gloss" id="mode-note">Up to four of you on this phone, taking turns at one hidden word.</p>
+        <p class="gloss" id="mode-note" data-i18n="mode-note">Up to four of you on this phone, taking turns at one hidden word.</p>
       </div>
 
       <div class="field">
-        <span class="key">difficulty</span>
+        <span class="key" data-i18n="difficulty">difficulty</span>
         <div class="segmented" id="levels">
-          <button type="button" aria-pressed="false" data-level="easy">easy</button>
-          <button type="button" aria-pressed="true" data-level="normal">normal</button>
-          <button type="button" aria-pressed="false" data-level="hard">hard</button>
-          <button type="button" aria-pressed="false" data-level="nightmare">nightmare</button>
+          <button type="button" aria-pressed="false" data-level="easy" data-i18n="easy">easy</button>
+          <button type="button" aria-pressed="true" data-level="normal" data-i18n="normal">normal</button>
+          <button type="button" aria-pressed="false" data-level="hard" data-i18n="hard">hard</button>
+          <button type="button" aria-pressed="false" data-level="nightmare" data-i18n="nightmare">nightmare</button>
         </div>
-        <p class="gloss">Easy words are things you can hold, hard ones are ideas, and nightmare
+        <p class="gloss" data-i18n="difficulty-note">Easy words are things you can hold, hard ones are ideas, and nightmare
           reaches for the words you know but rarely say. The clock is 7 minutes on easy, 10 on
           normal, 12 on hard and 17 on nightmare.</p>
       </div>
 
       <div id="offline-only" class="panel">
         <div class="field">
-          <span class="key">players</span>
+          <span class="key" data-i18n="players">players</span>
           <div class="segmented" id="counts">
             <button type="button" aria-pressed="true" data-count="1">1</button>
             <button type="button" aria-pressed="false" data-count="2">2</button>
@@ -726,37 +797,36 @@
         </div>
 
         <div class="field" id="names-field" hidden>
-          <span class="key">names</span>
+          <span class="key" data-i18n="names">names</span>
           <div class="names" id="names"></div>
         </div>
 
-        <button class="wide" id="start">Hide a word</button>
+        <button class="wide" id="start" data-i18n="hide-word">Hide a word</button>
       </div>
 
       <div id="online-only" class="panel" hidden>
         <div class="field">
-          <label class="key" for="online-name">your name</label>
+          <label class="key" for="online-name" data-i18n="your-name">your name</label>
           <input id="online-name" placeholder="Player" autocapitalize="words" spellcheck="false" />
         </div>
 
-        <button class="wide" id="join-any">Join an online game</button>
-        <p class="gloss">Drops you into a game someone else has open. If nobody's around, you'll
-          be matched with other players to race against.</p>
+        <button class="wide" id="join-any" data-i18n="join-last">Join the last online game</button>
+        <p class="gloss" data-i18n="join-last-note">Joins the most recent game in progress. If nobody's playing, you start a new one.</p>
 
-        <button class="wide ghost" id="make-code">Hide a word and get a code</button>
+        <button class="wide ghost" id="make-code" data-i18n="hide-word-code">Hide a word and get a code</button>
         <div id="code-out"></div>
 
         <div class="field">
-          <label class="key" for="code-in">or open a friend's code</label>
+          <label class="key" for="code-in" data-i18n="open-code">or open a friend's code</label>
           <div class="row">
             <input class="grow code-input" id="code-in" placeholder="K7P2" maxlength="5"
                    autocapitalize="characters" autocorrect="off" spellcheck="false" />
-            <button type="button" class="ghost" id="use-code">Open</button>
+            <button type="button" class="ghost" id="use-code" data-i18n="open">Open</button>
           </div>
         </div>
 
         <p class="notice" id="code-notice" hidden></p>
-        <p class="gloss">Everyone who opens the same code joins the same live room — you'll see who else is playing and can chat, but each of you guesses on your own. Needs a connection; offline mode doesn't.</p>
+        <p class="gloss" data-i18n="code-room-note">Everyone who opens the same code joins the same live room — you'll see who else is playing and can chat, but each of you guesses on your own. Needs a connection; offline mode doesn't.</p>
       </div>
     </div>
 
@@ -774,33 +844,33 @@
           <div class="eyebrow" id="coach-step"></div>
           <p id="coach-text"></p>
           <div class="row">
-            <button type="button" class="ghost" id="coach-next">Got it</button>
-            <button type="button" class="linkish" id="coach-skip">skip the tour</button>
+            <button type="button" class="ghost" id="coach-next" data-i18n="got-it">Got it</button>
+            <button type="button" class="linkish" id="coach-skip" data-i18n="skip-tour">skip the tour</button>
           </div>
         </aside>
 
         <div class="row" id="play-controls">
           <input class="grow" id="play-input" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" />
-          <button id="play-go">Guess</button>
-          <button type="button" class="ghost" id="play-hint">Hint</button>
+          <button id="play-go" data-i18n="guess">Guess</button>
+          <button type="button" class="ghost" id="play-hint" data-i18n="hint">Hint</button>
         </div>
 
         <p class="notice" id="play-notice" hidden></p>
         <ul class="readings" id="play-ladder"></ul>
-        <button class="linkish" id="play-quit">give up</button>
+        <button class="linkish" id="play-quit" data-i18n="give-up">give up</button>
       </div>
 
       <aside class="roster" id="roster" hidden>
-        <div class="eyebrow">who's in this game</div>
+        <div class="eyebrow" data-i18n="whos-here">who's in this game</div>
         <ul class="roster-list" id="roster-list"></ul>
         <p class="notice" id="live-notice" hidden></p>
 
         <div id="chat-box" hidden>
-          <div class="eyebrow chat-eyebrow">chat</div>
+          <div class="eyebrow chat-eyebrow" data-i18n="chat">chat</div>
           <ul class="chat-log" id="chat-log"></ul>
           <div class="row">
             <input class="grow" id="chat-input" placeholder="say something" maxlength="140" autocomplete="off" />
-            <button type="button" class="ghost" id="chat-send">Send</button>
+            <button type="button" class="ghost" id="chat-send" data-i18n="send">Send</button>
           </div>
         </div>
       </aside>
@@ -809,127 +879,172 @@
 
   <!-- ============ SOLVER ============ -->
   <section class="panel" id="panel-solve" role="tabpanel" aria-labelledby="tab-solve" hidden>
-    <p class="gloss">Playing the real Contexto elsewhere? Type the ranks it gave you. Each one narrows which word fits.</p>
+    <p class="gloss" data-i18n="solve-blurb">Playing the real Contexto elsewhere? Type the ranks it gave you. Each one narrows which word fits.</p>
 
     <div class="row">
       <input class="grow" id="obs-word" placeholder="word" autocapitalize="none" autocorrect="off" spellcheck="false" />
       <input class="fixed num" id="obs-rank" placeholder="rank" inputmode="numeric" />
-      <button id="obs-add">Add</button>
+      <button id="obs-add" data-i18n="add">Add</button>
     </div>
 
     <p class="notice" id="solve-notice" hidden></p>
 
     <ul class="readings" id="obs-list"></ul>
-    <p class="empty" id="obs-empty">No ranks yet. Start with a broad word — water, money, city — and enter whatever number comes back.</p>
+    <p class="empty" id="obs-empty" data-i18n="obs-empty">No ranks yet. Start with a broad word — water, money, city — and enter whatever number comes back.</p>
 
-    <button class="wide ghost" id="solve-go">Name the word</button>
+    <button class="wide ghost" id="solve-go" data-i18n="name-word">Name the word</button>
 
     <div id="solve-out"></div>
   </section>
 
   <!-- ============ COMPARE ============ -->
   <section class="panel" id="panel-compare" role="tabpanel" aria-labelledby="tab-compare" hidden>
-    <p class="gloss">Place any number of words against one main word, to see which of two guesses is worth a turn.</p>
+    <p class="gloss" data-i18n="compare-blurb">Place any number of words against one main word, to see which of two guesses is worth a turn.</p>
 
     <div class="field">
-      <label class="key" for="cmp-main">main word</label>
+      <label class="key" for="cmp-main" data-i18n="main-word">main word</label>
       <input id="cmp-main" placeholder="puppy" autocapitalize="none" autocorrect="off" spellcheck="false" />
     </div>
 
     <div class="field">
-      <label class="key" for="cmp-others">words to place against it</label>
+      <label class="key" for="cmp-others" data-i18n="words-against">words to place against it</label>
       <textarea id="cmp-others" rows="3" placeholder="dog, kitten, wolf, tractor" autocapitalize="none" autocorrect="off" spellcheck="false"></textarea>
     </div>
 
-    <button class="wide" id="cmp-go">Rank them</button>
+    <button class="wide" id="cmp-go" data-i18n="rank-them">Rank them</button>
     <p class="notice" id="cmp-notice" hidden></p>
     <div id="cmp-out"></div>
   </section>
 
   <!-- ============ SHOP ============ -->
   <section class="panel" id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden>
-    <p class="gloss">Spend coins to boost your hints and game settings.</p>
+    <p class="gloss" data-i18n="shop-blurb">Spend coins to boost your hints and game settings.</p>
     <ul class="shop-list" id="shop-list-live"></ul>
     <p class="gloss" id="shop-notice" hidden></p>
 
     <div class="field">
-      <span class="key">send one as a gift</span>
-      <p class="gloss" id="gift-note">You pay the coins; the hints land in their account.</p>
+      <span class="key" data-i18n="send-gift">send one as a gift</span>
+      <p class="gloss" id="gift-note" data-i18n="gift-note">You pay the coins; the hints land in their account.</p>
       <input id="gift-to" placeholder="their username" autocapitalize="none" autocorrect="off" spellcheck="false" />
       <div class="row">
         <select id="gift-item" class="grow"></select>
-        <button type="button" class="ghost" id="gift-send">Send gift</button>
+        <button type="button" class="ghost" id="gift-send" data-i18n="send-gift-btn">Send gift</button>
       </div>
       <p class="gloss" id="gift-notice" hidden></p>
     </div>
   </section>
 
+  <!-- ============ COMMUNITY ============ -->
+  <section class="panel" id="panel-community" role="tabpanel" aria-labelledby="tab-community" hidden>
+    <p class="gloss" data-i18n="chat-blurb">Everyone signed in can post here and vote yes or no on what others say.</p>
+    <ul class="chat-log" id="global-chat-log"><li class="chat-empty" data-i18n="no-messages">No messages yet.</li></ul>
+    <div class="row">
+      <input class="grow" id="global-chat-input" placeholder="say something" maxlength="200" autocomplete="off" />
+      <button type="button" class="ghost" id="global-chat-send" data-i18n="send">Send</button>
+    </div>
+    <p class="gloss" id="global-chat-notice" hidden></p>
+
+    <div class="field">
+      <button type="button" class="wide ghost" id="suggest-feature-btn" data-i18n="suggest-feature">Suggest a feature</button>
+      <div id="suggest-feature-box" hidden>
+        <textarea id="suggest-feature-text" rows="3" placeholder="What should be added?"></textarea>
+        <button type="button" id="suggest-feature-send" data-i18n="send-admins">Send to the admins</button>
+        <p class="gloss" id="suggest-feature-notice" hidden></p>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ ADMIN ============ -->
   <section class="panel admin-panel" id="admin-panel" hidden>
-    <div class="eyebrow">admin</div>
+    <div class="eyebrow" data-i18n="admin">admin</div>
     <p class="gloss" id="admin-role-note"></p>
 
     <div id="admin-broadcast" hidden>
       <div class="field">
-        <span class="key">post an update — every visitor sees this, only you can post it</span>
+        <span class="key" data-i18n="post-update">post an update — every visitor sees this, only you can post it</span>
         <textarea id="admin-broadcast-text" rows="2" placeholder="What's new?"></textarea>
       </div>
-      <button type="button" id="admin-broadcast-send">Post to everyone</button>
+      <button type="button" id="admin-broadcast-send" data-i18n="post-everyone">Post to everyone</button>
     </div>
 
     <div id="admin-shop-editor" hidden>
       <div class="field">
-        <span class="key">shop items</span>
+        <span class="key" data-i18n="shop-items">shop items</span>
         <ul class="shop-list" id="admin-item-list"></ul>
       </div>
       <div class="field">
-        <span class="key">add an item</span>
+        <span class="key" data-i18n="add-item-key">add an item</span>
         <input id="admin-new-name" placeholder="item name" autocapitalize="none" autocorrect="off" />
         <input id="admin-new-note" placeholder="short description" autocapitalize="none" autocorrect="off" />
         <div class="row">
           <input class="num fixed" id="admin-new-price" type="number" min="1" placeholder="coins" />
           <input class="num fixed" id="admin-new-hints" type="number" min="1" placeholder="hints" />
-          <button type="button" class="grow" id="admin-add-item">Add item</button>
+          <button type="button" class="grow" id="admin-add-item" data-i18n="add-item">Add item</button>
         </div>
       </div>
-      <button type="button" class="ghost" id="admin-reset-shop">Reset to default</button>
+      <button type="button" class="ghost" id="admin-reset-shop" data-i18n="reset-default">Reset to default</button>
     </div>
 
     <div id="admin-request-form" hidden>
       <div class="field">
-        <span class="key">send a request</span>
+        <span class="key" data-i18n="send-request">send a request</span>
         <div class="segmented" id="req-type">
-          <button type="button" aria-pressed="true" data-type="feature">feature</button>
-          <button type="button" aria-pressed="false" data-type="bug">bug</button>
+          <button type="button" aria-pressed="true" data-type="feature" data-i18n="feature">feature</button>
+          <button type="button" aria-pressed="false" data-type="bug" data-i18n="bug">bug</button>
         </div>
         <textarea id="admin-req-text" rows="3" placeholder="What should be added, or what's broken?"></textarea>
       </div>
-      <button type="button" id="admin-req-send">Send</button>
+      <button type="button" id="admin-req-send" data-i18n="send">Send</button>
     </div>
 
     <div id="admin-everyone" hidden>
-      <button type="button" class="ghost" id="everyone-btn">Everyone</button>
+      <button type="button" class="ghost" id="everyone-btn" data-i18n="everyone">Everyone</button>
       <div id="everyone-box" hidden>
         <ul class="shop-list" id="everyone-list"></ul>
       </div>
     </div>
 
+    <div id="admin-spectate" hidden>
+      <button type="button" class="ghost" id="spectate-btn" data-i18n="spectate-room">Spectate a room</button>
+      <div id="spectate-box" hidden>
+        <div class="row">
+          <input class="grow code-input" id="spectate-code" placeholder="K7P2" maxlength="5"
+                 autocapitalize="characters" autocorrect="off" spellcheck="false" />
+          <button type="button" class="ghost" id="spectate-go" data-i18n="spectate-go">Spectate</button>
+        </div>
+        <ul class="shop-list" id="spectate-open-list"></ul>
+
+        <div id="spectate-live" hidden>
+          <p class="gloss">
+            <span data-i18n="spectating">Spectating</span> <code id="spectate-code-label"></code> —
+            <span id="spectate-visibility"></span>
+          </p>
+          <div class="row">
+            <button type="button" class="ghost" id="spectate-reveal" data-i18n="show-myself">Show myself</button>
+            <button type="button" class="ghost" id="spectate-stop" data-i18n="stop-spectating">Stop spectating</button>
+          </div>
+          <ul class="roster-list" id="spectate-roster"></ul>
+        </div>
+        <p class="gloss" id="spectate-notice" hidden></p>
+      </div>
+    </div>
+
     <div id="admin-requests" hidden>
-      <span class="key">requests &amp; bugs</span>
+      <span class="key" data-i18n="requests-bugs">requests &amp; bugs</span>
       <ul class="shop-list" id="admin-request-list"></ul>
     </div>
 
     <div class="field">
-      <span class="key">admin chat</span>
-      <ul class="chat-log" id="admin-chat-log"><li class="chat-empty">No messages yet.</li></ul>
+      <span class="key" data-i18n="admin-chat">admin chat</span>
+      <ul class="chat-log" id="admin-chat-log"><li class="chat-empty" data-i18n="no-messages">No messages yet.</li></ul>
       <div class="row">
         <input class="grow" id="admin-chat-input" placeholder="message the other admin…" maxlength="280" autocomplete="off" />
-        <button type="button" class="fixed" id="admin-chat-send">Send</button>
+        <button type="button" class="fixed" id="admin-chat-send" data-i18n="send">Send</button>
       </div>
     </div>
 
     <p class="gloss" id="admin-notice" hidden></p>
-    <button type="button" class="linkish" id="admin-close">Close</button>
+    <button type="button" class="linkish" id="admin-close" data-i18n="close">Close</button>
   </section>
 
   <div class="colophon">
@@ -1086,6 +1201,148 @@
      ================================================================ */
   var $ = function (id) { return document.getElementById(id); };
 
+  /* ---------- language ----------
+     One flat French dictionary, looked up two ways: elements tagged
+     data-i18n="key" in the markup look up that key, and notices built
+     in JS look up their own English text directly, so a call site never
+     needs to change — just add the sentence to FR once. Messages built
+     by gluing a variable into the middle of a sentence (a username, a
+     count) are left in English; splitting those into a French word
+     order isn't something a lookup table can do. */
+  var LANG = localStorage.getItem("contexto_lang") || "en";
+
+  var FR = {
+    "sign-in": "Se connecter", "title": "Contexto", "standfirst": "Un mot est caché. Chaque proposition indique sa distance.",
+    "take-tour": "Faire la visite", "save-page": "Enregistrer cette page",
+    "updates": "actualités", "account": "compte",
+    "account-blurb": "Un compte garde vos pièces et indices sur tous vos appareils, et permet aux autres joueurs de vous envoyer des cadeaux.",
+    "username": "nom d'utilisateur", "password": "mot de passe", "create-account": "Créer un compte",
+    "account-id": "Identifiant de compte :", "claim-admin": "Devenir admin", "sign-out": "Se déconnecter",
+    "tab-play": "jouer", "tab-solve": "solveur", "tab-compare": "comparer", "tab-shop": "boutique", "tab-chat": "discussion",
+    "how-playing": "mode de jeu", "offline": "hors ligne", "online": "en ligne",
+    "mode-note": "Jusqu'à quatre joueurs sur ce téléphone, chacun son tour sur un mot caché.",
+    "difficulty": "difficulté", "easy": "facile", "normal": "normal", "hard": "difficile", "nightmare": "cauchemar",
+    "difficulty-note": "Les mots faciles se tiennent dans la main, les difficiles sont des idées, et le cauchemar " +
+      "va chercher les mots que vous connaissez mais dites rarement. Le chrono est de 7 minutes en facile, 10 en " +
+      "normal, 12 en difficile et 17 en cauchemar.",
+    "players": "joueurs", "names": "noms", "hide-word": "Cacher un mot", "your-name": "votre nom",
+    "join-last": "Rejoindre la dernière partie en ligne",
+    "join-last-note": "Rejoint la partie la plus récente en cours. Si personne ne joue, vous en démarrez une nouvelle.",
+    "hide-word-code": "Cacher un mot et obtenir un code", "open-code": "ou ouvrir le code d'un ami", "open": "Ouvrir",
+    "code-room-note": "Toute personne qui ouvre le même code rejoint le même salon en direct — vous verrez qui joue et pourrez discuter, mais chacun propose de son côté. Nécessite une connexion ; le mode hors ligne non.",
+    "got-it": "Compris", "skip-tour": "passer la visite", "guess": "Proposer", "hint": "Indice", "give-up": "abandonner",
+    "whos-here": "qui est dans la partie", "chat": "discussion", "send": "Envoyer",
+    "solve-blurb": "Vous jouez au vrai Contexto ailleurs ? Entrez les rangs qu'il vous a donnés. Chacun réduit les mots possibles.",
+    "add": "Ajouter", "obs-empty": "Pas encore de rang. Commencez par un mot large — eau, argent, ville — et entrez le nombre obtenu.",
+    "name-word": "Nommer le mot",
+    "compare-blurb": "Placez n'importe quel nombre de mots face à un mot principal, pour voir laquelle de deux propositions vaut le coup.",
+    "main-word": "mot principal", "words-against": "mots à comparer", "rank-them": "Les classer",
+    "shop-blurb": "Dépensez vos pièces pour augmenter vos indices et vos réglages de jeu.",
+    "send-gift": "en envoyer un en cadeau", "gift-note": "Vous payez les pièces ; les indices arrivent sur son compte.",
+    "send-gift-btn": "Envoyer le cadeau",
+    "chat-blurb": "Tout le monde connecté peut écrire ici et voter oui ou non sur ce que disent les autres.",
+    "no-messages": "Pas encore de messages.", "No messages yet.": "Pas encore de messages.",
+    "suggest-feature": "Proposer une fonctionnalité",
+    "send-admins": "Envoyer aux admins", "admin": "admin",
+    "post-update": "publier une actualité — tous les visiteurs la voient, vous seul pouvez publier",
+    "post-everyone": "Publier pour tout le monde", "shop-items": "articles de la boutique",
+    "add-item-key": "ajouter un article", "add-item": "Ajouter l'article", "reset-default": "Réinitialiser",
+    "send-request": "envoyer une demande", "feature": "fonctionnalité", "bug": "bug",
+    "everyone": "Tout le monde", "requests-bugs": "demandes et bugs", "admin-chat": "discussion admin",
+    "spectate-room": "Observer une partie", "spectate-go": "Observer", "spectating": "Observation de",
+    "show-myself": "Me montrer", "stop-spectating": "Arrêter d'observer",
+    "invisible": "invisible", "visible to players": "visible pour les joueurs",
+    "Spectate": "Observer", "Show myself": "Me montrer", "Hide myself": "Me cacher",
+    "Kick": "Expulser", "Delete": "Supprimer",
+    "Nobody here yet.": "Personne ici pour l'instant.",
+    "No games open right now.": "Aucune partie ouverte pour l'instant.",
+    "Live sync dropped — try spectating again.": "Synchronisation en direct interrompue — réessayez d'observer.",
+    "close": "Fermer", "closest": "le plus proche", "(you)": "(vous)", "joined": "arrivé",
+    "guessing…": "propose…", "waiting": "en attente",
+
+    "Not enough coins yet — one comes with every word you find.": "Pas encore assez de pièces — vous en gagnez une à chaque mot trouvé.",
+    "Owned": "Déjà possédé",
+    "Bought it. The word flashes across the screen the next time you win.": "Acheté. Le mot s'affichera en grand à votre prochaine victoire.",
+    "Pick a username — letters, numbers, dashes.": "Choisissez un nom d'utilisateur — lettres, chiffres, tirets.",
+    "Firebase asks for at least six characters in a password.": "Firebase demande au moins six caractères pour un mot de passe.",
+    "Signed out. Coins earned from here on stay on this device.": "Déconnecté. Les pièces gagnées à partir de maintenant restent sur cet appareil.",
+    "Creating…": "Création…",
+    "Account made. The coins you already had came with you.": "Compte créé. Les pièces que vous aviez déjà vous ont suivi.",
+    "Checking…": "Vérification…",
+    "Claiming…": "Demande en cours…",
+    "You're the admin. That list is sealed now — changing it again means editing /admins in the Firebase console.":
+      "Vous êtes admin. Cette liste est maintenant verrouillée — pour la changer, il faudra modifier /admins dans la console Firebase.",
+    "Couldn't claim it. Either somebody already has it, or the database rules aren't in place yet.":
+      "Impossible de le devenir. Soit quelqu'un l'est déjà, soit les règles de la base de données ne sont pas encore en place.",
+    "Pick something to send.": "Choisissez quelque chose à envoyer.",
+    "Who's it for? Type their username.": "Pour qui ? Entrez son nom d'utilisateur.",
+    "Sign in first — a gift comes out of your own coins.": "Connectez-vous d'abord — un cadeau est payé avec vos propres pièces.",
+    "That's you. Buying it outright is the same thing.": "C'est vous. Autant l'acheter directement.",
+    "Not enough coins for that one.": "Pas assez de pièces pour celui-là.",
+    "Can't reach the accounts service right now.": "Impossible de joindre le service de comptes pour le moment.",
+    "Sending…": "Envoi…",
+    "Sign in first to post here.": "Connectez-vous d'abord pour écrire ici.",
+    "Can't reach the chat right now.": "Impossible de joindre la discussion pour le moment.",
+    "Sign in first to vote.": "Connectez-vous d'abord pour voter.",
+    "Give it a name first.": "Donnez-lui d'abord un nom.",
+    "Saved.": "Enregistré.",
+    "Removed.": "Supprimé.",
+    "Added.": "Ajouté.",
+    "Back to the default shop.": "Retour à la boutique par défaut.",
+    "Write what you want to send first.": "Écrivez d'abord ce que vous voulez envoyer.",
+    "Sent.": "Envoyé.",
+    "Write something first.": "Écrivez d'abord quelque chose.",
+    "Posted — every visitor will see it.": "Publié — tous les visiteurs le verront.",
+    "Live sync dropped — you can still play, just without seeing others.": "Synchronisation en direct interrompue — vous pouvez toujours jouer, mais sans voir les autres.",
+    "Live sync isn't set up for this copy of the game — you can still play, just without seeing others.": "La synchronisation en direct n'est pas configurée pour cette copie du jeu — vous pouvez toujours jouer, mais sans voir les autres.",
+    "Connecting…": "Connexion…",
+    "One plain word, letters only.": "Un seul mot, lettres uniquement.",
+    "That code doesn't work — check the four characters and try again.": "Ce code ne fonctionne pas — vérifiez les quatre caractères et réessayez.",
+    "Make a guess first — a hint is worked out from what you've already tried.": "Faites d'abord une proposition — un indice se base sur ce que vous avez déjà essayé.",
+    "Type a plain word first.": "Entrez d'abord un mot simple.",
+    "Rank is a whole number, 1 or higher.": "Le rang est un nombre entier, 1 ou plus.",
+    "Add at least one rank first.": "Ajoutez d'abord au moins un rang.",
+    "Give a main word first.": "Donnez d'abord un mot principal.",
+    "Add at least one word to place against it.": "Ajoutez au moins un mot à comparer.",
+    "Write your idea first.": "Écrivez d'abord votre idée.",
+    "Sign in first — that way the admins know who to thank.": "Connectez-vous d'abord — comme ça les admins savent qui remercier.",
+    "Can't reach the request queue right now.": "Impossible de joindre la file de demandes pour le moment.",
+    "Sent — thanks!": "Envoyé — merci !",
+    "No account with that name — check the spelling.": "Aucun compte à ce nom — vérifiez l'orthographe.",
+    "Couldn't send that. Try again in a moment.": "Échec de l'envoi. Réessayez dans un instant.",
+    "yes": "oui", "no": "non", "delete": "supprimer", "translated from French": "traduit du français",
+    "translated from English": "traduit de l'anglais", "translating…": "traduction…"
+  };
+
+  function t(text) { return (LANG === "fr" && FR[text]) ? FR[text] : text; }
+
+  var FR_UNITS = {
+    "coin":   ["pièce", "pièces"],
+    "hint":   ["indice", "indices"],
+    "guess":  ["essai", "essais"],
+    "player": ["joueur", "joueurs"],
+    "more":   ["de plus", "de plus"],
+    "of them": ["d'entre eux", "d'entre eux"]
+  };
+
+  function applyLang() {
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      var key = el.getAttribute("data-i18n");
+      if (el.dataset.en === undefined) el.dataset.en = el.textContent;
+      el.textContent = (LANG === "fr" && FR[key]) ? FR[key] : el.dataset.en;
+    });
+    $("lang-btn").textContent = LANG === "fr" ? "EN" : "FR";
+    $("lang-btn").title = LANG === "fr" ? "English" : "Français";
+    $("lang-btn").setAttribute("aria-pressed", LANG === "fr" ? "true" : "false");
+    if (typeof renderGlobalChat === "function") renderGlobalChat();
+  }
+
+  $("lang-btn").addEventListener("click", function () {
+    LANG = LANG === "fr" ? "en" : "fr";
+    localStorage.setItem("contexto_lang", LANG);
+    applyLang();
+  });
+
   function normalize(s) { return String(s || "").toLowerCase().trim(); }
 
   function readWords(text) {
@@ -1164,7 +1421,7 @@
   function say(node, message) {
     if (!message) { node.hidden = true; node.textContent = ""; return; }
     node.hidden = false;
-    node.textContent = message;
+    node.textContent = t(message);
   }
 
   /* ================================================================
@@ -1174,7 +1431,8 @@
     { tab: "tab-play", panel: "panel-play" },
     { tab: "tab-solve", panel: "panel-solve" },
     { tab: "tab-compare", panel: "panel-compare" },
-    { tab: "tab-shop", panel: "panel-shop" }
+    { tab: "tab-shop", panel: "panel-shop" },
+    { tab: "tab-community", panel: "panel-community" }
   ];
 
   TABS.forEach(function (entry) {
@@ -1230,9 +1488,23 @@
   var HINT_KEY = "contexto-hints";
   var HINT_START = 3;
   var SHOP_CACHE_KEY = "contexto-shop-items";
+  var FLASH_KEY = "contexto-flash";
   var DEFAULT_SHOP_ITEMS = [
     { id: "starter-hints", name: "2 hints", note: "A hint names the word worth guessing next.", price: 3, hints: 2 }
   ];
+
+  // A fixed cosmetic, not a hint bundle — never part of the admin-editable,
+  // Firebase-synced catalog, so it can't be priced or removed by an admin
+  // through the item editor, and can't end up in the gift picker, which
+  // only knows how to send a count of hints. Always tacked onto whatever
+  // the live shop list is, purely for the buy list a player sees.
+  var FLASH_ITEM = {
+    id: "win-flash", name: "Win flash",
+    note: "A one-time buy: the next time you win, the word flashes across the whole screen.",
+    price: 5, hints: 0, effect: "flash"
+  };
+
+  function shopCatalog() { return shopItems.concat([FLASH_ITEM]); }
 
   // Set while signed in: { key, name, coins, hints }. The balance here mirrors
   // the account's row in the database, kept current by a live subscription, so
@@ -1267,7 +1539,26 @@
     paintPurse();
   }
 
-  function tally(n, one, many) { return n + " " + (n === 1 ? one : many); }
+  // A one-time cosmetic unlock rather than a consumable, so it's a flag, not
+  // a count — owning it follows the account the same way coins do.
+  function ownsFlash() {
+    if (account) return !!account.flash;
+    try { return localStorage.getItem(FLASH_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  function setOwnsFlash() {
+    if (account) {
+      account.flash = true;
+      if (window.AccountRoom) window.AccountRoom.updateUser(account.uid, { flash: true }).catch(function () {});
+    } else {
+      try { localStorage.setItem(FLASH_KEY, "1"); } catch (e) {}
+    }
+  }
+
+  function tally(n, one, many) {
+    if (LANG === "fr" && FR_UNITS[one]) return n + " " + (n === 1 ? FR_UNITS[one][0] : FR_UNITS[one][1]);
+    return n + " " + (n === 1 ? one : many);
+  }
 
   function loadCachedShopItems() {
     try {
@@ -1297,30 +1588,42 @@
 
   function renderShopList() {
     var ul = $("shop-list-live");
-    if (!shopItems.length) {
+    var catalog = shopCatalog();
+    if (!catalog.length) {
       ul.innerHTML = '<li class="chat-empty">Nothing in the shop right now.</li>';
       return;
     }
-    ul.innerHTML = shopItems.map(function (item, idx) {
+    ul.innerHTML = catalog.map(function (item, idx) {
+      var owned = item.effect === "flash" && ownsFlash();
       return '<li><div><span class="shop-name">' + escapeHtml(item.name) + '</span>' +
         '<span class="shop-note">' + escapeHtml(item.note) + '</span></div>' +
-        '<button type="button" class="buy-item" data-idx="' + idx + '"' +
-        (purse() < item.price ? " disabled" : "") + '>' + tally(item.price, "coin", "coins") + '</button></li>';
+        (owned
+          ? '<button type="button" class="buy-item" disabled>' + escapeHtml(t("Owned")) + '</button>'
+          : '<button type="button" class="buy-item" data-idx="' + idx + '"' +
+            (purse() < item.price ? " disabled" : "") + '>' + tally(item.price, "coin", "coins") + '</button>') +
+        '</li>';
     }).join("");
   }
 
   $("shop-list-live").addEventListener("click", function (e) {
     if (!e.target.classList.contains("buy-item")) return;
-    buyItem(shopItems[+e.target.dataset.idx]);
+    buyItem(shopCatalog()[+e.target.dataset.idx]);
   });
 
   function buyItem(item) {
     if (!item) return;
+    if (item.effect === "flash" && ownsFlash()) return;
     if (purse() < item.price) {
       shopSay("Not enough coins yet — one comes with every word you find.");
       return;
     }
     store(PURSE_KEY, purse() - item.price);
+    if (item.effect === "flash") {
+      setOwnsFlash();
+      renderShopList();
+      shopSay("Bought it. The word flashes across the screen the next time you win.");
+      return;
+    }
     store(HINT_KEY, hints() + item.hints);
     shopSay("Bought " + tally(item.hints, "hint", "hints") + ". " + tally(purse(), "coin", "coins") + " left.");
   }
@@ -1335,11 +1638,13 @@
     renderGiftItems();
   }
 
-  function earnCoin() { store(PURSE_KEY, purse() + 1); }
+  var LEVEL_COINS = { easy: 0, normal: 1, hard: 2, nightmare: 4 };
+
+  function earnCoin() { store(PURSE_KEY, purse() + (LEVEL_COINS[play.level] || 0)); }
 
   function shopSay(message) {
     var node = $("shop-notice");
-    node.textContent = message || "";
+    node.textContent = t(message) || "";
     node.hidden = !message;
   }
 
@@ -1372,6 +1677,7 @@
   var giftUnsub = null;
   var adminUids = {};
   var assistantUids = {};
+  var adminUidsLoaded = false;
 
   function cleanName(name) {
     return String(name || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
@@ -1379,7 +1685,7 @@
 
   function accountSay(message) {
     var node = $("account-notice");
-    node.textContent = message || "";
+    node.textContent = t(message) || "";
     node.hidden = !message;
   }
 
@@ -1403,7 +1709,7 @@
     // Somebody has to be the first admin, and there is no console step that
     // can name them before an account exists. So the empty list is claimable
     // once, from here, and sealed by the rules the moment it isn't empty.
-    var unclaimed = !Object.keys(adminUids).length;
+    var unclaimed = adminUidsLoaded && !Object.keys(adminUids).length;
     $("claim-admin").hidden = !unclaimed;
     $("account-uid").textContent = account.uid;
   }
@@ -1443,7 +1749,7 @@
 
   function watchAccount(uid) {
     if (accountUnsub) { accountUnsub(); accountUnsub = null; }
-    account = { uid: uid, name: uid.slice(0, 6), coins: 0, hints: 0 };
+    account = { uid: uid, name: uid.slice(0, 6), coins: 0, hints: 0, flash: false };
     if (!window.AccountRoom || !window.AccountRoom.ready) { paintPurse(); return; }
 
     accountUnsub = window.AccountRoom.onProfile(uid, function (rec) {
@@ -1452,10 +1758,12 @@
         account.name = rec.name || account.name;
         account.coins = rec.coins || 0;
         account.hints = rec.hints || 0;
+        account.flash = !!rec.flash;
       }
       paintPurse();
       renderAccountPanel();
       renderAdminAvailability();
+      renderAnnounceLog();
     });
     claimGifts();
   }
@@ -1463,7 +1771,9 @@
   function forgetAccount() {
     if (accountUnsub) { accountUnsub(); accountUnsub = null; }
     if (giftUnsub) { giftUnsub(); giftUnsub = null; }
+    if (window.LiveRoom) window.LiveRoom.stopSpectating();
     account = null;
+    renderAnnounceLog();
     paintPurse();
     renderAccountPanel();
     renderAdminAvailability();
@@ -1517,12 +1827,12 @@
     var f = accountFields();
     if (!f) return;
     accountSay("Creating…");
-    var carried = { coins: purse(), hints: hints() };
+    var carried = { coins: purse(), hints: hints(), flash: ownsFlash() };
     window.Auth.signUp(f.name, f.pass).then(function (uid) {
       // Written after sign-up, so the rules see it coming from the account
       // it belongs to.
       return window.AccountRoom.updateUser(uid, {
-        name: f.display || f.name, coins: carried.coins, hints: carried.hints, at: Date.now()
+        name: f.display || f.name, coins: carried.coins, hints: carried.hints, flash: carried.flash, at: Date.now()
       });
     }).then(function () {
       $("account-pass").value = "";
@@ -1580,7 +1890,7 @@
 
   function giftSay(message) {
     var node = $("gift-notice");
-    node.textContent = message || "";
+    node.textContent = t(message) || "";
     node.hidden = !message;
   }
 
@@ -1613,6 +1923,166 @@
     });
   });
 
+  /* ---------- global chat ----------
+     Open to every signed-in account, not just admins. Each message can be
+     voted yes or no by anyone; a second click on the same choice takes the
+     vote back, a click on the other choice switches it. The rules let you
+     write only your own vote, so counts stay one-per-person.
+
+     A message written in the language nobody in the room is using gets a
+     second line under it — machine-translated by MyMemory, a free,
+     keyless translation API. There's no offline way to translate text
+     someone just typed, so this one corner of the page needs a
+     connection even when the rest of it doesn't. */
+  var globalChatMessages = [];
+  var FRENCH_CHARS = /[àâäéèêëîïôöùûüçœ]/i;
+  var FRENCH_WORDS = ["le", "la", "les", "un", "une", "des", "est", "et", "je", "tu", "il", "elle",
+    "nous", "vous", "ils", "elles", "avec", "pour", "dans", "que", "qui", "ça", "tres", "très",
+    "bien", "merci", "oui", "non", "bonjour", "salut", "suis", "es", "sont", "pas", "ne", "du",
+    "de", "au", "aux", "ce", "cette", "mais", "donc", "alors", "comme", "plus", "moins", "tout", "tous"];
+
+  function looksFrench(text) {
+    if (FRENCH_CHARS.test(text)) return true;
+    var words = (text.toLowerCase().match(/[a-zà-ÿ']+/g) || []);
+    if (words.length < 3) return false;
+    var hits = words.filter(function (w) { return FRENCH_WORDS.indexOf(w) > -1; }).length;
+    return hits / words.length > 0.25;
+  }
+
+  var translateCache = Object.create(null);
+
+  function translateText(text, target) {
+    var key = target + "|" + text;
+    if (key in translateCache) return Promise.resolve(translateCache[key]);
+    var source = target === "en" ? "fr" : "en";
+    var url = "https://api.mymemory.translated.net/get?q=" + encodeURIComponent(text) +
+              "&langpair=" + source + "|" + target;
+    translateCache[key] = null;
+    return fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      var out = data && data.responseData && data.responseData.translatedText;
+      translateCache[key] = (out && out.toLowerCase() !== text.toLowerCase()) ? out : false;
+      return translateCache[key];
+    }).catch(function () { translateCache[key] = false; return false; });
+  }
+
+  function globalChatSay(message) {
+    var node = $("global-chat-notice");
+    node.textContent = t(message) || "";
+    node.hidden = !message;
+  }
+
+  function renderGlobalChat() {
+    var log = $("global-chat-log");
+    if (!globalChatMessages.length) {
+      log.innerHTML = '<li class="chat-empty">' + escapeHtml(t("No messages yet.")) + '</li>';
+      return;
+    }
+    log.innerHTML = globalChatMessages.map(function (m) {
+      var votes = m.votes || {};
+      var yes = 0, no = 0, mine = account && votes[account.uid];
+      Object.keys(votes).forEach(function (uid) {
+        if (votes[uid] === "yes") yes++; else if (votes[uid] === "no") no++;
+      });
+
+      var msgLang = looksFrench(m.text) ? "fr" : "en";
+      var viewerLang = LANG === "fr" ? "fr" : "en";
+      var translation = "";
+      if (msgLang !== viewerLang) {
+        var cacheKey = viewerLang + "|" + m.text;
+        var known = cacheKey in translateCache;
+        var cached = translateCache[cacheKey];
+        if (!known) {
+          translateText(m.text, viewerLang).then(function () { renderGlobalChat(); });
+        }
+        if (!known || cached === null) {
+          translation = '<div class="translated">' + escapeHtml(t("translating…")) + '</div>';
+        } else if (cached) {
+          var fromLabel = t(msgLang === "fr" ? "translated from French" : "translated from English");
+          translation = '<div class="translated">' + escapeHtml(cached) + ' <span class="from-lang">(' +
+            escapeHtml(fromLabel) + ')</span></div>';
+        }
+      }
+
+      var canDelete = account && (m.uid === account.uid || myRole() === "admin");
+
+      return '<li class="chat-line' + (account && m.name === account.name ? " mine" : "") + '" data-id="' + escapeHtml(m.id) + '">' +
+        '<span class="from">' + escapeHtml(m.name) + '</span>' + escapeHtml(m.text) + translation +
+        '<div class="votes">' +
+          '<button type="button" class="vote-btn vote-yes' + (mine === "yes" ? " mine-yes" : "") + '">' + escapeHtml(t("yes")) + ' ' + yes + '</button>' +
+          '<button type="button" class="vote-btn vote-no' + (mine === "no" ? " mine-no" : "") + '">' + escapeHtml(t("no")) + ' ' + no + '</button>' +
+          (canDelete ? '<button type="button" class="vote-btn delete-msg">' + escapeHtml(t("Delete")) + '</button>' : '') +
+        '</div></li>';
+    }).join("");
+  }
+
+  function subscribeGlobalChat() {
+    if (!window.AccountRoom || !window.AccountRoom.ready) return;
+    window.AccountRoom.onGlobalChat(function (list) {
+      globalChatMessages = list;
+      renderGlobalChat();
+    });
+  }
+
+  window.addEventListener("accountroom-ready", subscribeGlobalChat);
+
+  function sendGlobalChat() {
+    var input = $("global-chat-input");
+    var text = input.value.trim();
+    if (!text) return;
+    if (!account) { globalChatSay("Sign in first to post here."); return; }
+    if (!window.AccountRoom || !window.AccountRoom.ready) { globalChatSay("Can't reach the chat right now."); return; }
+    globalChatSay("");
+    window.AccountRoom.sendGlobalChat(account.name, text).then(function () {
+      input.value = "";
+    }).catch(function (e) { globalChatSay(authTrouble(e)); });
+  }
+
+  $("global-chat-send").addEventListener("click", sendGlobalChat);
+  $("global-chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendGlobalChat(); });
+
+  $("global-chat-log").addEventListener("click", function (e) {
+    var btn = e.target.closest(".vote-btn");
+    if (!btn) return;
+    if (!account) { globalChatSay("Sign in first to vote."); return; }
+    if (!window.AccountRoom || !window.AccountRoom.ready) return;
+    var li = btn.closest("li[data-id]");
+    if (!li) return;
+    var msgId = li.dataset.id;
+
+    if (btn.classList.contains("delete-msg")) {
+      window.AccountRoom.deleteGlobalChat(msgId).catch(function (e) { globalChatSay(authTrouble(e)); });
+      return;
+    }
+
+    var msg = globalChatMessages.filter(function (m) { return m.id === msgId; })[0];
+    var current = msg && msg.votes && msg.votes[account.uid];
+    var choice = btn.classList.contains("vote-yes") ? "yes" : "no";
+    window.AccountRoom.voteGlobal(msgId, account.uid, current === choice ? null : choice)
+      .catch(function (e) { globalChatSay(authTrouble(e)); });
+  });
+
+  /* ---------- suggest a feature ----------
+     Open to any signed-in account — not gated behind admin or assistant —
+     writing into the same request queue the admin panel reads from. */
+  $("suggest-feature-btn").addEventListener("click", function () {
+    var box = $("suggest-feature-box");
+    box.hidden = !box.hidden;
+  });
+
+  $("suggest-feature-send").addEventListener("click", function () {
+    var node = $("suggest-feature-notice");
+    var say = function (m) { node.textContent = t(m) || ""; node.hidden = !m; };
+    var text = $("suggest-feature-text").value.trim();
+    if (!text) { say("Write your idea first."); return; }
+    if (!account) { say("Sign in first — that way the admins know who to thank."); return; }
+    if (!window.AdminRoom || !window.AdminRoom.ready) { say("Can't reach the request queue right now."); return; }
+    say("Sending…");
+    window.AdminRoom.submitRequest("feature", text, account.name).then(function () {
+      $("suggest-feature-text").value = "";
+      say("Sent — thanks!");
+    }).catch(function (e) { say(authTrouble(e)); });
+  });
+
   /* ================================================================
      ADMIN — a shop editor, a request queue, a noticeboard and a chat.
 
@@ -1643,7 +2113,7 @@
 
   function adminSay(message) {
     var node = $("admin-notice");
-    node.textContent = message || "";
+    node.textContent = t(message) || "";
     node.hidden = !message;
   }
 
@@ -1687,6 +2157,7 @@
     $("admin-broadcast").hidden = role !== "admin";
     $("admin-shop-editor").hidden = role !== "admin";
     $("admin-everyone").hidden = role !== "admin";
+    $("admin-spectate").hidden = role !== "admin";
     $("admin-requests").hidden = role !== "admin";
     $("admin-request-form").hidden = role !== "assistant";
     adminSay("");
@@ -1826,6 +2297,112 @@
     }).catch(adminDbNote);
   });
 
+  /* ---------- spectate: watch a room's roster without joining it ----------
+     An admin picks a code — typed in, or from the open-games list below —
+     and starts watching its roster with no presence entry of their own, so
+     nobody in that room can see them. "Show myself" adds one after the
+     fact; "Hide myself" takes it away again without leaving. Kicking just
+     removes someone else's presence entry from that same list. */
+  var spectateCode = null;
+  var spectateRoster = [];
+
+  function spectateSay(message) {
+    var node = $("spectate-notice");
+    node.textContent = t(message) || "";
+    node.hidden = !message;
+  }
+
+  function renderOpenGames(list) {
+    var ul = $("spectate-open-list");
+    ul.innerHTML = list.map(function (g) {
+      return '<li><div><span class="shop-name">' + escapeHtml(g.code) + '</span>' +
+        '<span class="shop-note">' + escapeHtml(t(g.level || "")) + '</span></div>' +
+        '<button type="button" class="ghost open-game-spectate" data-code="' + escapeHtml(g.code) + '">' +
+        escapeHtml(t("Spectate")) + '</button></li>';
+    }).join("") || '<li class="chat-empty">' + escapeHtml(t("No games open right now.")) + '</li>';
+  }
+
+  var openGamesUnsub = null;
+  function subscribeOpenGames() {
+    if (openGamesUnsub || !window.AccountRoom || !window.AccountRoom.ready) return;
+    openGamesUnsub = window.AccountRoom.onOpenGames(renderOpenGames);
+  }
+
+  function renderSpectateVisibility() {
+    var revealed = window.LiveRoom && window.LiveRoom.isRevealed && window.LiveRoom.isRevealed();
+    $("spectate-visibility").textContent = t(revealed ? "visible to players" : "invisible");
+    $("spectate-reveal").textContent = t(revealed ? "Hide myself" : "Show myself");
+  }
+
+  function renderSpectateRoster() {
+    var ul = $("spectate-roster");
+    var myId = window.LiveRoom && window.LiveRoom.spectatorId ? window.LiveRoom.spectatorId() : null;
+    ul.innerHTML = spectateRoster.map(function (p) {
+      var isMe = p.id === myId;
+      return '<li class="roster-item' + (isMe ? " is-me" : "") + '" data-id="' + escapeHtml(p.id) + '">' +
+        '<span class="who">' + escapeHtml(p.name) + (isMe ? " " + escapeHtml(t("(you)")) : "") + '</span>' +
+        '<span class="stat">' + tally(p.guesses, "guess", "guesses") + (p.best ? " · " + p.best : "") + '</span>' +
+        (isMe ? "" : '<button type="button" class="ghost kick-player">' + escapeHtml(t("Kick")) + '</button>') +
+        '</li>';
+    }).join("") || '<li class="chat-empty">' + escapeHtml(t("Nobody here yet.")) + '</li>';
+  }
+
+  function startSpectating(code) {
+    if (!window.LiveRoom || !window.LiveRoom.ready) { spectateSay("Can't reach the live service right now."); return; }
+    spectateCode = code;
+    spectateSay("");
+    window.LiveRoom.spectate(code, {
+      onPlayers: function (list) { spectateRoster = list; renderSpectateRoster(); },
+      onChat: function () {},
+      onGuesses: function () {},
+      onError: function () { spectateSay("Live sync dropped — try spectating again."); }
+    });
+    $("spectate-code-label").textContent = code;
+    $("spectate-live").hidden = false;
+    renderSpectateVisibility();
+  }
+
+  $("spectate-btn").addEventListener("click", function () {
+    var box = $("spectate-box");
+    box.hidden = !box.hidden;
+    if (!box.hidden) subscribeOpenGames();
+  });
+
+  $("spectate-go").addEventListener("click", function () {
+    var raw = $("spectate-code").value;
+    if (readCode(raw) === null) { spectateSay("That code doesn't work — check the four characters and try again."); return; }
+    startSpectating(String(raw).toUpperCase().replace(/[^0-9A-Z]/g, ""));
+  });
+
+  $("spectate-open-list").addEventListener("click", function (e) {
+    var btn = e.target.closest(".open-game-spectate");
+    if (!btn) return;
+    startSpectating(btn.dataset.code);
+  });
+
+  $("spectate-reveal").addEventListener("click", function () {
+    if (!spectateCode || !window.LiveRoom) return;
+    var revealed = window.LiveRoom.isRevealed && window.LiveRoom.isRevealed();
+    var action = revealed
+      ? window.LiveRoom.hideSpectator()
+      : window.LiveRoom.revealSpectator("(admin) " + (account ? account.name : "Admin"));
+    Promise.resolve(action).then(renderSpectateVisibility).catch(adminDbNote);
+  });
+
+  $("spectate-stop").addEventListener("click", function () {
+    if (window.LiveRoom) window.LiveRoom.stopSpectating();
+    spectateCode = null;
+    spectateRoster = [];
+    $("spectate-live").hidden = true;
+  });
+
+  $("spectate-roster").addEventListener("click", function (e) {
+    if (!e.target.classList.contains("kick-player") || !spectateCode || !window.LiveRoom) return;
+    var li = e.target.closest("li[data-id]");
+    if (!li) return;
+    window.LiveRoom.kick(spectateCode, li.dataset.id).catch(adminDbNote);
+  });
+
   var reqType = "feature";
   pressGroup($("req-type"), "type", function (val) { reqType = val; });
 
@@ -1879,18 +2456,29 @@
   $("admin-chat-send").addEventListener("click", sendAdminChat);
   $("admin-chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendAdminChat(); });
 
-  // Read by every visitor, no password needed — only postAnnouncement (below,
-  // gated to the admin role) ever writes here.
-  function appendAnnounceLine(msg) {
+  // Read by every visitor, no password needed — only postAnnouncement and
+  // deleteAnnouncement (both gated to the admin role) ever write here.
+  var announceList = [];
+
+  function renderAnnounceLog() {
     var panel = $("announce-panel");
-    panel.hidden = false;
+    panel.hidden = !announceList.length;
     var log = $("announce-log");
-    var li = document.createElement("li");
-    li.className = "chat-line";
-    li.textContent = msg.text;
-    log.appendChild(li);
+    var canDelete = myRole() === "admin";
+    log.innerHTML = announceList.map(function (a) {
+      return '<li class="chat-line" data-id="' + escapeHtml(a.id) + '">' + escapeHtml(a.text) +
+        (canDelete ? ' <button type="button" class="linkish delete-announce">' + escapeHtml(t("Delete")) + '</button>' : '') +
+        '</li>';
+    }).join("");
     log.scrollTop = log.scrollHeight;
   }
+
+  $("announce-log").addEventListener("click", function (e) {
+    if (!e.target.classList.contains("delete-announce")) return;
+    var li = e.target.closest("li[data-id]");
+    if (!li || !window.AdminRoom) return;
+    window.AdminRoom.deleteAnnouncement(li.dataset.id).catch(adminDbNote);
+  });
 
   $("admin-broadcast-send").addEventListener("click", function () {
     var text = $("admin-broadcast-text").value.trim();
@@ -1916,7 +2504,10 @@
       renderGiftItems();
       if (adminRole() === "admin" && !$("admin-panel").hidden) renderAdminItemList();
     });
-    window.AdminRoom.onAnnouncements(appendAnnounceLine);
+    window.AdminRoom.onAnnouncements(function (list) {
+      announceList = list;
+      renderAnnounceLog();
+    });
   }
 
   function subscribeAdminChannels() {
@@ -1941,9 +2532,11 @@
   window.addEventListener("accountroom-ready", function () {
     window.AccountRoom.onAdmins(function (map) {
       adminUids = map;
+      adminUidsLoaded = true;
       renderAdminAvailability();
       renderAccountPanel();
       if (!$("everyone-box").hidden) renderEveryone();
+      renderAnnounceLog();
     });
     window.AccountRoom.onAssistants(function (map) {
       assistantUids = map;
@@ -2192,6 +2785,19 @@
       say($("live-notice"), "");
       window.LiveRoom.join(code, name, {
         onPlayers: function (list) {
+          // Room capacity: if 10 or more players are in this room, it's full.
+          // Leave and host a new game instead.
+          if (list && list.length >= 10 && play.code) {
+            window.LiveRoom.leave();
+            closeMyOpenGame();
+            var secret = pickSecret();
+            var newCode = makeCode(WORDS.indexOf(secret));
+            beginGame(secret, newCode);
+            if (window.AccountRoom && window.AccountRoom.ready) {
+              window.AccountRoom.openGame(newCode, play.level).catch(function () {});
+            }
+            return;
+          }
           play.live = list;
           refreshPlay();
         },
@@ -2279,17 +2885,6 @@
     $("code-out").appendChild(card);
   }
 
-  /* ---------- filling out a quiet room ----------
-     An empty online game is worse than no online game: you sit in a lobby of
-     one, watching nothing happen. So a room that stays empty gets other
-     racers in it, closing on the word at their own pace beside you.
-
-     They show in the roster only, never in the shared ladder — their guesses
-     would otherwise hand you the answer — and they stop short of rank 1. The
-     round stays yours to finish. */
-  var BOT_NAMES = ["Maya", "Daniel", "Priya", "Omar", "Sofia", "Liam", "Noor", "Ethan",
-                   "Amara", "Lucas", "Hana", "Marco", "Zoe", "Idris", "Elena", "Theo",
-                   "Ava", "Rafael", "Nina", "Jonas", "Leila", "Felix"];
   var bots = { list: [], tick: null, watch: null };
 
   function stopBots() {
@@ -2298,56 +2893,17 @@
     bots.list = [];
   }
 
-  function spawnBots() {
-    var pool = BOT_NAMES.slice();
-    var count = 2 + Math.floor(Math.random() * 2);
-    bots.list = [];
-    for (var i = 0; i < count; i++) {
-      bots.list.push({
-        name: pool.splice(Math.floor(Math.random() * pool.length), 1)[0],
-        guesses: 0,
-        best: null,
-        pace: 0.55 + Math.random() * 0.25,       // how sharply this one closes in
-        next: Date.now() + 2000 + Math.random() * 6000
-      });
-    }
-    if (bots.tick) clearInterval(bots.tick);
-    bots.tick = setInterval(botTick, 1000);
-    refreshPlay();
-  }
-
-  function botTick() {
-    if (play.done || play.mode !== "online") { stopBots(); return; }
-    var now = Date.now(), moved = false;
-    bots.list.forEach(function (b) {
-      if (now < b.next) return;
-      b.guesses++;
-      b.best = b.best === null
-        ? 900 + Math.floor(Math.random() * 6000)
-        : Math.max(2, Math.round(b.best * b.pace));
-      b.next = now + 4000 + Math.random() * 6000;
-      moved = true;
-    });
-    if (moved) refreshPlay();
-  }
-
-  // Give the room a moment to fill with actual people before standing anyone in.
   function armBots() {
-    if (bots.watch) clearTimeout(bots.watch);
-    bots.watch = setTimeout(function () {
-      if (play.done || play.mode !== "online") return;
-      var others = (play.live || []).filter(function (p) { return !p.isMe; }).length;
-      if (!others) spawnBots();
-    }, 8000);
+    // No auto-spawn of bots; wait for real players only.
   }
 
   function refreshPlay() {
     var isOnline = play.mode === "online";
     var ladderRows = isOnline && play.liveRows ? play.liveRows : play.rows;
     var best = ladderRows.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
-    $("play-count").textContent = ladderRows.length === 1 ? "1 guess" : ladderRows.length + " guesses";
+    $("play-count").textContent = tally(ladderRows.length, "guess", "guesses");
     if (best) {
-      $("play-best").textContent = "closest " + best.rank;
+      $("play-best").textContent = t("closest") + " " + best.rank;
       $("play-best").style.color = heat(best.rank);
     } else {
       $("play-best").textContent = "";
@@ -2368,23 +2924,20 @@
 
       if (isOnline) {
         var live = play.live || [{ name: play.myName, guesses: play.rows.length, best: best ? best.rank : null, isMe: true }];
-        live = live.concat(bots.list.map(function (b) {
-          return { name: b.name, guesses: b.guesses, best: b.best, isMe: false };
-        }));
         live.forEach(function (p) {
           var li = document.createElement("li");
           li.className = "roster-item" + (p.isMe ? " is-me" : "");
 
           var who = document.createElement("span");
           who.className = "who";
-          who.textContent = p.name + (p.isMe ? " (you)" : "");
+          who.textContent = p.name + (p.isMe ? " " + t("(you)") : "");
           li.appendChild(who);
 
           var stat = document.createElement("span");
           stat.className = "stat";
           stat.textContent = p.guesses
-            ? p.guesses + (p.guesses === 1 ? " guess" : " guesses") + (p.best ? " · " + p.best : "")
-            : "joined";
+            ? tally(p.guesses, "guess", "guesses") + (p.best ? " · " + p.best : "")
+            : t("joined");
           li.appendChild(stat);
 
           list.appendChild(li);
@@ -2405,8 +2958,8 @@
           var stat = document.createElement("span");
           stat.className = "stat";
           stat.textContent = rows.length
-            ? rows.length + (rows.length === 1 ? " guess" : " guesses") + (pBest ? " · " + pBest.rank : "")
-            : (i === play.turn ? "guessing…" : "waiting");
+            ? tally(rows.length, "guess", "guesses") + (pBest ? " · " + pBest.rank : "")
+            : (i === play.turn ? t("guessing…") : t("waiting"));
           li.appendChild(stat);
 
           list.appendChild(li);
@@ -2441,6 +2994,19 @@
     return title + "\nfound in " + play.rows.length + "\n" + trail;
   }
 
+  function playWinFlash(word) {
+    var flash = $("win-flash");
+    flash.querySelector(".win-flash-word").textContent = word;
+    flash.hidden = false;
+    flash.classList.remove("playing");
+    void flash.offsetWidth; // force a reflow so the animation restarts on a repeat win
+    flash.classList.add("playing");
+    setTimeout(function () {
+      flash.hidden = true;
+      flash.classList.remove("playing");
+    }, 1850);
+  }
+
   function finish(won, who, ranOut) {
     play.done = true;
     stopClock();
@@ -2449,6 +3015,7 @@
     $("play-clock").hidden = true;
     $("tab-solve").hidden = false;
     if (won) earnCoin();
+    if (won && ownsFlash()) playWinFlash(play.secret);
     $("play-controls").hidden = true;
     $("play-quit").hidden = true;
     $("roster").hidden = true;
@@ -2458,7 +3025,7 @@
     closeMyOpenGame();
 
     var shared = play.players.length > 1;
-    var count = play.rows.length + (play.rows.length === 1 ? " guess" : " guesses");
+    var count = tally(play.rows.length, "guess", "guesses");
 
     var card = document.createElement("div");
     card.className = "card keyed";
@@ -2486,8 +3053,8 @@
     }
 
     if (won && shared) {
-      var tally = document.createElement("ul");
-      tally.className = "tally";
+      var tallyList = document.createElement("ul");
+      tallyList.className = "tally";
       play.players.forEach(function (name) {
         var mine = play.rows.filter(function (row) { return row.by === name; });
         var closest = mine.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
@@ -2503,9 +3070,9 @@
         stat.textContent = mine.length + (closest ? " · closest " + closest.rank : "");
         line.appendChild(stat);
 
-        tally.appendChild(line);
+        tallyList.appendChild(line);
       });
-      card.appendChild(tally);
+      card.appendChild(tallyList);
     }
 
     if (won) {
@@ -2675,8 +3242,12 @@
 
     var tried = Object.create(null);
     rows.forEach(function (r) { tried[r.word] = true; });
-    var obs = rows.map(function (r) { return { word: r.word, rank: r.rank }; });
-    var next = suggestNext(believe(obs, V, tried), tried);
+
+    // A hint is one of the 50 closest words to the secret, picked at random
+    // among whichever of those haven't been tried yet — close enough to be
+    // useful, never the word itself.
+    var near = nearestTo(play.secret, 49).filter(function (w) { return !tried[w]; });
+    var next = near.length ? near[Math.floor(Math.random() * near.length)] : null;
 
     // Only charge for a hint that actually said something.
     if (next) {
@@ -2685,8 +3256,8 @@
     }
 
     say($("play-notice"), next
-      ? "Try " + next + " — of everything left, that one's rank would tell you the most."
-      : "Nothing useful left to suggest — you've already tried the words that would narrow it.");
+      ? "Try " + next + " — it's among the 50 closest words."
+      : "Nothing useful left to suggest — you've already tried the closest words.");
   }
 
   /* ---------- the tour: a real round, narrated ---------- */
@@ -2925,15 +3496,12 @@
   // A guess every candidate answers alike teaches nothing; one that splits the
   // field ten ways teaches log 10. Suggestions are drawn from the field itself,
   // so the advice is always a word someone might actually type — and it stays a
-  // real guess: if it happens to be right, the game ends there.
+  // real guess: if it happens to be right, the game ends there. This never
+  // just names the likeliest candidate outright — SHARPNESS makes the belief
+  // model overconfident fast, and an in-game hint that flatly states the
+  // answer isn't a hint any more.
   function suggestNext(field, tried, exclude) {
     var live = field.slice(0, 120);
-
-    // Once one word is clearly ahead, splitting what's left is pointless — the
-    // useful move is to go and say it.
-    if (live.length && live[0].p >= 0.08 && !tried[live[0].word] && live[0].word !== exclude) {
-      return live[0].word;
-    }
 
     var bestWord = null, bestGain = -1, c, k, i, spread, total, p, h;
     for (c = 0; c < live.length; c++) {
@@ -3179,6 +3747,7 @@
      8. BOOT
      ================================================================ */
   $("dictline").textContent = V + " words · ranks computed here, offline";
+  applyLang();
   paintPurse();
   renderAdminAvailability();
   if (window.AdminRoom && window.AdminRoom.ready) { subscribeShopSync(); subscribeAdminChannels(); }
@@ -3252,11 +3821,21 @@
 
          "requests": {
            ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())",
-           ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())"
+           ".write": "auth != null"
          },
          "adminchat": {
            ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())",
            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())"
+         },
+         "globalchat": {
+           ".read": true,
+           "$msgId": {
+             ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid || " +
+                        "root.child('admins').child(auth.uid).exists())",
+             "votes": {
+               "$uid": { ".write": "auth != null && auth.uid === $uid" }
+             }
+           }
          }
        }
      }
@@ -3273,6 +3852,10 @@
          that the node can only be changed from the Firebase console.
        - A gift is a note left in the recipient's inbox, which only they
          can read and clear. Nobody reaches into anyone's balance.
+       - Any signed-in account can send a feature/bug request, and post
+         or vote in global chat, but only an admin or assistant can read
+         the request queue. A global chat message can't be edited once
+         posted; a vote is writable only by the uid it belongs to.
        - What is still NOT enforced is a player's own balance. Their
          browser writes their own coins, so a determined person can give
          themselves coins. Stopping that needs code running somewhere
@@ -3296,6 +3879,9 @@
   var LiveRoom = {
     join: function () {}, leave: function () {}, updateProgress: function () {},
     sendChat: function () {}, addGuess: function () {},
+    spectate: function () {}, stopSpectating: function () {},
+    isRevealed: function () { return false; }, spectatorId: function () { return null; },
+    revealSpectator: offline, hideSpectator: function () { return Promise.resolve(); }, kick: offline,
     ready: false, unavailable: false
   };
 
@@ -3310,7 +3896,8 @@
     onProfile: noop, updateUser: offline, onAllUsers: noop,
     sendGift: offline, onGifts: noop, clearGift: offline,
     onAdmins: noop, onAssistants: noop, claimAdmin: offline, setAssistant: offline,
-    findOpenGame: offline, openGame: offline, closeGame: offline,
+    findOpenGame: offline, openGame: offline, closeGame: offline, onOpenGames: noop,
+    sendGlobalChat: offline, onGlobalChat: noop, voteGlobal: offline, deleteGlobalChat: offline,
     ready: false, unavailable: false
   };
 
@@ -3318,7 +3905,7 @@
     sendChat: offline, onChat: noop,
     submitRequest: offline, onRequests: noop, markRequest: offline, deleteRequest: offline,
     setShopItems: offline, onShopItems: noop,
-    postAnnouncement: offline, onAnnouncements: noop,
+    postAnnouncement: offline, onAnnouncements: noop, deleteAnnouncement: offline,
     ready: false, unavailable: false
   };
 
@@ -3408,6 +3995,81 @@
         if (current) dbMod.push(dbMod.ref(db, "rooms/" + current.code + "/guesses"),
           { name: name, word: word, rank: rank, at: dbMod.serverTimestamp() });
       };
+
+      /* ---------- admin: watch a room without joining it ----------
+         The same players/chat/guesses subscriptions as join(), but no
+         presence entry — so nothing appears in anyone's roster. Revealing
+         adds a presence entry after the fact; hiding removes it again,
+         all while the subscriptions keep running. Kicking just removes
+         someone else's presence entry — the same write the rules already
+         let anyone make (this room system works without signing in at
+         all, so it was never going to be locked down to admins at the
+         database layer). The button is admin-only; the door isn't. */
+      var spectating = null;
+
+      function stopSpectating() {
+        if (!spectating) return;
+        spectating.unsubPlayers();
+        spectating.unsubChat();
+        spectating.unsubGuesses();
+        if (spectating.presenceRef) dbMod.remove(spectating.presenceRef).catch(function () {});
+        spectating = null;
+      }
+
+      function spectate(code, callbacks) {
+        stopSpectating();
+        var playersRef = dbMod.ref(db, "rooms/" + code + "/players");
+        var chatQuery = dbMod.query(dbMod.ref(db, "rooms/" + code + "/chat"), dbMod.limitToLast(50));
+        var guessesRef = dbMod.ref(db, "rooms/" + code + "/guesses");
+
+        var unsubPlayers = dbMod.onValue(playersRef, function (snap) {
+          var val = snap.val() || {};
+          callbacks.onPlayers(Object.keys(val).map(function (id) {
+            var p = val[id] || {};
+            return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null };
+          }));
+        }, function () { callbacks.onError && callbacks.onError(); });
+
+        var unsubChat = dbMod.onChildAdded(chatQuery, function (snap) { callbacks.onChat(snap.val()); });
+
+        var unsubGuesses = dbMod.onValue(guessesRef, function (snap) {
+          var val = snap.val() || {};
+          var list = Object.keys(val).map(function (id) {
+            var g = val[id] || {};
+            return { word: g.word, rank: g.rank, by: g.name, at: g.at || 0 };
+          });
+          list.sort(function (a, b) { return a.at - b.at; });
+          callbacks.onGuesses(list);
+        });
+
+        spectating = { code: code, presenceRef: null, myId: null,
+                        unsubPlayers: unsubPlayers, unsubChat: unsubChat, unsubGuesses: unsubGuesses };
+      }
+
+      LiveRoom.spectate = spectate;
+      LiveRoom.stopSpectating = stopSpectating;
+      LiveRoom.isRevealed = function () { return !!(spectating && spectating.presenceRef); };
+      LiveRoom.spectatorId = function () { return spectating ? spectating.myId : null; };
+      LiveRoom.revealSpectator = function (name) {
+        if (!spectating) return Promise.reject(new Error("not spectating"));
+        var myId = Math.random().toString(36).slice(2, 10);
+        var presenceRef = dbMod.ref(db, "rooms/" + spectating.code + "/players/" + myId);
+        spectating.presenceRef = presenceRef;
+        spectating.myId = myId;
+        dbMod.onDisconnect(presenceRef).remove();
+        return dbMod.set(presenceRef, { name: name, guesses: 0, best: null, joinedAt: dbMod.serverTimestamp() });
+      };
+      LiveRoom.hideSpectator = function () {
+        if (!spectating || !spectating.presenceRef) return Promise.resolve();
+        var ref = spectating.presenceRef;
+        spectating.presenceRef = null;
+        spectating.myId = null;
+        return dbMod.remove(ref);
+      };
+      LiveRoom.kick = function (code, playerId) {
+        return dbMod.remove(dbMod.ref(db, "rooms/" + code + "/players/" + playerId));
+      };
+
       LiveRoom.ready = true;
       window.dispatchEvent(new Event("liveroom-ready"));
 
@@ -3505,6 +4167,43 @@
       AccountRoom.closeGame = function (code) {
         return dbMod.remove(dbMod.ref(db, "lobby/" + code));
       };
+      // Everything currently listed as open to auto-match into — a room can
+      // still have people in it after it drops off here, so this is a
+      // shortcut for finding one, not a full census.
+      AccountRoom.onOpenGames = function (cb) {
+        return dbMod.onValue(dbMod.ref(db, "lobby"), function (s) {
+          var val = s.val() || {};
+          var list = Object.keys(val).map(function (code) { return val[code]; })
+            .filter(function (g) { return g && g.code; })
+            .sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+          cb(list);
+        }, function () { cb([]); });
+      };
+
+      var globalChatRef = dbMod.ref(db, "globalchat");
+      AccountRoom.sendGlobalChat = function (name, text) {
+        var msgRef = dbMod.push(globalChatRef);
+        return dbMod.set(msgRef, { name: name, text: text, uid: Auth.uid(), at: dbMod.serverTimestamp() });
+      };
+      AccountRoom.deleteGlobalChat = function (msgId) {
+        return dbMod.remove(dbMod.ref(db, "globalchat/" + msgId));
+      };
+      AccountRoom.onGlobalChat = function (cb) {
+        return dbMod.onValue(dbMod.query(globalChatRef, dbMod.limitToLast(50)), function (s) {
+          var val = s.val() || {};
+          var list = Object.keys(val).map(function (id) {
+            var m = val[id] || {};
+            return { id: id, name: m.name, text: m.text, uid: m.uid, at: m.at || 0, votes: m.votes || {} };
+          });
+          list.sort(function (a, b) { return a.at - b.at; });
+          cb(list);
+        }, function () { cb([]); });
+      };
+      AccountRoom.voteGlobal = function (msgId, uid, choice) {
+        var voteRef = dbMod.ref(db, "globalchat/" + msgId + "/votes/" + uid);
+        return choice ? dbMod.set(voteRef, choice) : dbMod.remove(voteRef);
+      };
+
       AccountRoom.ready = true;
       window.dispatchEvent(new Event("accountroom-ready"));
 
@@ -3520,13 +4219,25 @@
         }, function () { cb(null); });
       };
 
+      var announcementsRef = dbMod.ref(db, "announcements");
       AdminRoom.postAnnouncement = function (text) {
-        return dbMod.push(dbMod.ref(db, "announcements"), { text: text, at: dbMod.serverTimestamp() });
+        return dbMod.push(announcementsRef, { text: text, at: dbMod.serverTimestamp() });
+      };
+      AdminRoom.deleteAnnouncement = function (id) {
+        return dbMod.remove(dbMod.ref(db, "announcements/" + id));
       };
       AdminRoom.onAnnouncements = function (cb) {
-        return dbMod.onChildAdded(
-          dbMod.query(dbMod.ref(db, "announcements"), dbMod.limitToLast(20)),
-          function (s) { cb(s.val()); });
+        return dbMod.onValue(
+          dbMod.query(announcementsRef, dbMod.limitToLast(20)),
+          function (s) {
+            var val = s.val() || {};
+            var list = Object.keys(val).map(function (id) {
+              var a = val[id] || {};
+              return { id: id, text: a.text, at: a.at || 0 };
+            });
+            list.sort(function (a, b) { return a.at - b.at; });
+            cb(list);
+          }, function () { cb([]); });
       };
 
       AdminRoom.sendChat = function (name, text) {
