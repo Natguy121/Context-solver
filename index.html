@@ -4,6 +4,8 @@
 
 <style>
   :root {
+    color-scheme: light;
+
     --ground: #F1F0F6;
     --surface: #FFFFFF;
     --sunken: #E7E5EF;
@@ -13,20 +15,51 @@
     --accent: #4E3FA8;
     --focus: #4E3FA8;
 
+    /* Derived tints, so accent-keyed surfaces don't need a second hand-picked
+       hex per theme. Kept as separate tokens rather than inline color-mix()
+       so the dark block can override any that need a different weighting. */
+    --accent-wash: color-mix(in srgb, var(--accent) 7%, var(--surface));
+    --accent-edge: color-mix(in srgb, var(--accent) 28%, var(--rule));
+    --ring: color-mix(in srgb, var(--focus) 22%, transparent);
+    --danger: #C0392B;
+
     --serif: ui-serif, "Iowan Old Style", Charter, Georgia, Cambria, serif;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --mono: ui-monospace, Menlo, "SF Mono", "Cascadia Mono", monospace;
 
+    /* The big two scale with the viewport; the body sizes stay fixed so
+       reading measure and rhythm don't drift between phone and desktop. */
     --step-0: 0.9375rem;
     --step-1: 1.0625rem;
     --step-2: 1.25rem;
-    --step-3: 1.75rem;
-    --step-4: 2.5rem;
+    --step-3: clamp(1.5rem, 1.2rem + 1.4vw, 1.875rem);
+    --step-4: clamp(2.125rem, 1.6rem + 2.6vw, 3rem);
     --micro: 0.6875rem;
+
+    /* Print-flat by heritage, so elevation stays at paper-lift weight:
+       tight blur, low alpha, never a floating-card drop shadow. */
+    --lift-1: 0 1px 2px rgba(25, 23, 37, 0.05);
+    --lift-2: 0 1px 2px rgba(25, 23, 37, 0.06), 0 4px 12px rgba(25, 23, 37, 0.07);
+    --lift-3: 0 2px 4px rgba(25, 23, 37, 0.07), 0 12px 28px rgba(25, 23, 37, 0.10);
+
+    --radius: 3px;
+    --radius-lg: 5px;
+
+    /* Held outside the theme blocks on purpose: the win flash is white on
+       both themes, so its ink must stay dark on both. */
+    --flash-veil: 255, 255, 255;
+    --flash-ink: #17152A;
+
+    --ease: cubic-bezier(0.2, 0.6, 0.3, 1);
+    --fast: 120ms;
+    --slow: 240ms;
   }
 
+  /* One definition per themed token, shared by the media query and the
+     explicit toggle below, so the two can never drift apart. */
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
       --ground: #131220;
       --surface: #1C1A2B;
       --sunken: #262338;
@@ -35,10 +68,19 @@
       --rule: #2E2B43;
       --accent: #A99CF0;
       --focus: #A99CF0;
+      --accent-wash: color-mix(in srgb, var(--accent) 10%, var(--surface));
+      --accent-edge: color-mix(in srgb, var(--accent) 34%, var(--rule));
+      --danger: #E8705C;
+      /* Shadows read as murk on dark ground, so depth comes mostly from a
+         hairline top highlight with only a whisper of cast shadow. */
+      --lift-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --lift-2: 0 1px 2px rgba(0, 0, 0, 0.34), 0 4px 12px rgba(0, 0, 0, 0.3);
+      --lift-3: 0 2px 4px rgba(0, 0, 0, 0.38), 0 12px 28px rgba(0, 0, 0, 0.36);
     }
   }
 
   :root[data-theme="dark"] {
+    color-scheme: dark;
     --ground: #131220;
     --surface: #1C1A2B;
     --sunken: #262338;
@@ -47,17 +89,12 @@
     --rule: #2E2B43;
     --accent: #A99CF0;
     --focus: #A99CF0;
-  }
-
-  :root[data-theme="light"] {
-    --ground: #F1F0F6;
-    --surface: #FFFFFF;
-    --sunken: #E7E5EF;
-    --ink: #191725;
-    --muted: #6A6680;
-    --rule: #DEDBE8;
-    --accent: #4E3FA8;
-    --focus: #4E3FA8;
+    --accent-wash: color-mix(in srgb, var(--accent) 10%, var(--surface));
+    --accent-edge: color-mix(in srgb, var(--accent) 34%, var(--rule));
+    --danger: #E8705C;
+    --lift-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --lift-2: 0 1px 2px rgba(0, 0, 0, 0.34), 0 4px 12px rgba(0, 0, 0, 0.3);
+    --lift-3: 0 2px 4px rgba(0, 0, 0, 0.38), 0 12px 28px rgba(0, 0, 0, 0.36);
   }
 
   * { box-sizing: border-box; }
@@ -70,12 +107,28 @@
     font-size: var(--step-0);
     line-height: 1.55;
     -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--accent); color: var(--surface); }
+
+  /* Every transition in the sheet is opt-in through these two properties, so
+     one media query can retire all of them for reduced-motion users. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   .wrap {
     max-width: 34rem;
     margin: 0 auto;
-    padding: 2rem 1.25rem 4rem;
+    padding: clamp(1.25rem, 0.9rem + 1.8vw, 2.25rem) clamp(1rem, 0.7rem + 1.5vw, 1.5rem) 4rem;
     display: flex;
     flex-direction: column;
     gap: 1.75rem;
@@ -99,18 +152,27 @@
     line-height: 1;
     margin: 0;
     font-weight: 400;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     text-wrap: balance;
   }
 
-  .standfirst { margin: 0; color: var(--muted); max-width: 34ch; }
+  .standfirst { margin: 0; color: var(--muted); max-width: 34ch; text-wrap: pretty; }
 
-  /* ---------- tabs ---------- */
+  /* ---------- tabs ----------
+     Five uppercase mono labels overrun a narrow phone, so the strip scrolls
+     sideways instead of wrapping into a second row that would shift the whole
+     page down. The scrollbar itself is hidden — the fade at the edge is the
+     affordance. */
   .tabs {
     display: flex;
     gap: 1.5rem;
     border-bottom: 1px solid var(--rule);
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
   }
+  .tabs::-webkit-scrollbar { display: none; }
 
   .tab {
     appearance: none;
@@ -126,10 +188,16 @@
     text-transform: uppercase;
     color: var(--muted);
     cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+    scroll-snap-align: start;
+    box-shadow: none;
+    transition: color var(--fast) var(--ease), border-color var(--slow) var(--ease);
   }
 
   .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
   .tab:hover { color: var(--ink); }
+  .tab:hover:not([aria-selected="true"]) { border-bottom-color: var(--rule); }
 
   /* ---------- panels ---------- */
   /* The hidden attribute sets display:none from the browser's own stylesheet,
@@ -155,18 +223,29 @@
     color: var(--ink);
     background: var(--surface);
     border: 1px solid var(--rule);
-    border-radius: 2px;
+    border-radius: var(--radius);
     padding: 0.75rem 0.875rem;
     min-height: 3rem;
     width: 100%;
     outline: none;
+    box-shadow: var(--lift-1);
+    transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
   }
 
+  input:hover, textarea:hover, select:hover { border-color: var(--accent-edge); }
   textarea { resize: vertical; line-height: 1.6; }
   input.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.7; }
 
-  input:focus-visible, textarea:focus-visible, select:focus-visible,
-  button:focus-visible {
+  /* Focus reads as a soft ring plus a coloured edge rather than a hard
+     outline sitting off the control — closer to how the rest of the page
+     handles emphasis, and it survives on both themes. */
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    border-color: var(--focus);
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+
+  button:focus-visible, .tab:focus-visible, [tabindex]:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
@@ -175,30 +254,72 @@
   .row > .grow { flex: 1; }
   .row > .fixed { width: 6rem; flex: none; }
 
+  /* The guess row is input + Guess + Hint. On a narrow phone the two buttons
+     leave the input barely wide enough for a short word, so below 26rem the
+     input takes a line of its own and the buttons share the one under it. */
+  @media (max-width: 26rem) {
+    #play-controls { flex-wrap: wrap; }
+    #play-controls #play-input { flex: 1 0 100%; }
+    #play-controls button { flex: 1; }
+  }
+
   button {
     font-family: var(--sans);
     font-size: var(--step-1);
     min-height: 3rem;
     padding: 0 1.25rem;
-    border-radius: 2px;
+    border-radius: var(--radius);
     border: 1px solid var(--ink);
     background: var(--ink);
     color: var(--ground);
     cursor: pointer;
+    box-shadow: var(--lift-1);
+    transition: background-color var(--fast) var(--ease), border-color var(--fast) var(--ease),
+                color var(--fast) var(--ease), box-shadow var(--fast) var(--ease),
+                transform var(--fast) var(--ease), opacity var(--fast) var(--ease);
   }
 
-  button.ghost { background: transparent; color: var(--ink); }
-  button:disabled { opacity: 0.45; cursor: default; }
+  /* A press should feel like the button takes the weight: lift on hover,
+     settle flush on the way down. 1px is enough to read as physical. */
+  button:hover:not(:disabled) { box-shadow: var(--lift-2); transform: translateY(-1px); }
+  button:active:not(:disabled) { box-shadow: var(--lift-1); transform: translateY(0); }
+
+  button.ghost {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--rule);
+    box-shadow: none;
+  }
+  button.ghost:hover:not(:disabled) {
+    border-color: var(--accent-edge);
+    background: var(--accent-wash);
+    box-shadow: var(--lift-1);
+  }
+
+  button:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
   button.wide { width: 100%; }
+
+  /* The link-shaped controls borrow the button element but none of its
+     chrome, so they opt out of the lift in one place. */
+  .purse, .admin-btn, .linkish, .drop, .vote-btn {
+    box-shadow: none;
+  }
+  .purse:hover, .admin-btn:hover, .linkish:hover, .drop:hover, .vote-btn:hover {
+    box-shadow: none;
+    transform: none;
+  }
 
   .segmented { display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .segmented button { flex: 1 1 5.5rem; padding: 0 0.5rem; }
 
+  /* Wraps as two whole groups when the strapline and the account controls
+     can't share a line, instead of breaking the eyebrow mid-phrase. */
   .masthead-top {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: 0.375rem 1rem;
   }
   .masthead-left { display: flex; align-items: baseline; gap: 0.875rem; min-width: 0; }
   .purse {
@@ -233,14 +354,19 @@
   .admin-btn:hover { color: var(--ink); }
   .admin-btn.is-on { color: var(--accent); }
 
-  .admin-panel {
-    padding: 1rem;
-    background: var(--sunken);
+  /* The four accent-keyed blocks — admin, account, announcements, coach —
+     all say "this is set apart from the page" the same way, so they share
+     one definition instead of four near-copies that drift. */
+  .admin-panel, .account-panel, .announce, .coach {
+    background: var(--accent-wash);
     border: 1px solid var(--rule);
     border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    box-shadow: var(--lift-1);
   }
+
+  .admin-panel { padding: 1.125rem; }
   .masthead-right { display: flex; align-items: baseline; gap: 0.875rem; flex: none; }
-  .account-panel { border-left: 3px solid var(--accent); }
   .user-row {
     display: flex;
     flex-direction: column;
@@ -265,10 +391,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.625rem;
-    padding: 1rem;
-    background: var(--sunken);
-    border: 1px solid var(--rule);
-    border-left: 3px solid var(--accent);
+    padding: 1.125rem;
   }
   .announce .chat-log { max-height: none; }
   .announce .chat-line { font-size: var(--step-0); line-height: 1.5; }
@@ -293,10 +416,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.875rem;
-    padding: 1rem;
+    padding: 1.125rem;
     margin-bottom: 1.5rem;
     background: var(--sunken);
     border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: var(--lift-1);
   }
   .shop-list {
     list-style: none;
@@ -307,20 +432,55 @@
     gap: 0.875rem;
   }
   .shop-list li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+
+  /* Only the two lists of buyable/joinable things become cards. The admin,
+     everyone and request lists below stay divider-separated rows — they're
+     dense editing surfaces, and boxing every row there just adds noise. */
+  #shop-list-live, #spectate-open-list { gap: 0.375rem; }
+  #shop-list-live li, #spectate-open-list li {
+    padding: 0.8125rem 0.875rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+  }
+  #shop-list-live li:hover, #spectate-open-list li:hover {
+    border-color: var(--accent-edge);
+    box-shadow: var(--lift-1);
+  }
+  #shop-list-live li.chat-empty, #spectate-open-list li.chat-empty {
+    background: none;
+    border-style: dashed;
+    box-shadow: none;
+  }
   .shop-list button { flex: 0 0 auto; }
   .shop-name { display: block; }
-  .shop-note { display: block; color: var(--muted); font-size: var(--step-0); }
-  #play-clock { font-family: var(--mono); margin-left: auto; }
-  #play-clock.urgent { color: var(--accent); font-weight: 600; }
+  .shop-note { display: block; color: var(--muted); font-size: var(--step-0); text-wrap: pretty; }
+  /* Shop items are things with names; open games are codes. Set each in the
+     face that suits it rather than one font for both. */
+  #shop-list-live .shop-name { font-family: var(--serif); font-size: var(--step-1); }
+  #spectate-open-list .shop-name {
+    font-family: var(--mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  #play-clock { font-family: var(--mono); margin-left: auto; font-variant-numeric: tabular-nums; }
+  #play-clock.urgent { color: var(--danger); font-weight: 600; }
+  /* Time running out earns a heartbeat, not a strobe: one slow pulse a
+     second, and nothing at all for reduced-motion. */
+  @media (prefers-reduced-motion: no-preference) {
+    #play-clock.urgent { animation: clock-pulse 1s ease-in-out infinite; }
+  }
+  @keyframes clock-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
 
   .coach {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    padding: 1rem;
-    background: var(--sunken);
-    border: 1px solid var(--rule);
-    border-left: 3px solid var(--accent);
+    padding: 1.125rem;
   }
   .coach p { margin: 0; }
   .coach .row { align-items: center; gap: 1rem; }
@@ -329,6 +489,12 @@
     background: transparent;
     color: var(--muted);
     border-color: var(--rule);
+    box-shadow: none;
+  }
+  .segmented button[aria-pressed="false"]:hover:not(:disabled) {
+    color: var(--ink);
+    border-color: var(--accent-edge);
+    background: var(--accent-wash);
   }
 
   .linkish {
@@ -349,14 +515,20 @@
   /* ---------- readings (the ladder) ---------- */
   .readings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 
+  /* Rows are padded into the gutter so a hover tint reads as a full-width
+     band, the way a ruled table highlights, without shifting any text. */
   .reading {
-    padding: 0.875rem 0 0.9375rem;
+    padding: 0.875rem 0.625rem 0.9375rem;
+    margin: 0 -0.625rem;
     border-bottom: 1px solid var(--rule);
+    border-radius: var(--radius);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    transition: background-color var(--fast) var(--ease);
   }
 
+  .reading:hover { background: var(--accent-wash); }
   .reading:first-child { border-top: 1px solid var(--rule); }
 
   /* A guess that has just landed says so, and how loudly it says so is how
@@ -430,6 +602,8 @@
     height: 1px;
     background: var(--rule);
   }
+  /* The tick carries the guess's heat colour inline, so the halo is drawn
+     from currentColor and needs no second variable to stay in step. */
   .tick {
     position: absolute;
     top: 0;
@@ -437,50 +611,72 @@
     height: 0.5rem;
     border-radius: 1px;
     transform: translateX(-1px);
+    background: currentColor;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
+    transition: left var(--slow) var(--ease);
   }
 
   /* ---------- verdict card ---------- */
   .card {
     background: var(--surface);
     border: 1px solid var(--rule);
-    border-radius: 2px;
-    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    padding: 1.375rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    box-shadow: var(--lift-2);
   }
 
-  .card.keyed { border-color: currentColor; }
+  /* The end of a round is the loudest moment on the page, so the card is
+     allowed to arrive rather than appear. */
+  @media (prefers-reduced-motion: no-preference) {
+    .card { animation: card-in var(--slow) var(--ease) both; }
+  }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(0.5rem) scale(0.99); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .card.keyed {
+    border-color: currentColor;
+    box-shadow: var(--lift-3);
+  }
 
   .verdict {
     font-family: var(--serif);
     font-size: var(--step-3);
     line-height: 1.1;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
   }
 
   .empty {
     border: 1px dashed var(--rule);
-    border-radius: 2px;
+    border-radius: var(--radius);
     padding: 1.25rem;
     color: var(--muted);
     margin: 0;
+    text-wrap: pretty;
   }
 
-  .notice { color: #C0392B; margin: 0; }
-  :root[data-theme="dark"] .notice,
-  :root:not([data-theme="light"]) .notice { color: #E8705C; }
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) .notice { color: #C0392B; }
-  }
+  /* One token, set per theme up top, instead of three overlapping overrides. */
+  .notice { color: var(--danger); margin: 0; text-wrap: pretty; }
 
+  /* The clock takes margin-left:auto to pin itself right, which eats the free
+     space space-between would have used — so the count and the best rank need
+     a real gap of their own or they run together as "4 GUESSESCLOSEST 1645". */
   .scale-legend {
     display: flex;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.875rem;
     font-family: var(--mono);
     font-size: var(--micro);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--muted);
+    font-variant-numeric: tabular-nums;
   }
 
   /* ---------- multiplayer ---------- */
@@ -494,12 +690,13 @@
     flex-direction: column;
     gap: 0.625rem;
     border: 1px solid var(--rule);
-    border-radius: 2px;
-    padding: 1rem;
+    border-radius: var(--radius);
+    padding: 1.125rem;
     background: var(--sunken);
+    box-shadow: var(--lift-1);
   }
 
-  .roster-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .roster-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.375rem; }
 
   .roster-item {
     display: flex;
@@ -509,16 +706,42 @@
     font-family: var(--mono);
     font-size: var(--micro);
     letter-spacing: 0.06em;
-    padding: 0.5rem 0.625rem;
+    padding: 0.5625rem 0.6875rem;
     border: 1px solid var(--rule);
-    border-radius: 2px;
+    border-radius: var(--radius);
     color: var(--muted);
     background: var(--surface);
+    transition: border-color var(--fast) var(--ease), background-color var(--fast) var(--ease),
+                color var(--fast) var(--ease);
   }
-  .roster-item.is-turn { color: var(--ground); background: var(--ink); border-color: var(--ink); }
-  .roster-item.is-me { border-color: var(--accent); color: var(--ink); }
+  .roster-item.is-turn {
+    color: var(--ground);
+    background: var(--ink);
+    border-color: var(--ink);
+    box-shadow: var(--lift-1);
+  }
+  /* Your own row is marked with a left rail as well as the accent border, so
+     it stays findable in a full ten-player roster at a glance. */
+  .roster-item.is-me {
+    border-color: var(--accent);
+    border-left-width: 3px;
+    color: var(--ink);
+    background: var(--accent-wash);
+  }
   .roster-item .who { text-transform: uppercase; }
-  .roster-item .stat { white-space: nowrap; }
+  .roster-item .stat { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* A full-size 3rem button dwarfs a row set in micro mono, so controls
+     living inside a roster row take the row's scale instead. */
+  .roster-item button {
+    min-height: 1.875rem;
+    padding: 0 0.5625rem;
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    align-self: center;
+    flex: none;
+  }
   #spectate-roster .roster-item { flex-wrap: wrap; }
   #spectate-roster .roster-item .typing {
     flex-basis: 100%;
@@ -540,23 +763,47 @@
     gap: 0.375rem;
     max-height: 12rem;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
   }
-  .chat-line { font-size: var(--micro); line-height: 1.4; }
+  /* The only scrolling regions on the page; a default chrome scrollbar is a
+     wide grey slab next to type this fine. */
+  .chat-log::-webkit-scrollbar { width: 8px; }
+  .chat-log::-webkit-scrollbar-track { background: transparent; }
+  .chat-log::-webkit-scrollbar-thumb {
+    background: var(--rule);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .chat-log::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: content-box; }
+
+  .chat-line {
+    font-size: var(--micro);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
   .chat-line .from { font-family: var(--mono); text-transform: uppercase; color: var(--muted); margin-right: 0.375rem; }
   .chat-line.mine .from { color: var(--accent); }
-  .chat-empty { font-size: var(--micro); color: var(--muted); }
+  .chat-empty { font-size: var(--micro); color: var(--muted); font-style: italic; }
 
-  .chat-line .votes { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; }
+  .chat-line .votes { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3125rem; }
   .chat-line .vote-btn {
     font-size: var(--micro);
     font-family: var(--mono);
     border: 1px solid var(--rule);
+    border-radius: var(--radius);
     background: none;
     color: var(--muted);
-    padding: 0.125rem 0.5rem;
+    padding: 0.1875rem 0.5rem;
+    min-height: 0;
     cursor: pointer;
+    transition: border-color var(--fast) var(--ease), color var(--fast) var(--ease),
+                background-color var(--fast) var(--ease);
   }
-  .chat-line .vote-btn.mine-yes { border-color: var(--accent); color: var(--accent); }
+  .chat-line .vote-btn:hover { border-color: var(--accent-edge); color: var(--ink); background: var(--accent-wash); }
+  .chat-line .vote-btn.mine-yes { border-color: var(--accent); color: var(--accent); background: var(--accent-wash); }
   .chat-line .vote-btn.mine-no { border-color: var(--ink); color: var(--ink); }
 
   .chat-line .translated { margin-top: 0.25rem; color: var(--muted); font-style: italic; }
@@ -579,11 +826,22 @@
     #play-live.with-roster .roster { width: 17rem; flex-shrink: 0; }
   }
 
+  /* The code is the thing people read aloud and retype, so it gets the
+     largest tracking on the page and sits on its own tinted slab. */
   .code {
     font-family: var(--mono);
     font-size: var(--step-3);
     letter-spacing: 0.24em;
     color: var(--ink);
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 0.625rem 0.875rem;
+    text-align: center;
+    /* letter-spacing pads the right of the last glyph; pull it back so the
+       run of characters is actually centred in the slab. */
+    text-indent: 0.24em;
+    font-variant-numeric: tabular-nums;
   }
 
   input.code-input {
@@ -601,6 +859,7 @@
     border-top: 1px solid var(--rule);
     padding-top: 0.375rem;
   }
+  .tally .rank { font-variant-numeric: tabular-nums; }
 
   .result {
     font-family: var(--mono);
@@ -608,10 +867,12 @@
     line-height: 1.7;
     background: var(--sunken);
     border: 1px solid var(--rule);
+    border-radius: var(--radius);
     color: var(--ink);
     padding: 0.75rem;
     min-height: 0;
     resize: none;
+    box-shadow: none;
   }
 
   .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
@@ -619,7 +880,7 @@
   .chip {
     background: var(--surface);
     border: 1px solid var(--rule);
-    border-radius: 2px;
+    border-radius: var(--radius);
     padding: 0.625rem 0.75rem;
     min-height: 3rem;
     text-align: left;
@@ -630,6 +891,7 @@
     gap: 0.125rem;
     cursor: pointer;
   }
+  .chip:hover:not(:disabled) { border-color: var(--accent-edge); background: var(--accent-wash); }
   .chip .cw { font-family: var(--serif); font-size: var(--step-1); }
   .chip .cf {
     font-family: var(--mono);
@@ -664,25 +926,30 @@
     pointer-events: none;
   }
   .win-flash.playing { animation: win-flash-bg 1.8s ease-out; }
+  /* The veil is white on both themes — that's what makes it a flash — so the
+     word is keyed to a fixed dark ink rather than var(--ink), which in dark
+     mode is near-white and left the word invisible against its own flash. */
   .win-flash-word {
     font-family: var(--serif);
     font-size: clamp(2.5rem, 12vw, 6rem);
     font-weight: 700;
-    color: var(--ink);
+    color: var(--flash-ink);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     text-align: center;
     opacity: 0;
     padding: 0 1rem;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
   }
   .win-flash.playing .win-flash-word { animation: win-flash-word 1.8s ease-out; }
   @keyframes win-flash-bg {
-    0%   { background: rgba(255, 255, 255, 0); }
-    12%  { background: rgba(255, 255, 255, 0.92); }
-    24%  { background: rgba(255, 255, 255, 0.12); }
-    36%  { background: rgba(255, 255, 255, 0.92); }
-    50%  { background: rgba(255, 255, 255, 0.2); }
-    100% { background: rgba(255, 255, 255, 0.2); }
+    0%   { background: rgba(var(--flash-veil), 0); }
+    12%  { background: rgba(var(--flash-veil), 0.92); }
+    24%  { background: rgba(var(--flash-veil), 0.12); }
+    36%  { background: rgba(var(--flash-veil), 0.92); }
+    50%  { background: rgba(var(--flash-veil), 0.2); }
+    100% { background: rgba(var(--flash-veil), 0.2); }
   }
   @keyframes win-flash-word {
     0%   { opacity: 0; transform: scale(0.8); }
@@ -691,7 +958,7 @@
     100% { opacity: 1; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .win-flash.playing { animation: none; background: rgba(255, 255, 255, 0.92); }
+    .win-flash.playing { animation: none; background: rgba(var(--flash-veil), 0.92); }
     .win-flash.playing .win-flash-word { animation: none; opacity: 1; }
   }
 </style>
@@ -1414,7 +1681,9 @@
     var tick = document.createElement("span");
     tick.className = "tick";
     tick.style.left = (closeness(row.rank) * 100).toFixed(2) + "%";
-    tick.style.background = heat(row.rank);
+    // Set as colour, not background: the stylesheet paints both the bar and
+    // its halo from currentColor so the two can't fall out of step.
+    tick.style.color = heat(row.rank);
     spectrum.appendChild(tick);
     li.appendChild(spectrum);
 
