@@ -550,6 +550,9 @@
   .chat-line .vote-btn.mine-yes { border-color: var(--accent); color: var(--accent); }
   .chat-line .vote-btn.mine-no { border-color: var(--ink); color: var(--ink); }
 
+  .chat-line .translated { margin-top: 0.25rem; color: var(--muted); font-style: italic; }
+  .chat-line .translated .from-lang { font-style: normal; font-size: var(--micro); }
+
   #global-chat-log { max-height: 16rem; }
   #panel-community .row { margin-top: 0.5rem; }
   #suggest-feature-box { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -647,94 +650,95 @@
         <div class="eyebrow" id="dictline">dictionary loading</div>
       </div>
       <div class="masthead-right">
+        <button type="button" class="admin-btn" id="lang-btn" title="Français" aria-pressed="false">FR</button>
         <button type="button" class="purse" id="purse" aria-expanded="false">0 coins</button>
-        <button type="button" class="admin-btn" id="account-btn">Sign in</button>
+        <button type="button" class="admin-btn" id="account-btn" data-i18n="sign-in">Sign in</button>
       </div>
     </div>
-    <h1>Contexto</h1>
-    <p class="standfirst">A word is hidden. Every guess comes back with its distance from it.</p>
+    <h1 data-i18n="title">Contexto</h1>
+    <p class="standfirst" data-i18n="standfirst">A word is hidden. Every guess comes back with its distance from it.</p>
     <p class="gloss">
-      New here? <a href="#" id="start-tour">Take the tour</a> — it deals you a real round and
+      New here? <a href="#" id="start-tour" data-i18n="take-tour">Take the tour</a> — it deals you a real round and
       talks you through it.
     </p>
     <p class="gloss">
-      <a href="#" id="save-copy">Save this page</a> to play with no connection, no account, on any device.
+      <a href="#" id="save-copy" data-i18n="save-page">Save this page</a> to play with no connection, no account, on any device.
     </p>
   </header>
 
   <!-- Read by every visitor, no login needed. Only the admin can post to it
        — see admin-broadcast in the Admin panel below. -->
   <section class="announce" id="announce-panel" hidden>
-    <div class="eyebrow">updates</div>
+    <div class="eyebrow" data-i18n="updates">updates</div>
     <ul class="chat-log" id="announce-log"></ul>
   </section>
 
   <section class="panel admin-panel account-panel" id="account-panel" hidden>
-    <div class="eyebrow">account</div>
+    <div class="eyebrow" data-i18n="account">account</div>
 
     <div id="account-signed-out">
-      <p class="gloss">An account keeps your coins and hints with you on any device, and lets
+      <p class="gloss" data-i18n="account-blurb">An account keeps your coins and hints with you on any device, and lets
         other players send you gifts.</p>
       <div class="field">
-        <label class="key" for="account-name">username</label>
+        <label class="key" for="account-name" data-i18n="username">username</label>
         <input id="account-name" placeholder="yourname" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" />
       </div>
       <div class="field">
-        <label class="key" for="account-pass">password</label>
+        <label class="key" for="account-pass" data-i18n="password">password</label>
         <input id="account-pass" type="password" placeholder="••••••••" autocomplete="current-password" />
       </div>
       <div class="row">
-        <button type="button" class="grow" id="account-signin">Sign in</button>
-        <button type="button" class="ghost grow" id="account-create">Create account</button>
+        <button type="button" class="grow" id="account-signin" data-i18n="sign-in">Sign in</button>
+        <button type="button" class="ghost grow" id="account-create" data-i18n="create-account">Create account</button>
       </div>
     </div>
 
     <div id="account-signed-in" hidden>
       <p class="gloss" id="account-who"></p>
-      <p class="gloss">Your account id: <code id="account-uid"></code></p>
-      <button type="button" id="claim-admin" hidden>Claim admin</button>
-      <button type="button" class="linkish" id="account-signout">Sign out</button>
+      <p class="gloss"><span data-i18n="account-id">Your account id:</span> <code id="account-uid"></code></p>
+      <button type="button" id="claim-admin" hidden data-i18n="claim-admin">Claim admin</button>
+      <button type="button" class="linkish" id="account-signout" data-i18n="sign-out">Sign out</button>
     </div>
 
     <p class="gloss" id="account-notice" hidden></p>
   </section>
 
   <nav class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play">play</button>
-    <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve">solver</button>
-    <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="panel-compare">compare</button>
-    <button class="tab" role="tab" id="tab-shop" aria-selected="false" aria-controls="panel-shop">shop</button>
-    <button class="tab" role="tab" id="tab-community" aria-selected="false" aria-controls="panel-community">chat</button>
+    <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play" data-i18n="tab-play">play</button>
+    <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve" data-i18n="tab-solve">solver</button>
+    <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="panel-compare" data-i18n="tab-compare">compare</button>
+    <button class="tab" role="tab" id="tab-shop" aria-selected="false" aria-controls="panel-shop" data-i18n="tab-shop">shop</button>
+    <button class="tab" role="tab" id="tab-community" aria-selected="false" aria-controls="panel-community" data-i18n="tab-chat">chat</button>
   </nav>
 
   <!-- ============ PLAY ============ -->
   <section class="panel" id="panel-play" role="tabpanel" aria-labelledby="tab-play">
     <div id="play-setup" class="panel">
       <div class="field">
-        <span class="key">how you're playing</span>
+        <span class="key" data-i18n="how-playing">how you're playing</span>
         <div class="segmented" id="modes">
-          <button type="button" aria-pressed="true" data-mode="offline">offline</button>
-          <button type="button" aria-pressed="false" data-mode="online">online</button>
+          <button type="button" aria-pressed="true" data-mode="offline" data-i18n="offline">offline</button>
+          <button type="button" aria-pressed="false" data-mode="online" data-i18n="online">online</button>
         </div>
-        <p class="gloss" id="mode-note">Up to four of you on this phone, taking turns at one hidden word.</p>
+        <p class="gloss" id="mode-note" data-i18n="mode-note">Up to four of you on this phone, taking turns at one hidden word.</p>
       </div>
 
       <div class="field">
-        <span class="key">difficulty</span>
+        <span class="key" data-i18n="difficulty">difficulty</span>
         <div class="segmented" id="levels">
-          <button type="button" aria-pressed="false" data-level="easy">easy</button>
-          <button type="button" aria-pressed="true" data-level="normal">normal</button>
-          <button type="button" aria-pressed="false" data-level="hard">hard</button>
-          <button type="button" aria-pressed="false" data-level="nightmare">nightmare</button>
+          <button type="button" aria-pressed="false" data-level="easy" data-i18n="easy">easy</button>
+          <button type="button" aria-pressed="true" data-level="normal" data-i18n="normal">normal</button>
+          <button type="button" aria-pressed="false" data-level="hard" data-i18n="hard">hard</button>
+          <button type="button" aria-pressed="false" data-level="nightmare" data-i18n="nightmare">nightmare</button>
         </div>
-        <p class="gloss">Easy words are things you can hold, hard ones are ideas, and nightmare
+        <p class="gloss" data-i18n="difficulty-note">Easy words are things you can hold, hard ones are ideas, and nightmare
           reaches for the words you know but rarely say. The clock is 7 minutes on easy, 10 on
           normal, 12 on hard and 17 on nightmare.</p>
       </div>
 
       <div id="offline-only" class="panel">
         <div class="field">
-          <span class="key">players</span>
+          <span class="key" data-i18n="players">players</span>
           <div class="segmented" id="counts">
             <button type="button" aria-pressed="true" data-count="1">1</button>
             <button type="button" aria-pressed="false" data-count="2">2</button>
@@ -744,36 +748,36 @@
         </div>
 
         <div class="field" id="names-field" hidden>
-          <span class="key">names</span>
+          <span class="key" data-i18n="names">names</span>
           <div class="names" id="names"></div>
         </div>
 
-        <button class="wide" id="start">Hide a word</button>
+        <button class="wide" id="start" data-i18n="hide-word">Hide a word</button>
       </div>
 
       <div id="online-only" class="panel" hidden>
         <div class="field">
-          <label class="key" for="online-name">your name</label>
+          <label class="key" for="online-name" data-i18n="your-name">your name</label>
           <input id="online-name" placeholder="Player" autocapitalize="words" spellcheck="false" />
         </div>
 
-        <button class="wide" id="join-any">Join the last online game</button>
-        <p class="gloss">Joins the most recent game in progress. If nobody's playing, you start a new one.</p>
+        <button class="wide" id="join-any" data-i18n="join-last">Join the last online game</button>
+        <p class="gloss" data-i18n="join-last-note">Joins the most recent game in progress. If nobody's playing, you start a new one.</p>
 
-        <button class="wide ghost" id="make-code">Hide a word and get a code</button>
+        <button class="wide ghost" id="make-code" data-i18n="hide-word-code">Hide a word and get a code</button>
         <div id="code-out"></div>
 
         <div class="field">
-          <label class="key" for="code-in">or open a friend's code</label>
+          <label class="key" for="code-in" data-i18n="open-code">or open a friend's code</label>
           <div class="row">
             <input class="grow code-input" id="code-in" placeholder="K7P2" maxlength="5"
                    autocapitalize="characters" autocorrect="off" spellcheck="false" />
-            <button type="button" class="ghost" id="use-code">Open</button>
+            <button type="button" class="ghost" id="use-code" data-i18n="open">Open</button>
           </div>
         </div>
 
         <p class="notice" id="code-notice" hidden></p>
-        <p class="gloss">Everyone who opens the same code joins the same live room — you'll see who else is playing and can chat, but each of you guesses on your own. Needs a connection; offline mode doesn't.</p>
+        <p class="gloss" data-i18n="code-room-note">Everyone who opens the same code joins the same live room — you'll see who else is playing and can chat, but each of you guesses on your own. Needs a connection; offline mode doesn't.</p>
       </div>
     </div>
 
@@ -791,33 +795,33 @@
           <div class="eyebrow" id="coach-step"></div>
           <p id="coach-text"></p>
           <div class="row">
-            <button type="button" class="ghost" id="coach-next">Got it</button>
-            <button type="button" class="linkish" id="coach-skip">skip the tour</button>
+            <button type="button" class="ghost" id="coach-next" data-i18n="got-it">Got it</button>
+            <button type="button" class="linkish" id="coach-skip" data-i18n="skip-tour">skip the tour</button>
           </div>
         </aside>
 
         <div class="row" id="play-controls">
           <input class="grow" id="play-input" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" />
-          <button id="play-go">Guess</button>
-          <button type="button" class="ghost" id="play-hint">Hint</button>
+          <button id="play-go" data-i18n="guess">Guess</button>
+          <button type="button" class="ghost" id="play-hint" data-i18n="hint">Hint</button>
         </div>
 
         <p class="notice" id="play-notice" hidden></p>
         <ul class="readings" id="play-ladder"></ul>
-        <button class="linkish" id="play-quit">give up</button>
+        <button class="linkish" id="play-quit" data-i18n="give-up">give up</button>
       </div>
 
       <aside class="roster" id="roster" hidden>
-        <div class="eyebrow">who's in this game</div>
+        <div class="eyebrow" data-i18n="whos-here">who's in this game</div>
         <ul class="roster-list" id="roster-list"></ul>
         <p class="notice" id="live-notice" hidden></p>
 
         <div id="chat-box" hidden>
-          <div class="eyebrow chat-eyebrow">chat</div>
+          <div class="eyebrow chat-eyebrow" data-i18n="chat">chat</div>
           <ul class="chat-log" id="chat-log"></ul>
           <div class="row">
             <input class="grow" id="chat-input" placeholder="say something" maxlength="140" autocomplete="off" />
-            <button type="button" class="ghost" id="chat-send">Send</button>
+            <button type="button" class="ghost" id="chat-send" data-i18n="send">Send</button>
           </div>
         </div>
       </aside>
@@ -826,56 +830,56 @@
 
   <!-- ============ SOLVER ============ -->
   <section class="panel" id="panel-solve" role="tabpanel" aria-labelledby="tab-solve" hidden>
-    <p class="gloss">Playing the real Contexto elsewhere? Type the ranks it gave you. Each one narrows which word fits.</p>
+    <p class="gloss" data-i18n="solve-blurb">Playing the real Contexto elsewhere? Type the ranks it gave you. Each one narrows which word fits.</p>
 
     <div class="row">
       <input class="grow" id="obs-word" placeholder="word" autocapitalize="none" autocorrect="off" spellcheck="false" />
       <input class="fixed num" id="obs-rank" placeholder="rank" inputmode="numeric" />
-      <button id="obs-add">Add</button>
+      <button id="obs-add" data-i18n="add">Add</button>
     </div>
 
     <p class="notice" id="solve-notice" hidden></p>
 
     <ul class="readings" id="obs-list"></ul>
-    <p class="empty" id="obs-empty">No ranks yet. Start with a broad word — water, money, city — and enter whatever number comes back.</p>
+    <p class="empty" id="obs-empty" data-i18n="obs-empty">No ranks yet. Start with a broad word — water, money, city — and enter whatever number comes back.</p>
 
-    <button class="wide ghost" id="solve-go">Name the word</button>
+    <button class="wide ghost" id="solve-go" data-i18n="name-word">Name the word</button>
 
     <div id="solve-out"></div>
   </section>
 
   <!-- ============ COMPARE ============ -->
   <section class="panel" id="panel-compare" role="tabpanel" aria-labelledby="tab-compare" hidden>
-    <p class="gloss">Place any number of words against one main word, to see which of two guesses is worth a turn.</p>
+    <p class="gloss" data-i18n="compare-blurb">Place any number of words against one main word, to see which of two guesses is worth a turn.</p>
 
     <div class="field">
-      <label class="key" for="cmp-main">main word</label>
+      <label class="key" for="cmp-main" data-i18n="main-word">main word</label>
       <input id="cmp-main" placeholder="puppy" autocapitalize="none" autocorrect="off" spellcheck="false" />
     </div>
 
     <div class="field">
-      <label class="key" for="cmp-others">words to place against it</label>
+      <label class="key" for="cmp-others" data-i18n="words-against">words to place against it</label>
       <textarea id="cmp-others" rows="3" placeholder="dog, kitten, wolf, tractor" autocapitalize="none" autocorrect="off" spellcheck="false"></textarea>
     </div>
 
-    <button class="wide" id="cmp-go">Rank them</button>
+    <button class="wide" id="cmp-go" data-i18n="rank-them">Rank them</button>
     <p class="notice" id="cmp-notice" hidden></p>
     <div id="cmp-out"></div>
   </section>
 
   <!-- ============ SHOP ============ -->
   <section class="panel" id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden>
-    <p class="gloss">Spend coins to boost your hints and game settings.</p>
+    <p class="gloss" data-i18n="shop-blurb">Spend coins to boost your hints and game settings.</p>
     <ul class="shop-list" id="shop-list-live"></ul>
     <p class="gloss" id="shop-notice" hidden></p>
 
     <div class="field">
-      <span class="key">send one as a gift</span>
-      <p class="gloss" id="gift-note">You pay the coins; the hints land in their account.</p>
+      <span class="key" data-i18n="send-gift">send one as a gift</span>
+      <p class="gloss" id="gift-note" data-i18n="gift-note">You pay the coins; the hints land in their account.</p>
       <input id="gift-to" placeholder="their username" autocapitalize="none" autocorrect="off" spellcheck="false" />
       <div class="row">
         <select id="gift-item" class="grow"></select>
-        <button type="button" class="ghost" id="gift-send">Send gift</button>
+        <button type="button" class="ghost" id="gift-send" data-i18n="send-gift-btn">Send gift</button>
       </div>
       <p class="gloss" id="gift-notice" hidden></p>
     </div>
@@ -883,19 +887,19 @@
 
   <!-- ============ COMMUNITY ============ -->
   <section class="panel" id="panel-community" role="tabpanel" aria-labelledby="tab-community" hidden>
-    <p class="gloss">Everyone signed in can post here and vote yes or no on what others say.</p>
-    <ul class="chat-log" id="global-chat-log"><li class="chat-empty">No messages yet.</li></ul>
+    <p class="gloss" data-i18n="chat-blurb">Everyone signed in can post here and vote yes or no on what others say.</p>
+    <ul class="chat-log" id="global-chat-log"><li class="chat-empty" data-i18n="no-messages">No messages yet.</li></ul>
     <div class="row">
       <input class="grow" id="global-chat-input" placeholder="say something" maxlength="200" autocomplete="off" />
-      <button type="button" class="ghost" id="global-chat-send">Send</button>
+      <button type="button" class="ghost" id="global-chat-send" data-i18n="send">Send</button>
     </div>
     <p class="gloss" id="global-chat-notice" hidden></p>
 
     <div class="field">
-      <button type="button" class="wide ghost" id="suggest-feature-btn">Suggest a feature</button>
+      <button type="button" class="wide ghost" id="suggest-feature-btn" data-i18n="suggest-feature">Suggest a feature</button>
       <div id="suggest-feature-box" hidden>
         <textarea id="suggest-feature-text" rows="3" placeholder="What should be added?"></textarea>
-        <button type="button" id="suggest-feature-send">Send to the admins</button>
+        <button type="button" id="suggest-feature-send" data-i18n="send-admins">Send to the admins</button>
         <p class="gloss" id="suggest-feature-notice" hidden></p>
       </div>
     </div>
@@ -903,70 +907,70 @@
 
   <!-- ============ ADMIN ============ -->
   <section class="panel admin-panel" id="admin-panel" hidden>
-    <div class="eyebrow">admin</div>
+    <div class="eyebrow" data-i18n="admin">admin</div>
     <p class="gloss" id="admin-role-note"></p>
 
     <div id="admin-broadcast" hidden>
       <div class="field">
-        <span class="key">post an update — every visitor sees this, only you can post it</span>
+        <span class="key" data-i18n="post-update">post an update — every visitor sees this, only you can post it</span>
         <textarea id="admin-broadcast-text" rows="2" placeholder="What's new?"></textarea>
       </div>
-      <button type="button" id="admin-broadcast-send">Post to everyone</button>
+      <button type="button" id="admin-broadcast-send" data-i18n="post-everyone">Post to everyone</button>
     </div>
 
     <div id="admin-shop-editor" hidden>
       <div class="field">
-        <span class="key">shop items</span>
+        <span class="key" data-i18n="shop-items">shop items</span>
         <ul class="shop-list" id="admin-item-list"></ul>
       </div>
       <div class="field">
-        <span class="key">add an item</span>
+        <span class="key" data-i18n="add-item-key">add an item</span>
         <input id="admin-new-name" placeholder="item name" autocapitalize="none" autocorrect="off" />
         <input id="admin-new-note" placeholder="short description" autocapitalize="none" autocorrect="off" />
         <div class="row">
           <input class="num fixed" id="admin-new-price" type="number" min="1" placeholder="coins" />
           <input class="num fixed" id="admin-new-hints" type="number" min="1" placeholder="hints" />
-          <button type="button" class="grow" id="admin-add-item">Add item</button>
+          <button type="button" class="grow" id="admin-add-item" data-i18n="add-item">Add item</button>
         </div>
       </div>
-      <button type="button" class="ghost" id="admin-reset-shop">Reset to default</button>
+      <button type="button" class="ghost" id="admin-reset-shop" data-i18n="reset-default">Reset to default</button>
     </div>
 
     <div id="admin-request-form" hidden>
       <div class="field">
-        <span class="key">send a request</span>
+        <span class="key" data-i18n="send-request">send a request</span>
         <div class="segmented" id="req-type">
-          <button type="button" aria-pressed="true" data-type="feature">feature</button>
-          <button type="button" aria-pressed="false" data-type="bug">bug</button>
+          <button type="button" aria-pressed="true" data-type="feature" data-i18n="feature">feature</button>
+          <button type="button" aria-pressed="false" data-type="bug" data-i18n="bug">bug</button>
         </div>
         <textarea id="admin-req-text" rows="3" placeholder="What should be added, or what's broken?"></textarea>
       </div>
-      <button type="button" id="admin-req-send">Send</button>
+      <button type="button" id="admin-req-send" data-i18n="send">Send</button>
     </div>
 
     <div id="admin-everyone" hidden>
-      <button type="button" class="ghost" id="everyone-btn">Everyone</button>
+      <button type="button" class="ghost" id="everyone-btn" data-i18n="everyone">Everyone</button>
       <div id="everyone-box" hidden>
         <ul class="shop-list" id="everyone-list"></ul>
       </div>
     </div>
 
     <div id="admin-requests" hidden>
-      <span class="key">requests &amp; bugs</span>
+      <span class="key" data-i18n="requests-bugs">requests &amp; bugs</span>
       <ul class="shop-list" id="admin-request-list"></ul>
     </div>
 
     <div class="field">
-      <span class="key">admin chat</span>
-      <ul class="chat-log" id="admin-chat-log"><li class="chat-empty">No messages yet.</li></ul>
+      <span class="key" data-i18n="admin-chat">admin chat</span>
+      <ul class="chat-log" id="admin-chat-log"><li class="chat-empty" data-i18n="no-messages">No messages yet.</li></ul>
       <div class="row">
         <input class="grow" id="admin-chat-input" placeholder="message the other admin…" maxlength="280" autocomplete="off" />
-        <button type="button" class="fixed" id="admin-chat-send">Send</button>
+        <button type="button" class="fixed" id="admin-chat-send" data-i18n="send">Send</button>
       </div>
     </div>
 
     <p class="gloss" id="admin-notice" hidden></p>
-    <button type="button" class="linkish" id="admin-close">Close</button>
+    <button type="button" class="linkish" id="admin-close" data-i18n="close">Close</button>
   </section>
 
   <div class="colophon">
@@ -1123,6 +1127,138 @@
      ================================================================ */
   var $ = function (id) { return document.getElementById(id); };
 
+  /* ---------- language ----------
+     One flat French dictionary, looked up two ways: elements tagged
+     data-i18n="key" in the markup look up that key, and notices built
+     in JS look up their own English text directly, so a call site never
+     needs to change — just add the sentence to FR once. Messages built
+     by gluing a variable into the middle of a sentence (a username, a
+     count) are left in English; splitting those into a French word
+     order isn't something a lookup table can do. */
+  var LANG = localStorage.getItem("contexto_lang") || "en";
+
+  var FR = {
+    "sign-in": "Se connecter", "title": "Contexto", "standfirst": "Un mot est caché. Chaque proposition indique sa distance.",
+    "take-tour": "Faire la visite", "save-page": "Enregistrer cette page",
+    "updates": "actualités", "account": "compte",
+    "account-blurb": "Un compte garde vos pièces et indices sur tous vos appareils, et permet aux autres joueurs de vous envoyer des cadeaux.",
+    "username": "nom d'utilisateur", "password": "mot de passe", "create-account": "Créer un compte",
+    "account-id": "Identifiant de compte :", "claim-admin": "Devenir admin", "sign-out": "Se déconnecter",
+    "tab-play": "jouer", "tab-solve": "solveur", "tab-compare": "comparer", "tab-shop": "boutique", "tab-chat": "discussion",
+    "how-playing": "mode de jeu", "offline": "hors ligne", "online": "en ligne",
+    "mode-note": "Jusqu'à quatre joueurs sur ce téléphone, chacun son tour sur un mot caché.",
+    "difficulty": "difficulté", "easy": "facile", "normal": "normal", "hard": "difficile", "nightmare": "cauchemar",
+    "difficulty-note": "Les mots faciles se tiennent dans la main, les difficiles sont des idées, et le cauchemar " +
+      "va chercher les mots que vous connaissez mais dites rarement. Le chrono est de 7 minutes en facile, 10 en " +
+      "normal, 12 en difficile et 17 en cauchemar.",
+    "players": "joueurs", "names": "noms", "hide-word": "Cacher un mot", "your-name": "votre nom",
+    "join-last": "Rejoindre la dernière partie en ligne",
+    "join-last-note": "Rejoint la partie la plus récente en cours. Si personne ne joue, vous en démarrez une nouvelle.",
+    "hide-word-code": "Cacher un mot et obtenir un code", "open-code": "ou ouvrir le code d'un ami", "open": "Ouvrir",
+    "code-room-note": "Toute personne qui ouvre le même code rejoint le même salon en direct — vous verrez qui joue et pourrez discuter, mais chacun propose de son côté. Nécessite une connexion ; le mode hors ligne non.",
+    "got-it": "Compris", "skip-tour": "passer la visite", "guess": "Proposer", "hint": "Indice", "give-up": "abandonner",
+    "whos-here": "qui est dans la partie", "chat": "discussion", "send": "Envoyer",
+    "solve-blurb": "Vous jouez au vrai Contexto ailleurs ? Entrez les rangs qu'il vous a donnés. Chacun réduit les mots possibles.",
+    "add": "Ajouter", "obs-empty": "Pas encore de rang. Commencez par un mot large — eau, argent, ville — et entrez le nombre obtenu.",
+    "name-word": "Nommer le mot",
+    "compare-blurb": "Placez n'importe quel nombre de mots face à un mot principal, pour voir laquelle de deux propositions vaut le coup.",
+    "main-word": "mot principal", "words-against": "mots à comparer", "rank-them": "Les classer",
+    "shop-blurb": "Dépensez vos pièces pour augmenter vos indices et vos réglages de jeu.",
+    "send-gift": "en envoyer un en cadeau", "gift-note": "Vous payez les pièces ; les indices arrivent sur son compte.",
+    "send-gift-btn": "Envoyer le cadeau",
+    "chat-blurb": "Tout le monde connecté peut écrire ici et voter oui ou non sur ce que disent les autres.",
+    "no-messages": "Pas encore de messages.", "No messages yet.": "Pas encore de messages.",
+    "suggest-feature": "Proposer une fonctionnalité",
+    "send-admins": "Envoyer aux admins", "admin": "admin",
+    "post-update": "publier une actualité — tous les visiteurs la voient, vous seul pouvez publier",
+    "post-everyone": "Publier pour tout le monde", "shop-items": "articles de la boutique",
+    "add-item-key": "ajouter un article", "add-item": "Ajouter l'article", "reset-default": "Réinitialiser",
+    "send-request": "envoyer une demande", "feature": "fonctionnalité", "bug": "bug",
+    "everyone": "Tout le monde", "requests-bugs": "demandes et bugs", "admin-chat": "discussion admin",
+    "close": "Fermer", "closest": "le plus proche", "(you)": "(vous)", "joined": "arrivé",
+    "guessing…": "propose…", "waiting": "en attente",
+
+    "Not enough coins yet — one comes with every word you find.": "Pas encore assez de pièces — vous en gagnez une à chaque mot trouvé.",
+    "Pick a username — letters, numbers, dashes.": "Choisissez un nom d'utilisateur — lettres, chiffres, tirets.",
+    "Firebase asks for at least six characters in a password.": "Firebase demande au moins six caractères pour un mot de passe.",
+    "Signed out. Coins earned from here on stay on this device.": "Déconnecté. Les pièces gagnées à partir de maintenant restent sur cet appareil.",
+    "Creating…": "Création…",
+    "Account made. The coins you already had came with you.": "Compte créé. Les pièces que vous aviez déjà vous ont suivi.",
+    "Checking…": "Vérification…",
+    "Claiming…": "Demande en cours…",
+    "You're the admin. That list is sealed now — changing it again means editing /admins in the Firebase console.":
+      "Vous êtes admin. Cette liste est maintenant verrouillée — pour la changer, il faudra modifier /admins dans la console Firebase.",
+    "Couldn't claim it. Either somebody already has it, or the database rules aren't in place yet.":
+      "Impossible de le devenir. Soit quelqu'un l'est déjà, soit les règles de la base de données ne sont pas encore en place.",
+    "Pick something to send.": "Choisissez quelque chose à envoyer.",
+    "Who's it for? Type their username.": "Pour qui ? Entrez son nom d'utilisateur.",
+    "Sign in first — a gift comes out of your own coins.": "Connectez-vous d'abord — un cadeau est payé avec vos propres pièces.",
+    "That's you. Buying it outright is the same thing.": "C'est vous. Autant l'acheter directement.",
+    "Not enough coins for that one.": "Pas assez de pièces pour celui-là.",
+    "Can't reach the accounts service right now.": "Impossible de joindre le service de comptes pour le moment.",
+    "Sending…": "Envoi…",
+    "Sign in first to post here.": "Connectez-vous d'abord pour écrire ici.",
+    "Can't reach the chat right now.": "Impossible de joindre la discussion pour le moment.",
+    "Sign in first to vote.": "Connectez-vous d'abord pour voter.",
+    "Give it a name first.": "Donnez-lui d'abord un nom.",
+    "Saved.": "Enregistré.",
+    "Removed.": "Supprimé.",
+    "Added.": "Ajouté.",
+    "Back to the default shop.": "Retour à la boutique par défaut.",
+    "Write what you want to send first.": "Écrivez d'abord ce que vous voulez envoyer.",
+    "Sent.": "Envoyé.",
+    "Write something first.": "Écrivez d'abord quelque chose.",
+    "Posted — every visitor will see it.": "Publié — tous les visiteurs le verront.",
+    "Live sync dropped — you can still play, just without seeing others.": "Synchronisation en direct interrompue — vous pouvez toujours jouer, mais sans voir les autres.",
+    "Live sync isn't set up for this copy of the game — you can still play, just without seeing others.": "La synchronisation en direct n'est pas configurée pour cette copie du jeu — vous pouvez toujours jouer, mais sans voir les autres.",
+    "Connecting…": "Connexion…",
+    "One plain word, letters only.": "Un seul mot, lettres uniquement.",
+    "That code doesn't work — check the four characters and try again.": "Ce code ne fonctionne pas — vérifiez les quatre caractères et réessayez.",
+    "Make a guess first — a hint is worked out from what you've already tried.": "Faites d'abord une proposition — un indice se base sur ce que vous avez déjà essayé.",
+    "Type a plain word first.": "Entrez d'abord un mot simple.",
+    "Rank is a whole number, 1 or higher.": "Le rang est un nombre entier, 1 ou plus.",
+    "Add at least one rank first.": "Ajoutez d'abord au moins un rang.",
+    "Give a main word first.": "Donnez d'abord un mot principal.",
+    "Add at least one word to place against it.": "Ajoutez au moins un mot à comparer.",
+    "Write your idea first.": "Écrivez d'abord votre idée.",
+    "Sign in first — that way the admins know who to thank.": "Connectez-vous d'abord — comme ça les admins savent qui remercier.",
+    "Can't reach the request queue right now.": "Impossible de joindre la file de demandes pour le moment.",
+    "Sent — thanks!": "Envoyé — merci !",
+    "No account with that name — check the spelling.": "Aucun compte à ce nom — vérifiez l'orthographe.",
+    "Couldn't send that. Try again in a moment.": "Échec de l'envoi. Réessayez dans un instant.",
+    "yes": "oui", "no": "non", "translated from French": "traduit du français",
+    "translated from English": "traduit de l'anglais", "translating…": "traduction…"
+  };
+
+  function t(text) { return (LANG === "fr" && FR[text]) ? FR[text] : text; }
+
+  var FR_UNITS = {
+    "coin":   ["pièce", "pièces"],
+    "hint":   ["indice", "indices"],
+    "guess":  ["essai", "essais"],
+    "player": ["joueur", "joueurs"],
+    "more":   ["de plus", "de plus"],
+    "of them": ["d'entre eux", "d'entre eux"]
+  };
+
+  function applyLang() {
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      var key = el.getAttribute("data-i18n");
+      if (el.dataset.en === undefined) el.dataset.en = el.textContent;
+      el.textContent = (LANG === "fr" && FR[key]) ? FR[key] : el.dataset.en;
+    });
+    $("lang-btn").textContent = LANG === "fr" ? "EN" : "FR";
+    $("lang-btn").title = LANG === "fr" ? "English" : "Français";
+    $("lang-btn").setAttribute("aria-pressed", LANG === "fr" ? "true" : "false");
+    if (typeof renderGlobalChat === "function") renderGlobalChat();
+  }
+
+  $("lang-btn").addEventListener("click", function () {
+    LANG = LANG === "fr" ? "en" : "fr";
+    localStorage.setItem("contexto_lang", LANG);
+    applyLang();
+  });
+
   function normalize(s) { return String(s || "").toLowerCase().trim(); }
 
   function readWords(text) {
@@ -1201,7 +1337,7 @@
   function say(node, message) {
     if (!message) { node.hidden = true; node.textContent = ""; return; }
     node.hidden = false;
-    node.textContent = message;
+    node.textContent = t(message);
   }
 
   /* ================================================================
@@ -1305,7 +1441,10 @@
     paintPurse();
   }
 
-  function tally(n, one, many) { return n + " " + (n === 1 ? one : many); }
+  function tally(n, one, many) {
+    if (LANG === "fr" && FR_UNITS[one]) return n + " " + (n === 1 ? FR_UNITS[one][0] : FR_UNITS[one][1]);
+    return n + " " + (n === 1 ? one : many);
+  }
 
   function loadCachedShopItems() {
     try {
@@ -1379,7 +1518,7 @@
 
   function shopSay(message) {
     var node = $("shop-notice");
-    node.textContent = message || "";
+    node.textContent = t(message) || "";
     node.hidden = !message;
   }
 
@@ -1420,7 +1559,7 @@
 
   function accountSay(message) {
     var node = $("account-notice");
-    node.textContent = message || "";
+    node.textContent = t(message) || "";
     node.hidden = !message;
   }
 
@@ -1621,7 +1760,7 @@
 
   function giftSay(message) {
     var node = $("gift-notice");
-    node.textContent = message || "";
+    node.textContent = t(message) || "";
     node.hidden = !message;
   }
 
@@ -1658,19 +1797,54 @@
      Open to every signed-in account, not just admins. Each message can be
      voted yes or no by anyone; a second click on the same choice takes the
      vote back, a click on the other choice switches it. The rules let you
-     write only your own vote, so counts stay one-per-person. */
+     write only your own vote, so counts stay one-per-person.
+
+     A message written in the language nobody in the room is using gets a
+     second line under it — machine-translated by MyMemory, a free,
+     keyless translation API. There's no offline way to translate text
+     someone just typed, so this one corner of the page needs a
+     connection even when the rest of it doesn't. */
   var globalChatMessages = [];
+  var FRENCH_CHARS = /[àâäéèêëîïôöùûüçœ]/i;
+  var FRENCH_WORDS = ["le", "la", "les", "un", "une", "des", "est", "et", "je", "tu", "il", "elle",
+    "nous", "vous", "ils", "elles", "avec", "pour", "dans", "que", "qui", "ça", "tres", "très",
+    "bien", "merci", "oui", "non", "bonjour", "salut", "suis", "es", "sont", "pas", "ne", "du",
+    "de", "au", "aux", "ce", "cette", "mais", "donc", "alors", "comme", "plus", "moins", "tout", "tous"];
+
+  function looksFrench(text) {
+    if (FRENCH_CHARS.test(text)) return true;
+    var words = (text.toLowerCase().match(/[a-zà-ÿ']+/g) || []);
+    if (words.length < 3) return false;
+    var hits = words.filter(function (w) { return FRENCH_WORDS.indexOf(w) > -1; }).length;
+    return hits / words.length > 0.25;
+  }
+
+  var translateCache = Object.create(null);
+
+  function translateText(text, target) {
+    var key = target + "|" + text;
+    if (key in translateCache) return Promise.resolve(translateCache[key]);
+    var source = target === "en" ? "fr" : "en";
+    var url = "https://api.mymemory.translated.net/get?q=" + encodeURIComponent(text) +
+              "&langpair=" + source + "|" + target;
+    translateCache[key] = null;
+    return fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      var out = data && data.responseData && data.responseData.translatedText;
+      translateCache[key] = (out && out.toLowerCase() !== text.toLowerCase()) ? out : false;
+      return translateCache[key];
+    }).catch(function () { translateCache[key] = false; return false; });
+  }
 
   function globalChatSay(message) {
     var node = $("global-chat-notice");
-    node.textContent = message || "";
+    node.textContent = t(message) || "";
     node.hidden = !message;
   }
 
   function renderGlobalChat() {
     var log = $("global-chat-log");
     if (!globalChatMessages.length) {
-      log.innerHTML = '<li class="chat-empty">No messages yet.</li>';
+      log.innerHTML = '<li class="chat-empty">' + escapeHtml(t("No messages yet.")) + '</li>';
       return;
     }
     log.innerHTML = globalChatMessages.map(function (m) {
@@ -1679,11 +1853,31 @@
       Object.keys(votes).forEach(function (uid) {
         if (votes[uid] === "yes") yes++; else if (votes[uid] === "no") no++;
       });
+
+      var msgLang = looksFrench(m.text) ? "fr" : "en";
+      var viewerLang = LANG === "fr" ? "fr" : "en";
+      var translation = "";
+      if (msgLang !== viewerLang) {
+        var cacheKey = viewerLang + "|" + m.text;
+        var known = cacheKey in translateCache;
+        var cached = translateCache[cacheKey];
+        if (!known) {
+          translateText(m.text, viewerLang).then(function () { renderGlobalChat(); });
+        }
+        if (!known || cached === null) {
+          translation = '<div class="translated">' + escapeHtml(t("translating…")) + '</div>';
+        } else if (cached) {
+          var fromLabel = t(msgLang === "fr" ? "translated from French" : "translated from English");
+          translation = '<div class="translated">' + escapeHtml(cached) + ' <span class="from-lang">(' +
+            escapeHtml(fromLabel) + ')</span></div>';
+        }
+      }
+
       return '<li class="chat-line' + (account && m.name === account.name ? " mine" : "") + '" data-id="' + escapeHtml(m.id) + '">' +
-        '<span class="from">' + escapeHtml(m.name) + '</span>' + escapeHtml(m.text) +
+        '<span class="from">' + escapeHtml(m.name) + '</span>' + escapeHtml(m.text) + translation +
         '<div class="votes">' +
-          '<button type="button" class="vote-btn vote-yes' + (mine === "yes" ? " mine-yes" : "") + '">yes ' + yes + '</button>' +
-          '<button type="button" class="vote-btn vote-no' + (mine === "no" ? " mine-no" : "") + '">no ' + no + '</button>' +
+          '<button type="button" class="vote-btn vote-yes' + (mine === "yes" ? " mine-yes" : "") + '">' + escapeHtml(t("yes")) + ' ' + yes + '</button>' +
+          '<button type="button" class="vote-btn vote-no' + (mine === "no" ? " mine-no" : "") + '">' + escapeHtml(t("no")) + ' ' + no + '</button>' +
         '</div></li>';
     }).join("");
   }
@@ -1738,7 +1932,7 @@
 
   $("suggest-feature-send").addEventListener("click", function () {
     var node = $("suggest-feature-notice");
-    var say = function (m) { node.textContent = m || ""; node.hidden = !m; };
+    var say = function (m) { node.textContent = t(m) || ""; node.hidden = !m; };
     var text = $("suggest-feature-text").value.trim();
     if (!text) { say("Write your idea first."); return; }
     if (!account) { say("Sign in first — that way the admins know who to thank."); return; }
@@ -1780,7 +1974,7 @@
 
   function adminSay(message) {
     var node = $("admin-notice");
-    node.textContent = message || "";
+    node.textContent = t(message) || "";
     node.hidden = !message;
   }
 
@@ -2446,9 +2640,9 @@
     var isOnline = play.mode === "online";
     var ladderRows = isOnline && play.liveRows ? play.liveRows : play.rows;
     var best = ladderRows.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
-    $("play-count").textContent = ladderRows.length === 1 ? "1 guess" : ladderRows.length + " guesses";
+    $("play-count").textContent = tally(ladderRows.length, "guess", "guesses");
     if (best) {
-      $("play-best").textContent = "closest " + best.rank;
+      $("play-best").textContent = t("closest") + " " + best.rank;
       $("play-best").style.color = heat(best.rank);
     } else {
       $("play-best").textContent = "";
@@ -2475,14 +2669,14 @@
 
           var who = document.createElement("span");
           who.className = "who";
-          who.textContent = p.name + (p.isMe ? " (you)" : "");
+          who.textContent = p.name + (p.isMe ? " " + t("(you)") : "");
           li.appendChild(who);
 
           var stat = document.createElement("span");
           stat.className = "stat";
           stat.textContent = p.guesses
-            ? p.guesses + (p.guesses === 1 ? " guess" : " guesses") + (p.best ? " · " + p.best : "")
-            : "joined";
+            ? tally(p.guesses, "guess", "guesses") + (p.best ? " · " + p.best : "")
+            : t("joined");
           li.appendChild(stat);
 
           list.appendChild(li);
@@ -2503,8 +2697,8 @@
           var stat = document.createElement("span");
           stat.className = "stat";
           stat.textContent = rows.length
-            ? rows.length + (rows.length === 1 ? " guess" : " guesses") + (pBest ? " · " + pBest.rank : "")
-            : (i === play.turn ? "guessing…" : "waiting");
+            ? tally(rows.length, "guess", "guesses") + (pBest ? " · " + pBest.rank : "")
+            : (i === play.turn ? t("guessing…") : t("waiting"));
           li.appendChild(stat);
 
           list.appendChild(li);
@@ -2556,7 +2750,7 @@
     closeMyOpenGame();
 
     var shared = play.players.length > 1;
-    var count = play.rows.length + (play.rows.length === 1 ? " guess" : " guesses");
+    var count = tally(play.rows.length, "guess", "guesses");
 
     var card = document.createElement("div");
     card.className = "card keyed";
@@ -3277,6 +3471,7 @@
      8. BOOT
      ================================================================ */
   $("dictline").textContent = V + " words · ranks computed here, offline";
+  applyLang();
   paintPurse();
   renderAdminAvailability();
   if (window.AdminRoom && window.AdminRoom.ready) { subscribeShopSync(); subscribeAdminChannels(); }
