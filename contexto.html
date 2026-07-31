@@ -1705,7 +1705,7 @@
     globalChatSay("");
     window.AccountRoom.sendGlobalChat(account.name, text).then(function () {
       input.value = "";
-    }).catch(function () { globalChatSay("Couldn't send that. Try again in a moment."); });
+    }).catch(function (e) { globalChatSay(authTrouble(e)); });
   }
 
   $("global-chat-send").addEventListener("click", sendGlobalChat);
@@ -1722,7 +1722,8 @@
     var msg = globalChatMessages.filter(function (m) { return m.id === msgId; })[0];
     var current = msg && msg.votes && msg.votes[account.uid];
     var choice = btn.classList.contains("vote-yes") ? "yes" : "no";
-    window.AccountRoom.voteGlobal(msgId, account.uid, current === choice ? null : choice).catch(function () {});
+    window.AccountRoom.voteGlobal(msgId, account.uid, current === choice ? null : choice)
+      .catch(function (e) { globalChatSay(authTrouble(e)); });
   });
 
   /* ---------- suggest a feature ----------
@@ -1744,7 +1745,7 @@
     window.AdminRoom.submitRequest("feature", text, account.name).then(function () {
       $("suggest-feature-text").value = "";
       say("Sent — thanks!");
-    }).catch(function () { say("Couldn't send that. Try again in a moment."); });
+    }).catch(function (e) { say(authTrouble(e)); });
   });
 
   /* ================================================================
