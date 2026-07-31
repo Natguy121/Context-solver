@@ -519,6 +519,15 @@
   .roster-item.is-me { border-color: var(--accent); color: var(--ink); }
   .roster-item .who { text-transform: uppercase; }
   .roster-item .stat { white-space: nowrap; }
+  #spectate-roster .roster-item { flex-wrap: wrap; }
+  #spectate-roster .roster-item .typing {
+    flex-basis: 100%;
+    text-transform: none;
+    letter-spacing: 0;
+    font-style: italic;
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
 
   .chat-eyebrow { margin-top: 0.25rem; }
 
@@ -1253,7 +1262,7 @@
     "show-myself": "Me montrer", "stop-spectating": "Arrêter d'observer",
     "invisible": "invisible", "visible to players": "visible pour les joueurs",
     "Spectate": "Observer", "Show myself": "Me montrer", "Hide myself": "Me cacher",
-    "Kick": "Expulser", "Delete": "Supprimer",
+    "Kick": "Expulser", "Delete": "Supprimer", "typing": "en train d'écrire",
     "Nobody here yet.": "Personne ici pour l'instant.",
     "No games open right now.": "Aucune partie ouverte pour l'instant.",
     "Live sync dropped — try spectating again.": "Synchronisation en direct interrompue — réessayez d'observer.",
@@ -2342,6 +2351,7 @@
       return '<li class="roster-item' + (isMe ? " is-me" : "") + '" data-id="' + escapeHtml(p.id) + '">' +
         '<span class="who">' + escapeHtml(p.name) + (isMe ? " " + escapeHtml(t("(you)")) : "") + '</span>' +
         '<span class="stat">' + tally(p.guesses, "guess", "guesses") + (p.best ? " · " + p.best : "") + '</span>' +
+        (!isMe && p.typing ? '<span class="typing">' + escapeHtml(t("typing")) + ': "' + escapeHtml(p.typing) + '"</span>' : "") +
         (isMe ? "" : '<button type="button" class="ghost kick-player">' + escapeHtml(t("Kick")) + '</button>') +
         '</li>';
     }).join("") || '<li class="chat-empty">' + escapeHtml(t("Nobody here yet.")) + '</li>';
@@ -2600,6 +2610,15 @@
     justGuessed: null // the word to single out in the ladder, so only it animates
   };
 
+  // Debounced so typing doesn't push a database write on every keystroke —
+  // spectators just see the box settle a beat behind the real thing.
+  var typingSyncTimer = null;
+  function syncTyping(text) {
+    if (play.mode !== "online" || !window.LiveRoom) return;
+    clearTimeout(typingSyncTimer);
+    typingSyncTimer = setTimeout(function () { window.LiveRoom.updateTyping(text); }, 200);
+  }
+
   // Wire a segmented control: press one, release the others.
   function pressGroup(container, key, onPick) {
     Array.prototype.forEach.call(container.children, function (button) {
@@ -2728,6 +2747,7 @@
   }
 
   function beginGame(secret, code) {
+    clearTimeout(typingSyncTimer);
     if (window.LiveRoom) window.LiveRoom.leave();
     stopBots();
     closeMyOpenGame();
@@ -2780,6 +2800,11 @@
 
     if (!code) return;
 
+    // Set once we've seen our own presence row in a snapshot, so a kick
+    // (which just deletes that row) can be told apart from the split second
+    // before our own join-write has round-tripped back to us.
+    var hasSeenSelf = false;
+
     function attach() {
       if (!window.LiveRoom || !window.LiveRoom.ready) return;
       say($("live-notice"), "");
@@ -2796,6 +2821,13 @@
             if (window.AccountRoom && window.AccountRoom.ready) {
               window.AccountRoom.openGame(newCode, play.level).catch(function () {});
             }
+            return;
+          }
+          var amPresent = list.some(function (p) { return p.isMe; });
+          if (amPresent) {
+            hasSeenSelf = true;
+          } else if (hasSeenSelf && !play.done) {
+            kickedFromRoom();
             return;
           }
           play.live = list;
@@ -3007,8 +3039,69 @@
     }, 1850);
   }
 
+  // A kick just deletes the presence row an admin/assistant can already see
+  // and write (see LiveRoom.kick below) — it's not a ban, nothing stops the
+  // same person rejoining with the same code a moment later. This is what
+  // turns that deletion into something the kicked player actually notices:
+  // stop the round right here instead of leaving them guessing into a room
+  // that no longer lists them.
+  function kickedFromRoom() {
+    if (play.done) return;
+    play.done = true;
+    clearTimeout(typingSyncTimer);
+    stopClock();
+    tour.on = false;
+    $("coach").hidden = true;
+    $("play-clock").hidden = true;
+    $("tab-solve").hidden = false;
+    $("play-controls").hidden = true;
+    $("play-quit").hidden = true;
+    $("roster").hidden = true;
+    $("chat-box").hidden = true;
+    if (window.LiveRoom) window.LiveRoom.leave();
+    stopBots();
+    closeMyOpenGame();
+
+    var card = document.createElement("div");
+    card.className = "card keyed";
+    card.style.color = "var(--rule)";
+
+    var key = document.createElement("div");
+    key.className = "eyebrow";
+    key.style.color = "var(--muted)";
+    key.textContent = "removed from this room";
+    card.appendChild(key);
+
+    var word = document.createElement("div");
+    word.className = "verdict";
+    word.style.color = "var(--ink)";
+    word.textContent = "An admin sent you out of this room. You're free to join again anytime.";
+    card.appendChild(word);
+
+    var buttons = document.createElement("div");
+    buttons.className = "row";
+
+    var again = document.createElement("button");
+    again.type = "button";
+    again.textContent = "Back to setup";
+    again.addEventListener("click", function () {
+      $("play-live").hidden = true;
+      $("play-setup").hidden = false;
+      document.querySelector(".wrap").classList.remove("wide-play");
+      $("code-out").textContent = "";
+      $("code-in").value = "";
+    });
+    buttons.appendChild(again);
+
+    card.appendChild(buttons);
+
+    $("play-verdict").textContent = "";
+    $("play-verdict").appendChild(card);
+  }
+
   function finish(won, who, ranOut) {
     play.done = true;
+    clearTimeout(typingSyncTimer);
     stopClock();
     tour.on = false;
     $("coach").hidden = true;
@@ -3137,6 +3230,8 @@
     play.rows.push({ word: w, rank: rank, by: who });
     if (play.mode === "online" && window.LiveRoom) window.LiveRoom.addGuess(who, w, rank);
     $("play-input").value = "";
+    clearTimeout(typingSyncTimer);
+    if (play.mode === "online" && window.LiveRoom) window.LiveRoom.updateTyping("");
 
     // Marked so the ladder can single this row out; cleared once the animation
     // has run, or a later repaint would set it off again.
@@ -3377,6 +3472,7 @@
   $("play-hint").addEventListener("click", playHint);
   $("play-go").addEventListener("click", guess);
   $("play-input").addEventListener("keydown", function (e) { if (e.key === "Enter") guess(); });
+  $("play-input").addEventListener("input", function () { syncTyping($("play-input").value); });
   $("play-quit").addEventListener("click", function () { finish(false, null); });
 
   function sendChat() {
@@ -3877,7 +3973,7 @@
   function noop() { return function () {}; }
 
   var LiveRoom = {
-    join: function () {}, leave: function () {}, updateProgress: function () {},
+    join: function () {}, leave: function () {}, updateProgress: function () {}, updateTyping: function () {},
     sendChat: function () {}, addGuess: function () {},
     spectate: function () {}, stopSpectating: function () {},
     isRevealed: function () { return false; }, spectatorId: function () { return null; },
@@ -3962,7 +4058,8 @@
           var val = snap.val() || {};
           callbacks.onPlayers(Object.keys(val).map(function (id) {
             var p = val[id] || {};
-            return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null, isMe: id === myId };
+            return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null,
+                     typing: p.typing || "", isMe: id === myId };
           }));
         }, function () { callbacks.onError && callbacks.onError(); });
 
@@ -3986,6 +4083,12 @@
       LiveRoom.leave = leave;
       LiveRoom.updateProgress = function (guesses, best) {
         if (current) dbMod.update(current.presenceRef, { guesses: guesses, best: best });
+      };
+      // Mirrors the input box live, so a spectator sees what's being typed
+      // before it's submitted as a guess. Debounced client-side (see the
+      // "input" listener on #play-input) so this isn't a write per keystroke.
+      LiveRoom.updateTyping = function (text) {
+        if (current) dbMod.update(current.presenceRef, { typing: text });
       };
       LiveRoom.sendChat = function (name, text) {
         if (current) dbMod.push(dbMod.ref(db, "rooms/" + current.code + "/chat"),
@@ -4026,7 +4129,8 @@
           var val = snap.val() || {};
           callbacks.onPlayers(Object.keys(val).map(function (id) {
             var p = val[id] || {};
-            return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null };
+            return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null,
+                     typing: p.typing || "" };
           }));
         }, function () { callbacks.onError && callbacks.onError(); });
 
