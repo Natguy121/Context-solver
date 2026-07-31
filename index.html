@@ -2153,11 +2153,11 @@
     var role = adminRole();
     $("admin-role-note").textContent = role === "admin"
       ? "Full admin — post updates everyone sees, edit the shop, and see requests and bugs sent in."
-      : "Assistant admin — send feature requests and bug reports, and chat here.";
+      : "Assistant admin — send feature requests and bug reports, spectate rooms, kick players, and chat here.";
     $("admin-broadcast").hidden = role !== "admin";
     $("admin-shop-editor").hidden = role !== "admin";
     $("admin-everyone").hidden = role !== "admin";
-    $("admin-spectate").hidden = role !== "admin";
+    $("admin-spectate").hidden = !role;
     $("admin-requests").hidden = role !== "admin";
     $("admin-request-form").hidden = role !== "assistant";
     adminSay("");
