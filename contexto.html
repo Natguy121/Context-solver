@@ -1431,7 +1431,158 @@
     ALIAS[pair.slice(0, cut)] = pair.slice(cut + 1);
   });
 
-  function resolve(word) { return ALIAS[word] || word; }
+  /* ---------- guessing in French ----------
+     The lexicon and every secret are English, so a French guess is resolved
+     to its English word before it is scored, and scored rows are turned back
+     into French for display. Written as fr:en pairs, deaccented on both
+     sides, and every English side was checked against the lexicon when this
+     table was built — a pair whose target isn't a scorable word is no use.
+
+     This only applies while the page is in French, because plenty of these
+     keys are also ordinary English words meaning something else entirely:
+     "coin" is a corner, "pain" is bread, "chat" is a cat, "or" is gold. In
+     English the table is skipped, so those keep their English meaning. */
+  var FR_GUESS = Object.create(null);
+  var FR_OF = Object.create(null);
+  (
+  "abeille:bee achat:purchase acheter:buy adulte:adult aeroport:airport aider:help aigle:eagle aiguille:needle " +
+  "ail:garlic aimer:love allegorie:allegory ambiguite:ambiguity ami:friend amie:friend amour:love an:year " +
+  "ananas:pineapple ancien:ancient ane:donkey anglais:english animaux:animals annee:year aout:august " +
+  "apathie:apathy appartement:apartment apprendre:learn araignee:spider arbitraire:arbitrary arbre:tree " +
+  "argent:money argente:silver armee:army armoire:closet arreter:stop assez:enough assiette:plate " +
+  "astucieux:astute attendre:wait aujourd:today aussi:also austerite:austerity auto:car automne:autumn " +
+  "avenir:future avion:plane avocat:lawyer avoir:have bague:ring balai:broom baleine:whale balle:ball " +
+  "ballon:ball banal:mundane banane:banana banque:bank bas:low bateau:boat beau:beautiful beaucoup:many " +
+  "beaute:beauty bebe:baby beurre:butter bibliotheque:library bienveillant:benevolent biere:beer bijou:jewel " +
+  "billet:ticket biscuit:cookie blanc:white bleu:blue boeuf:beef boire:drink bois:wood boite:box bol:bowl " +
+  "bon:good bonbon:candy bonheur:happiness bonhomme:fellow bonjour:hello bord:edge botte:boot bouche:mouth " +
+  "boue:mud bougie:candle bout:end bouteille:bottle boutique:shop bouton:button branche:branch bras:arm " +
+  "brosse:brush brouillard:fog bruit:noise brun:brown bruyant:noisy bureau:office but:goal cacher:hide " +
+  "cadeau:gift cafe:coffee cahier:notebook calcul:calculation calendrier:calendar calme:calm camion:truck " +
+  "canape:couch canard:duck carotte:carrot carre:square carte:map casquette:cap casser:break casserole:pot " +
+  "catalyseur:catalyst ceinture:belt cendre:ash cent:hundred centre:center cercle:circle cerf:deer " +
+  "cerise:cherry cerveau:brain chagrin:grief chaise:chair chaleur:heat chambre:room champ:field " +
+  "champignon:mushroom chance:luck changer:change chanson:song chanter:sing chapeau:hat charbon:coal chat:cat " +
+  "chaud:hot chaussette:sock chaussure:shoe chaussures:shoes chef:chief chemin:path chemise:shirt " +
+  "cher:expensive chercher:search cheval:horse cheveux:hair chevre:goat chien:dog chiffre:digit " +
+  "chocolat:chocolate choisir:choose choix:choice chose:thing chou:cabbage ciel:sky cinq:five ciseaux:scissors " +
+  "citoyen:citizen citron:lemon clair:light clavier:keyboard cle:key clou:nail cochon:pig coeur:heart " +
+  "coin:corner colere:anger collier:necklace colline:hill commencer:begin complique:complicated " +
+  "comprendre:understand compter:count concombre:cucumber conduire:drive confiance:trust confiture:jam " +
+  "connaissance:knowledge construire:build conte:tale content:glad continuer:continue convaincant:cogent " +
+  "copain:friend coq:rooster corbeau:crow corde:rope corps:body cote:side coton:cotton cou:neck couleur:color " +
+  "couper:cut courir:run couronne:crown court:short cout:cost couteau:knife couverture:blanket crabe:crab " +
+  "cravate:tie crayon:pencil creme:cream crier:shout croire:believe croyance:belief cuillere:spoon cuir:leather " +
+  "cuire:cook cuisine:kitchen cynisme:cynicism dame:lady dangereux:dangerous danse:dance danser:dance " +
+  "dauphin:dolphin debut:beginning dedans:inside dehors:outside dejeuner:lunch demain:tomorrow demander:ask " +
+  "demesure:hubris dent:tooth dents:teeth dernier:last descendre:descend desir:yearning dessous:below " +
+  "dessus:above destin:fate detester:hate detruire:destroy dette:debt deux:two devoir:must difficile:difficult " +
+  "dilemme:dilemma diner:dinner dire:say dix:ten dogme:dogma doigt:finger donner:give dore:golden dormir:sleep " +
+  "dos:back douleur:pain doute:doubt doux:soft douze:twelve drap:sheet droit:right droite:right dur:hard " +
+  "eau:water echarpe:scarf echelle:ladder echouer:fail eclair:lightning ecole:school ecouter:listen " +
+  "ecran:screen ecrire:write eglise:church eleve:pupil empathie:empathy empirique:empirical emploi:job " +
+  "employe:employee encore:again encre:ink enfant:child enfants:children enseigner:teach ensemble:together " +
+  "entendre:hear entreprise:company entrer:enter envie:envy epais:thick epaule:shoulder ephemere:ephemeral " +
+  "epouse:wife epoux:spouse equilibre:equilibrium equipe:team escalier:stairs escargot:snail " +
+  "esoterique:esoteric espoir:hope esprit:spirit essayer:try essence:gasoline esthetique:aesthetic " +
+  "estomac:stomach etagere:shelf etat:state ete:summer etoile:star etroit:narrow etudiant:student " +
+  "evasion:escape examen:scrutiny exemple:example expliquer:explain fache:angry facile:easy facon:way " +
+  "faible:weak faiblesse:weakness faim:hunger famille:family fantaisie:whimsy farine:flour fatigue:tired " +
+  "fauteuil:armchair faux:false femme:woman fenetre:window ferme:farm fermer:close fermeture:zipper feu:fire " +
+  "feuille:leaf fidelite:fidelity fierte:pride fil:thread fille:girl fils:son fin:end finir:finish flamme:flame " +
+  "fleur:flower fleuve:river foi:faith foie:liver fois:time fonce:dark force:strength foret:forest forme:shape " +
+  "fort:strong four:oven fourchette:fork fourmi:ant fraise:strawberry franc:candid francais:french " +
+  "franchise:candour frere:brother frigo:fridge froid:cold fromage:cheese frontiere:border fumee:smoke " +
+  "gagner:win gant:glove garcon:boy gare:station gars:lad gateau:cake gauche:left gel:frost genou:knee " +
+  "gens:people gentil:kind girafe:giraffe glace:ice gout:taste gouvernement:government graine:seed grand:big " +
+  "grandmere:grandmother grandpere:grandfather gratuit:free gravite:gravity gregaire:gregarious grenouille:frog " +
+  "gris:gray gros:fat groupe:group guerre:war haine:hatred haricot:bean hasard:chance haut:high havre:harbor " +
+  "herbe:grass heresie:heresy heritage:legacy heure:hour heureux:happy hibou:owl hier:yesterday " +
+  "histoire:history hiver:winter homard:lobster homme:man honte:shame hopital:hospital horloge:clock huile:oil " +
+  "huit:eight ici:here idee:idea ideologie:ideology ile:island impot:tax indigne:indignant inertie:inertia " +
+  "infini:infinity infirmiere:nurse insecte:insect integrite:integrity ironie:irony jamais:never jambe:leg " +
+  "jambon:ham jardin:garden jaune:yellow jeu:game jeune:young joie:joy joli:pretty jouer:play jouet:toy " +
+  "jour:day journal:newspaper journee:day juge:judge jupe:skirt jus:juice juste:right labyrinthe:labyrinth " +
+  "lac:lake laid:ugly laideur:ugliness laine:wool lait:milk laitue:lettuce lampe:lamp langue:tongue " +
+  "lapin:rabbit large:wide larme:tear laver:wash leger:light legume:vegetable lent:slow lettre:letter " +
+  "liberte:freedom libre:free ligne:line lire:read liste:list lit:bed livre:book logique:logic loi:law loin:far " +
+  "loup:wolf lourd:heavy lucide:lucid lumiere:light lune:moon madame:madam magasin:store main:hand " +
+  "maintenant:now maire:mayor mais:corn maison:house malade:sick maladie:disease malveillant:malevolent " +
+  "maman:mom manger:eat maniere:manner manteau:coat marche:market marcher:walk mari:husband marron:brown " +
+  "mars:march marteau:hammer mathematiques:mathematics matin:morning mauvais:bad mec:guy medecin:doctor " +
+  "meilleur:better melancolie:melancholy meme:same memoire:memory mensonge:lie mer:sea mere:mother " +
+  "metaphore:metaphor meticuleux:meticulous metier:trade metro:subway mettre:put midi:noon miel:honey " +
+  "milieu:middle mille:thousand milliard:billion mince:thin ministre:minister miroir:mirror moderne:modern " +
+  "moins:less mois:month moitie:half monde:world monsieur:mister montagne:mountain monter:climb montre:watch " +
+  "montrer:show moralite:morality morceau:piece mort:death mosaique:mosaic mot:word moteur:engine " +
+  "moto:motorcycle mouche:fly mouille:wet mourir:die moustique:mosquito mouton:sheep mur:wall musee:museum " +
+  "musique:music mythe:myth nager:swim naitre:born navire:ship necessaire:necessary neige:snow nerf:nerve " +
+  "nettoyer:clean neuf:new neveu:nephew nez:nose nid:nest niveau:level noir:black nom:name nombre:number " +
+  "nostalgie:nostalgia nourriture:food nuage:cloud nuit:night obscurcir:obfuscate obscurite:obscurity " +
+  "odeur:smell odyssee:odyssey oeil:eye oeuf:egg oie:goose oignon:onion oiseau:bird ombre:shadow " +
+  "omnipresent:ubiquitous oncle:uncle ongle:nail onze:eleven or:gold orage:storm ordinateur:computer " +
+  "ordre:order oreille:ear oreiller:pillow os:bone oubli:oblivion oublier:forget oui:yes ours:bear outil:tool " +
+  "ouvrier:worker ouvrir:open pain:bread paix:peace panier:basket pantalon:pants papa:dad papier:paper " +
+  "papillon:butterfly paradigme:paradigm paradis:paradise paradoxal:paradoxical paradoxe:paradox parc:park " +
+  "parfois:sometimes parler:speak parole:speech partie:part partir:leave passe:past patate:potato pate:pasta " +
+  "patron:boss pauvre:poor pauvrete:poverty payer:pay pays:country peau:skin peche:peach peigne:comb " +
+  "peinture:painting pensee:thought penser:think perdre:lose pere:father personne:person petit:small peu:few " +
+  "peuple:people peur:fear phrase:sentence piece:room pied:foot pieds:feet pierre:stone pieuvre:octopus " +
+  "piscine:pool place:square placide:placid plafond:ceiling plage:beach plante:plant plein:full pleurer:cry " +
+  "pluie:rain plume:feather plus:more poche:pocket poele:pan poeme:poem poire:pear pois:pea poisson:fish " +
+  "poitrine:chest poivre:pepper policier:officer pomme:apple pont:bridge porc:pork porte:door porter:carry " +
+  "poule:hen poulet:chicken poumon:lung poussiere:dust pouvoir:can pragmatique:pragmatic premier:first " +
+  "prendre:take pres:near presage:omen printemps:spring prix:price probleme:problem prochain:next " +
+  "produit:product professeur:teacher projet:project prophetie:prophecy propre:clean pudique:demure " +
+  "pull:sweater quartier:neighborhood quatre:four quelque:some quichottesque:quixotic racine:root raconter:tell " +
+  "raisin:grape raison:reason raisonnement:rationale rapide:fast rappeler:remember recette:recipe " +
+  "reclus:reclusive recolte:harvest reconfort:solace regarder:watch regle:ruler reine:queen renard:fox " +
+  "reparer:repair repas:meal repondre:answer reponse:answer requin:shark resolu:resolute rester:stay " +
+  "reunion:meeting reussir:succeed reve:dream revenir:return revue:magazine rhetorique:rhetoric riche:rich " +
+  "richesse:wealth rideau:curtain rien:nothing rire:laugh rituel:ritual riviere:river riz:rice robe:dress " +
+  "rocher:rock roi:king rose:pink roue:wheel rouge:red route:road royaume:realm rue:street sable:sand sac:bag " +
+  "sagesse:wisdom saintete:sanctity saison:season salade:salad salaire:salary sale:dirty sanctuaire:sanctuary " +
+  "sang:blood sanglier:boar sante:health sauter:jump sauvage:wild savoir:know savon:soap scepticisme:scepticism " +
+  "scie:saw seau:bucket sec:dry seconde:second sel:salt semaine:week sentir:feel sept:seven serenite:serenity " +
+  "serpent:snake serrure:lock serviette:towel seuil:threshold seul:alone siecle:century signe:sign singe:monkey " +
+  "societe:society soeur:sister soie:silk soif:thirst soir:evening sol:floor soldat:soldier soleil:sun " +
+  "solitaire:solitary sommet:pinnacle son:sound sophisme:fallacy sortir:exit soupe:soup souper:supper " +
+  "souris:mouse souvent:often souverainete:sovereignty spectre:spectrum stade:stadium stigmate:stigma " +
+  "stoique:stoic stylo:pen subtil:subtle sucre:sugar suite:sequence suivre:follow sur:sure symbole:symbol " +
+  "symetrie:symmetry symphonie:symphony synthese:synthesis tacite:tacit tante:aunt tapis:carpet tarte:pie " +
+  "tasse:cup telephone:phone temps:time tenacite:tenacity tenir:hold tenu:tenuous terre:earth tete:head " +
+  "texte:text the:tea theatre:theater tiede:warm tigre:tiger tiroir:drawer tissu:fabric titre:title toit:roof " +
+  "tomate:tomato tomber:fall tonnerre:thunder tortue:turtle toucher:touch toujours:always tour:tower " +
+  "tourment:torment tout:all transitoire:transient travail:work travailler:work tres:very triste:sad " +
+  "tristesse:sadness trois:three trop:too trouver:find truc:thing tuer:kill type:guy un:one " +
+  "universite:university usine:factory utopie:utopia vacarme:turmoil vache:cow valise:suitcase vallee:valley " +
+  "vanite:vanity veille:vigil velo:bike vendre:sell venir:come vent:wind vente:sale ventre:belly ver:worm " +
+  "verite:truth vernis:veneer verre:glass vert:green vertige:vertigo vertu:virtue veste:jacket " +
+  "vetement:clothing viande:meat vide:empty vie:life vieux:old vif:vivid ville:city vin:wine vinaigre:vinegar " +
+  "vingt:twenty violet:purple vis:screw visage:face vitesse:speed vivant:alive vivre:live voir:see " +
+  "voisin:neighbor voisine:neighbor voiture:car voix:voice vol:theft voler:fly voleur:thief vouloir:want " +
+  "voyage:trip voyager:travel vrai:true yaourt:yogurt yeux:eyes zele:zeal"
+  ).split(" ").forEach(function (pair) {
+    if (!pair) return;
+    var cut = pair.indexOf(":");
+    var fr = pair.slice(0, cut), en = pair.slice(cut + 1);
+    FR_GUESS[fr] = en;
+    if (FR_OF[en] === undefined) FR_OF[en] = fr;   // first French spelling wins
+  });
+
+  // A word on its way in: French to English when the page is in French, then
+  // the plural/tense fold that English guesses already went through.
+  function resolve(word) {
+    if (LANG === "fr" && FR_GUESS[word]) return FR_GUESS[word];
+    return ALIAS[word] || word;
+  }
+
+  // A word on its way out. Falls back to the English word, which for the many
+  // words spelled the same in both languages is already the French one.
+  function show(word, typed) {
+    if (LANG !== "fr") return word;
+    return typed || FR_OF[word] || word;
+  }
 
   // Unpack into one long Float32Array of unit-length vectors, so a similarity
   // is a bare dot product with no division left to do at ranking time.
@@ -1744,6 +1895,7 @@
     "None of those are in this dictionary: {words}.":
       "Aucun de ceux-ci n'est dans ce dictionnaire : {words}.",
     "Not in this dictionary: {words}.": "Absents de ce dictionnaire : {words}.",
+    "against {word}": "face à {word}",
 
     /* ---- when the shared services can't be reached ---- */
     "Can't reach the accounts service from here, so signing in isn't possible right now. Your coins still work on this device.":
@@ -1817,10 +1969,18 @@
     applyLang();
   });
 
-  function normalize(s) { return String(s || "").toLowerCase().trim(); }
+  // Accents come off here rather than at the lookup, because the guess box
+  // only accepts a-z — without this, "café" and "élève" would be turned away
+  // as "letters only" before any French lookup got a chance to run.
+  function normalize(s) {
+    return String(s || "").toLowerCase().trim()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
 
   function readWords(text) {
-    var found = String(text || "").toLowerCase().match(/[a-z]+/g) || [];
+    // Accents come off first, or an accented French word in the compare box
+    // would be chopped at the accent — "café" splitting into "caf".
+    var found = normalize(text).match(/[a-z]+/g) || [];
     return found.filter(function (w) { return w.length > 1; });
   }
 
@@ -1846,7 +2006,7 @@
 
     var name = document.createElement("span");
     name.className = "specimen";
-    name.textContent = row.word;
+    name.textContent = show(row.word, row.typed);
     head.appendChild(name);
 
     var rank = document.createElement("span");
@@ -3644,7 +3804,7 @@
     $("play-clock").hidden = true;
     $("tab-solve").hidden = false;
     if (won) earnCoin();
-    if (won && ownsFlash()) playWinFlash(play.secret);
+    if (won && ownsFlash()) playWinFlash(show(play.secret));
     $("play-controls").hidden = true;
     $("play-quit").hidden = true;
     $("roster").hidden = true;
@@ -3671,13 +3831,13 @@
     var word = document.createElement("div");
     word.className = "verdict";
     word.style.color = "var(--ink)";
-    word.textContent = play.secret;
+    word.textContent = show(play.secret);
     card.appendChild(word);
 
     if (!won) {
       var near = document.createElement("p");
       near.className = "gloss";
-      near.textContent = tf("Its nearest neighbours were {words}.", { words: nearestTo(play.secret, 5).join(", ") });
+      near.textContent = tf("Its nearest neighbours were {words}.", { words: nearestTo(play.secret, 5).map(function (w) { return show(w); }).join(", ") });
       card.appendChild(near);
     }
 
@@ -3751,19 +3911,23 @@
     var w = normalize($("play-input").value);
 
     if (!w || /[^a-z]/.test(w)) { say($("play-notice"), "One plain word, letters only."); return; }
+    // Kept so the ladder can show the French word actually typed rather than
+    // whichever synonym happens to be this English word's first French form —
+    // type "voiture" and it should not come back as "auto".
+    var typed = w;
     w = resolve(w);
     if (!inLexicon(w)) { say($("play-notice"), tf("{word} isn't in this dictionary — try another word.", { word: w })); return; }
     var isOnlineGuess = play.mode === "online";
     var tried = isOnlineGuess && play.liveRows ? play.liveRows : play.rows;
     if (tried.some(function (r) { return r.word === w; })) {
-      say($("play-notice"), tf(isOnlineGuess ? "Someone's already tried {word}." : "You've already tried {word}.", { word: w }));
+      say($("play-notice"), tf(isOnlineGuess ? "Someone's already tried {word}." : "You've already tried {word}.", { word: show(w) }));
       return;
     }
 
     say($("play-notice"), "");
     var rank = rankOf(play.secret, w);
     var who = play.players[play.turn];
-    play.rows.push({ word: w, rank: rank, by: who });
+    play.rows.push({ word: w, rank: rank, by: who, typed: typed !== w ? typed : null });
     if (play.mode === "online" && window.LiveRoom) window.LiveRoom.addGuess(who, w, rank);
     $("play-input").value = "";
     clearTimeout(typingSyncTimer);
@@ -3887,7 +4051,7 @@
     }
 
     say($("play-notice"), next
-      ? tf("Try {word} — it's among the 50 closest words.", { word: next })
+      ? tf("Try {word} — it's among the 50 closest words.", { word: show(next) })
       : t("Nothing useful left to suggest — you've already tried the closest words."));
   }
 
@@ -3910,7 +4074,7 @@
         return tf("“{word}” landed at {rank}. Every one of the {total} words is ranked by how close it " +
                   "is in meaning to the answer — rank 1 is the answer itself. Lower is warmer. The " +
                   "colour and the bar say the same thing at a glance.",
-                  { word: row.word, rank: row.rank, total: num(V) });
+                  { word: show(row.word), rank: row.rank, total: num(V) });
       }
     },
     {
@@ -3932,7 +4096,7 @@
         return tf("{near} ({nearRank}) is warmer than {far} ({farRank}), so the answer is closer in " +
                   "meaning to {near}. Your closest guess always stays on top of the list, so that's " +
                   "the one to think from.",
-                  { near: near.word, nearRank: near.rank, far: far.word, farRank: far.rank });
+                  { near: show(near.word), nearRank: near.rank, far: show(far.word), farRank: far.rank });
       }
     },
     {
@@ -4330,10 +4494,16 @@
     var main = normalize($("cmp-main").value);
 
     if (!main) { say($("cmp-notice"), "Give a main word first."); return; }
+    var mainTyped = main !== resolve(main) ? main : null;
     main = resolve(main);
     if (!inLexicon(main)) { say($("cmp-notice"), tf("{word} isn't in this dictionary. Try a plainer word.", { word: main })); return; }
 
-    var listed = readWords($("cmp-others").value).map(resolve).filter(function (w) { return w !== main; });
+    var typedOf = Object.create(null);
+    var listed = readWords($("cmp-others").value).map(function (raw) {
+      var w = resolve(raw);
+      if (typedOf[w] === undefined && raw !== w) typedOf[w] = raw;
+      return w;
+    }).filter(function (w) { return w !== main; });
     if (!listed.length) { say($("cmp-notice"), "Add at least one word to place against it."); return; }
 
     var seen = Object.create(null);
@@ -4352,13 +4522,13 @@
 
     say($("cmp-notice"), unknown.length ? tf("Not in this dictionary: {words}.", { words: unknown.join(", ") }) : "");
 
-    var rows = known.map(function (w) { return { word: w, rank: rankOf(main, w) }; });
+    var rows = known.map(function (w) { return { word: w, rank: rankOf(main, w), typed: typedOf[w] || null }; });
 
     $("cmp-out").textContent = "";
 
     var heading = document.createElement("div");
     heading.className = "eyebrow";
-    heading.textContent = "against " + main;
+    heading.textContent = tf("against {word}", { word: show(main, mainTyped) });
     $("cmp-out").appendChild(heading);
 
     var list = document.createElement("ul");
