@@ -1037,11 +1037,10 @@
     <h1 data-i18n="title">Contexto</h1>
     <p class="standfirst" data-i18n="standfirst">A word is hidden. Every guess comes back with its distance from it.</p>
     <p class="gloss" id="tour-cta">
-      New here? <a href="#" id="start-tour" data-i18n="take-tour">Take the tour</a> — it deals you a real round and
-      talks you through it.
+      <span data-i18n="new-here">New here?</span> <a href="#" id="start-tour" data-i18n="take-tour">Take the tour</a><span data-i18n="tour-after"> — it deals you a real round and talks you through it.</span>
     </p>
     <p class="gloss">
-      <a href="#" id="save-copy" data-i18n="save-page">Save this page</a> to play with no connection, no account, on any device.
+      <a href="#" id="save-copy" data-i18n="save-page">Save this page</a><span data-i18n="save-after"> to play with no connection, no account, on any device.</span>
     </p>
   </header>
 
@@ -1060,7 +1059,7 @@
         other players send you gifts.</p>
       <div class="field">
         <label class="key" for="account-name" data-i18n="username">username</label>
-        <input id="account-name" placeholder="yourname" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" />
+        <input id="account-name" data-i18n-ph="ph-yourname" placeholder="yourname" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" />
       </div>
       <div class="field">
         <label class="key" for="account-pass" data-i18n="password">password</label>
@@ -1137,7 +1136,7 @@
       <div id="online-only" class="panel" hidden>
         <div class="field">
           <label class="key" for="online-name" data-i18n="your-name">your name</label>
-          <input id="online-name" placeholder="Player" autocapitalize="words" spellcheck="false" />
+          <input id="online-name" data-i18n-ph="ph-player" placeholder="Player" autocapitalize="words" spellcheck="false" />
         </div>
 
         <button class="wide" id="join-any" data-i18n="join-last">Join the last online game</button>
@@ -1180,7 +1179,7 @@
         </aside>
 
         <div class="row" id="play-controls">
-          <input class="grow" id="play-input" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" />
+          <input class="grow" id="play-input" data-i18n-ph="ph-your-guess" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" />
           <button id="play-go" data-i18n="guess">Guess</button>
           <button type="button" class="ghost" id="play-hint" data-i18n="hint">Hint</button>
         </div>
@@ -1199,7 +1198,7 @@
           <div class="eyebrow chat-eyebrow" data-i18n="chat">chat</div>
           <ul class="chat-log" id="chat-log"></ul>
           <div class="row">
-            <input class="grow" id="chat-input" placeholder="say something" maxlength="140" autocomplete="off" />
+            <input class="grow" id="chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" />
             <button type="button" class="ghost" id="chat-send" data-i18n="send">Send</button>
           </div>
         </div>
@@ -1212,8 +1211,8 @@
     <p class="gloss" data-i18n="solve-blurb">Playing the real Contexto elsewhere? Type the ranks it gave you. Each one narrows which word fits.</p>
 
     <div class="row">
-      <input class="grow" id="obs-word" placeholder="word" autocapitalize="none" autocorrect="off" spellcheck="false" />
-      <input class="fixed num" id="obs-rank" placeholder="rank" inputmode="numeric" />
+      <input class="grow" id="obs-word" data-i18n-ph="ph-word" placeholder="word" autocapitalize="none" autocorrect="off" spellcheck="false" />
+      <input class="fixed num" id="obs-rank" data-i18n-ph="ph-rank" placeholder="rank" inputmode="numeric" />
       <button id="obs-add" data-i18n="add">Add</button>
     </div>
 
@@ -1255,7 +1254,7 @@
     <div class="field">
       <span class="key" data-i18n="send-gift">send one as a gift</span>
       <p class="gloss" id="gift-note" data-i18n="gift-note">You pay the coins; the hints land in their account.</p>
-      <input id="gift-to" placeholder="their username" autocapitalize="none" autocorrect="off" spellcheck="false" />
+      <input id="gift-to" data-i18n-ph="ph-their-username" placeholder="their username" autocapitalize="none" autocorrect="off" spellcheck="false" />
       <div class="row">
         <select id="gift-item" class="grow"></select>
         <button type="button" class="ghost" id="gift-send" data-i18n="send-gift-btn">Send gift</button>
@@ -1269,7 +1268,7 @@
     <p class="gloss" data-i18n="chat-blurb">Everyone signed in can post here and vote yes or no on what others say.</p>
     <ul class="chat-log" id="global-chat-log"><li class="chat-empty" data-i18n="no-messages">No messages yet.</li></ul>
     <div class="row">
-      <input class="grow" id="global-chat-input" placeholder="say something" maxlength="200" autocomplete="off" />
+      <input class="grow" id="global-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="200" autocomplete="off" />
       <button type="button" class="ghost" id="global-chat-send" data-i18n="send">Send</button>
     </div>
     <p class="gloss" id="global-chat-notice" hidden></p>
@@ -1277,7 +1276,7 @@
     <div class="field">
       <button type="button" class="wide ghost" id="suggest-feature-btn" data-i18n="suggest-feature">Suggest a feature</button>
       <div id="suggest-feature-box" hidden>
-        <textarea id="suggest-feature-text" rows="3" placeholder="What should be added?"></textarea>
+        <textarea id="suggest-feature-text" rows="3" data-i18n-ph="ph-what-added" placeholder="What should be added?"></textarea>
         <button type="button" id="suggest-feature-send" data-i18n="send-admins">Send to the admins</button>
         <p class="gloss" id="suggest-feature-notice" hidden></p>
       </div>
@@ -1360,7 +1359,7 @@
             <div class="eyebrow chat-eyebrow" data-i18n="chat">chat</div>
             <ul class="chat-log" id="spectate-chat-log"></ul>
             <div class="row">
-              <input class="grow" id="spectate-chat-input" placeholder="say something" maxlength="140" autocomplete="off" />
+              <input class="grow" id="spectate-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" />
               <button type="button" class="ghost" id="spectate-chat-send" data-i18n="send">Send</button>
             </div>
           </div>
@@ -1388,8 +1387,8 @@
   </section>
 
   <div class="colophon">
-    <p><b>How the ranks are made.</b> Every word here carries a hundred numbers, blended from two models: GloVe, which read six billion words of Wikipedia and newswire and learned what keeps company with what, and counter-fitted vectors, tuned so that words meaning the same thing sit together while merely-related ones drift apart. Two words are scored by the angle between them, then all fifty thousand are sorted against the target. Rank 1 is the word itself.</p>
-    <p>The whole model runs in this page. Nothing is sent anywhere, and it works with no connection.</p>
+    <p><b data-i18n="rank-how-title">How the ranks are made.</b> <span data-i18n="rank-how-body">Every word here carries a hundred numbers, blended from two models: GloVe, which read six billion words of Wikipedia and newswire and learned what keeps company with what, and counter-fitted vectors, tuned so that words meaning the same thing sit together while merely-related ones drift apart. Two words are scored by the angle between them, then all fifty thousand are sorted against the target. Rank 1 is the word itself.</span></p>
+    <p data-i18n="rank-how-offline">The whole model runs in this page. Nothing is sent anywhere, and it works with no connection.</p>
   </div>
 </div>
 
@@ -1544,13 +1543,17 @@
   var $ = function (id) { return document.getElementById(id); };
 
   /* ---------- language ----------
-     One flat French dictionary, looked up two ways: elements tagged
-     data-i18n="key" in the markup look up that key, and notices built
+     One flat French dictionary, looked up three ways: elements tagged
+     data-i18n="key" in the markup look up that key, elements tagged
+     data-i18n-ph="key" get their placeholder from it, and notices built
      in JS look up their own English text directly, so a call site never
-     needs to change — just add the sentence to FR once. Messages built
-     by gluing a variable into the middle of a sentence (a username, a
-     count) are left in English; splitting those into a French word
-     order isn't something a lookup table can do. */
+     needs to change — just add the sentence to FR once.
+
+     Sentences with a variable in the middle go through tf() instead: the
+     English template with {named} slots is the lookup key, and French
+     fills the same slots in whatever order its own grammar wants. That is
+     what lets a rank, a word or a count sit in a different place in the
+     two languages instead of forcing the sentence to stay English. */
   var LANG = localStorage.getItem("contexto_lang") || "en";
 
   var FR = {
@@ -1655,10 +1658,120 @@
     "No account with that name — check the spelling.": "Aucun compte à ce nom — vérifiez l'orthographe.",
     "Couldn't send that. Try again in a moment.": "Échec de l'envoi. Réessayez dans un instant.",
     "yes": "oui", "no": "non", "delete": "supprimer", "translated from French": "traduit du français",
-    "translated from English": "traduit de l'anglais", "translating…": "traduction…"
+    "translated from English": "traduit de l'anglais", "translating…": "traduction…",
+
+    /* ---- placeholders (data-i18n-ph) ---- */
+    "ph-your-guess": "votre proposition", "ph-say-something": "dites quelque chose",
+    "ph-player": "Joueur", "ph-word": "mot", "ph-rank": "rang", "ph-yourname": "votrenom",
+    "ph-their-username": "son nom d'utilisateur", "ph-what-added": "Qu'est-ce qui devrait être ajouté ?",
+
+    "{total} words · ranks computed here, offline": "{total} mots · rangs calculés ici, hors ligne",
+    "Hint": "Indice", "Sign in": "Se connecter",
+    "new-here": "Nouveau ici ?",
+    "tour-after": " — elle vous distribue une vraie partie et vous explique tout.",
+    "save-after": " pour jouer sans connexion, sans compte, sur n'importe quel appareil.",
+
+    /* ---- how the ranks are made ---- */
+    "rank-how-title": "Comment les rangs sont calculés.",
+    "rank-how-body": "Chaque mot ici porte cent nombres, issus de deux modèles combinés : GloVe, qui a lu six " +
+      "milliards de mots de Wikipédia et de dépêches et appris quels mots se côtoient, et des vecteurs " +
+      "contre-ajustés, réglés pour que les mots de même sens se regroupent tandis que les mots simplement " +
+      "liés s'écartent. Deux mots sont notés par l'angle entre eux, puis les cinquante mille sont classés " +
+      "par rapport au mot cible. Le rang 1 est le mot lui-même.",
+    "rank-how-offline": "Tout le modèle tourne dans cette page. Rien n'est envoyé nulle part, et cela " +
+      "fonctionne sans connexion.",
+
+    /* ---- the tour ---- */
+    "step {n} of {total}": "étape {n} sur {total}",
+    "One word is hidden. Type any word below and press Guess — it doesn't matter which. Even a wrong one shows you where you stand.":
+      "Un mot est caché. Entrez n'importe quel mot ci-dessous et appuyez sur Proposer — peu importe " +
+      "lequel. Même un mot faux vous montre où vous en êtes.",
+    "“{word}” landed at {rank}. Every one of the {total} words is ranked by how close it is in meaning to the answer — rank 1 is the answer itself. Lower is warmer. The colour and the bar say the same thing at a glance.":
+      "« {word} » est arrivé au rang {rank}. Chacun des {total} mots est classé selon sa proximité de " +
+      "sens avec la réponse — le rang 1 est la réponse elle-même. Plus c'est bas, plus c'est chaud. La " +
+      "couleur et la barre disent la même chose d'un coup d'œil.",
+    "Guess a second word, related to your first. Watch the number: down is warmer, up is colder. That's the whole game.":
+      "Proposez un deuxième mot, lié au premier. Observez le nombre : vers le bas c'est plus chaud, vers " +
+      "le haut c'est plus froid. C'est tout le jeu.",
+    "Both landed the same — that happens. Keep going. Your closest guess always stays on top of the list, so that's the one to think from.":
+      "Les deux sont arrivés au même rang — cela arrive. Continuez. Votre proposition la plus proche " +
+      "reste toujours en haut de la liste, c'est donc celle à partir de laquelle réfléchir.",
+    "{near} ({nearRank}) is warmer than {far} ({farRank}), so the answer is closer in meaning to {near}. Your closest guess always stays on top of the list, so that's the one to think from.":
+      "{near} ({nearRank}) est plus chaud que {far} ({farRank}) : la réponse est donc plus proche de " +
+      "{near} par le sens. Votre proposition la plus proche reste toujours en haut de la liste, c'est " +
+      "donc celle à partir de laquelle réfléchir.",
+    "Two more things. Hint suggests your best next word — you have {have} left, and {price} in the shop buys {bought} more. And you're on a {mins}-minute clock, starting the moment you close this — finish in time and you earn a coin.":
+      "Deux dernières choses. Indice vous suggère le meilleur mot suivant — il vous en reste {have}, et " +
+      "vous pouvez en acheter {bought} de plus pour {price} à la boutique. Et vous avez {mins} minutes " +
+      "au chrono, à partir du moment où vous fermez ceci — trouvez à temps et vous gagnez une pièce.",
+
+    /* ---- the end of a round ---- */
+    "the word was": "le mot était", "out of time — the word was": "temps écoulé — le mot était",
+    "found in {count}": "trouvé en {count}",
+    "{who} found it — {count} between you": "{who} l'a trouvé — {count} à vous tous",
+    "Its nearest neighbours were {words}.": "Ses plus proches voisins étaient {words}.",
+    "Your result, ready to send": "Votre résultat, prêt à envoyer",
+    "Copy result": "Copier le résultat", "Copied": "Copié", "Hide another": "Cacher un autre mot",
+
+    /* ---- sharing a code ---- */
+    "send this to your friends": "envoyez ceci à vos amis",
+    "You don't know the word either, so you can play along.":
+      "Vous ne connaissez pas le mot non plus, vous pouvez donc jouer aussi.",
+    "Copy code": "Copier le code", "Play it now": "Y jouer maintenant",
+
+    /* ---- being kicked ---- */
+    "removed from this room": "retiré de cette partie",
+    "An admin sent you out of this room. You're free to join again anytime.":
+      "Un admin vous a retiré de cette partie. Vous pouvez la rejoindre à tout moment.",
+    "Back to setup": "Retour aux réglages",
+
+    /* ---- guessing ---- */
+    "{word} isn't in this dictionary — try another word.":
+      "{word} n'est pas dans ce dictionnaire — essayez un autre mot.",
+    "You've already tried {word}.": "Vous avez déjà essayé {word}.",
+    "Someone's already tried {word}.": "Quelqu'un a déjà essayé {word}.",
+    "Try {word} — it's among the 50 closest words.":
+      "Essayez {word} — il fait partie des 50 mots les plus proches.",
+    "Nothing useful left to suggest — you've already tried the closest words.":
+      "Plus rien d'utile à suggérer — vous avez déjà essayé les mots les plus proches.",
+
+    /* ---- solver and compare ---- */
+    "{word} is already listed.": "{word} est déjà dans la liste.",
+    "{word} isn't in this dictionary, so it can't steer the search. Try a plainer word.":
+      "{word} n'est pas dans ce dictionnaire, il ne peut donc pas guider la recherche. Essayez un mot plus courant.",
+    "{word} isn't in this dictionary. Try a plainer word.":
+      "{word} n'est pas dans ce dictionnaire. Essayez un mot plus courant.",
+    "None of those are in this dictionary: {words}.":
+      "Aucun de ceux-ci n'est dans ce dictionnaire : {words}.",
+    "Not in this dictionary: {words}.": "Absents de ce dictionnaire : {words}.",
+
+    /* ---- when the shared services can't be reached ---- */
+    "Can't reach the accounts service from here, so signing in isn't possible right now. Your coins still work on this device.":
+      "Impossible de joindre le service de comptes d'ici, la connexion n'est donc pas possible pour le " +
+      "moment. Vos pièces fonctionnent toujours sur cet appareil.",
+    "Couldn't reach the shared database, so this only applies here. See the comment above FIREBASE_CONFIG in the page source for the database rule this needs.":
+      "Impossible de joindre la base de données partagée, ceci ne s'applique donc qu'ici. Voir le " +
+      "commentaire au-dessus de FIREBASE_CONFIG dans le source de la page pour la règle nécessaire."
   };
 
   function t(text) { return (LANG === "fr" && FR[text]) ? FR[text] : text; }
+
+  // Translate a sentence that has variable parts. The English template is
+  // the key, so adding a translation never means touching the call site;
+  // slots are named, so French can reorder them freely. An unknown slot is
+  // left visible rather than silently blanked — that way a typo shows up
+  // on screen instead of quietly losing a word mid-sentence.
+  function tf(template, values) {
+    return t(template).replace(/\{(\w+)\}/g, function (whole, key) {
+      return values[key] === undefined ? whole : values[key];
+    });
+  }
+
+  // Thousands separators are part of the language, not the browser — French
+  // groups with a space where English uses a comma — so numbers sitting
+  // inside translated prose follow the chosen language rather than whatever
+  // locale the device happens to be set to.
+  function num(n) { return Number(n).toLocaleString(LANG === "fr" ? "fr-FR" : "en-US"); }
 
   var FR_UNITS = {
     "coin":   ["pièce", "pièces"],
@@ -1666,8 +1779,7 @@
     "guess":  ["essai", "essais"],
     "player": ["joueur", "joueurs"],
     "more":   ["de plus", "de plus"],
-    "of them": ["d'entre eux", "d'entre eux"],
-    "left":   ["restant", "restants"]
+    "of them": ["d'entre eux", "d'entre eux"]
   };
 
   function applyLang() {
@@ -1676,10 +1788,27 @@
       if (el.dataset.en === undefined) el.dataset.en = el.textContent;
       el.textContent = (LANG === "fr" && FR[key]) ? FR[key] : el.dataset.en;
     });
+    // Placeholders are attributes, not text, so they need their own pass —
+    // and their own stash of the original, since textContent is untouched.
+    document.querySelectorAll("[data-i18n-ph]").forEach(function (el) {
+      var key = el.getAttribute("data-i18n-ph");
+      if (el.dataset.enPh === undefined) el.dataset.enPh = el.getAttribute("placeholder") || "";
+      el.setAttribute("placeholder", (LANG === "fr" && FR[key]) ? FR[key] : el.dataset.enPh);
+    });
     $("lang-btn").textContent = LANG === "fr" ? "EN" : "FR";
     $("lang-btn").title = LANG === "fr" ? "English" : "Français";
     $("lang-btn").setAttribute("aria-pressed", LANG === "fr" ? "true" : "false");
+
+    // Surfaces already on screen are built in JS, so flipping the language
+    // has to rebuild them — otherwise the page ends up half-translated
+    // until the next guess. Each is guarded because applyLang runs once at
+    // startup, before some of this has anything to show.
+    $("dictline").textContent = tf("{total} words · ranks computed here, offline", { total: num(V) });
+
+    if (typeof paintPurse === "function") paintPurse();
     if (typeof renderGlobalChat === "function") renderGlobalChat();
+    if (typeof refreshPlay === "function" && play && play.secret) refreshPlay();
+    if (typeof paintCoach === "function" && tour && tour.on) paintCoach();
   }
 
   $("lang-btn").addEventListener("click", function () {
@@ -1978,8 +2107,11 @@
   function paintPurse() {
     var coins = purse(), left = hints();
     $("purse").textContent = tally(coins, "coin", "coins") + " · " + tally(left, "hint", "hints");
-    $("play-hint").textContent = left > 0 ? "Hint · " + left : "Hint";
-    $("account-btn").textContent = account ? account.name : "Sign in";
+    // These three overwrite their markup's data-i18n text, so they have to
+    // translate themselves — and applyLang has to re-run this — or the
+    // masthead stays in whichever language it was first painted in.
+    $("play-hint").textContent = left > 0 ? t("Hint") + " · " + left : t("Hint");
+    $("account-btn").textContent = account ? account.name : t("Sign in");
     $("account-btn").classList.toggle("is-on", !!account);
     renderShopList();
     renderGiftItems();
@@ -3288,7 +3420,7 @@
 
     var key = document.createElement("div");
     key.className = "eyebrow";
-    key.textContent = "send this to your friends";
+    key.textContent = t("send this to your friends");
     card.appendChild(key);
 
     var big = document.createElement("div");
@@ -3298,7 +3430,7 @@
 
     var note = document.createElement("p");
     note.className = "gloss";
-    note.textContent = "You don't know the word either, so you can play along.";
+    note.textContent = t("You don't know the word either, so you can play along.");
     card.appendChild(note);
 
     var row = document.createElement("div");
@@ -3307,13 +3439,13 @@
     var copy = document.createElement("button");
     copy.type = "button";
     copy.className = "ghost";
-    copy.textContent = "Copy code";
-    copy.addEventListener("click", function () { copyText(code, copy, "Copied"); });
+    copy.textContent = t("Copy code");
+    copy.addEventListener("click", function () { copyText(code, copy, t("Copied")); });
     row.appendChild(copy);
 
     var go = document.createElement("button");
     go.type = "button";
-    go.textContent = "Play it now";
+    go.textContent = t("Play it now");
     go.addEventListener("click", function () { beginGame(WORDS[readCode(code)], code); });
     row.appendChild(go);
 
@@ -3473,13 +3605,13 @@
     var key = document.createElement("div");
     key.className = "eyebrow";
     key.style.color = "var(--muted)";
-    key.textContent = "removed from this room";
+    key.textContent = t("removed from this room");
     card.appendChild(key);
 
     var word = document.createElement("div");
     word.className = "verdict";
     word.style.color = "var(--ink)";
-    word.textContent = "An admin sent you out of this room. You're free to join again anytime.";
+    word.textContent = t("An admin sent you out of this room. You're free to join again anytime.");
     card.appendChild(word);
 
     var buttons = document.createElement("div");
@@ -3487,7 +3619,7 @@
 
     var again = document.createElement("button");
     again.type = "button";
-    again.textContent = "Back to setup";
+    again.textContent = t("Back to setup");
     again.addEventListener("click", function () {
       $("play-live").hidden = true;
       $("play-setup").hidden = false;
@@ -3531,9 +3663,9 @@
     var key = document.createElement("div");
     key.className = "eyebrow";
     key.style.color = "var(--muted)";
-    if (!won) key.textContent = ranOut ? "out of time — the word was" : "the word was";
-    else if (shared) key.textContent = who + " found it — " + count + " between you";
-    else key.textContent = "found in " + count;
+    if (!won) key.textContent = t(ranOut ? "out of time — the word was" : "the word was");
+    else if (shared) key.textContent = tf("{who} found it — {count} between you", { who: who, count: count });
+    else key.textContent = tf("found in {count}", { count: count });
     card.appendChild(key);
 
     var word = document.createElement("div");
@@ -3545,7 +3677,7 @@
     if (!won) {
       var near = document.createElement("p");
       near.className = "gloss";
-      near.textContent = "Its nearest neighbours were " + nearestTo(play.secret, 5).join(", ") + ".";
+      near.textContent = tf("Its nearest neighbours were {words}.", { words: nearestTo(play.secret, 5).join(", ") });
       card.appendChild(near);
     }
 
@@ -3564,7 +3696,7 @@
         var stat = document.createElement("span");
         stat.className = "rank";
         stat.style.color = closest ? heat(closest.rank) : "var(--muted)";
-        stat.textContent = mine.length + (closest ? " · closest " + closest.rank : "");
+        stat.textContent = mine.length + (closest ? " · " + t("closest") + " " + closest.rank : "");
         line.appendChild(stat);
 
         tallyList.appendChild(line);
@@ -3577,7 +3709,7 @@
       share.className = "result";
       share.rows = 3;
       share.readOnly = true;
-      share.setAttribute("aria-label", "Your result, ready to send");
+      share.setAttribute("aria-label", t("Your result, ready to send"));
       share.value = resultText();
       card.appendChild(share);
     }
@@ -3589,16 +3721,16 @@
       var send = document.createElement("button");
       send.type = "button";
       send.className = "ghost";
-      send.textContent = "Copy result";
+      send.textContent = t("Copy result");
       send.addEventListener("click", function () {
-        copyText(card.querySelector(".result").value, send, "Copied");
+        copyText(card.querySelector(".result").value, send, t("Copied"));
       });
       buttons.appendChild(send);
     }
 
     var again = document.createElement("button");
     again.type = "button";
-    again.textContent = "Hide another";
+    again.textContent = t("Hide another");
     again.addEventListener("click", function () {
       $("play-live").hidden = true;
       $("play-setup").hidden = false;
@@ -3620,11 +3752,11 @@
 
     if (!w || /[^a-z]/.test(w)) { say($("play-notice"), "One plain word, letters only."); return; }
     w = resolve(w);
-    if (!inLexicon(w)) { say($("play-notice"), w + " isn't in this dictionary — try another word."); return; }
+    if (!inLexicon(w)) { say($("play-notice"), tf("{word} isn't in this dictionary — try another word.", { word: w })); return; }
     var isOnlineGuess = play.mode === "online";
     var tried = isOnlineGuess && play.liveRows ? play.liveRows : play.rows;
     if (tried.some(function (r) { return r.word === w; })) {
-      say($("play-notice"), isOnlineGuess ? "Someone's already tried " + w + "." : "You've already tried " + w + ".");
+      say($("play-notice"), tf(isOnlineGuess ? "Someone's already tried {word}." : "You've already tried {word}.", { word: w }));
       return;
     }
 
@@ -3755,8 +3887,8 @@
     }
 
     say($("play-notice"), next
-      ? "Try " + next + " — it's among the 50 closest words."
-      : "Nothing useful left to suggest — you've already tried the closest words.");
+      ? tf("Try {word} — it's among the 50 closest words.", { word: next })
+      : t("Nothing useful left to suggest — you've already tried the closest words."));
   }
 
   /* ---------- the tour: a real round, narrated ---------- */
@@ -3767,24 +3899,25 @@
     {
       until: "guess",
       say: function () {
-        return "One word is hidden. Type any word below and press Guess — it doesn't matter which. " +
-               "Even a wrong one shows you where you stand.";
+        return t("One word is hidden. Type any word below and press Guess — it doesn't matter which. " +
+                 "Even a wrong one shows you where you stand.");
       }
     },
     {
       until: "read",
       say: function () {
         var row = play.rows[play.rows.length - 1];
-        return "“" + row.word + "” landed at " + row.rank + ". Every one of the " + V.toLocaleString() +
-               " words is ranked by how close it is in meaning to the answer — rank 1 is the answer " +
-               "itself. Lower is warmer. The colour and the bar say the same thing at a glance.";
+        return tf("“{word}” landed at {rank}. Every one of the {total} words is ranked by how close it " +
+                  "is in meaning to the answer — rank 1 is the answer itself. Lower is warmer. The " +
+                  "colour and the bar say the same thing at a glance.",
+                  { word: row.word, rank: row.rank, total: num(V) });
       }
     },
     {
       until: "guess",
       say: function () {
-        return "Guess a second word, related to your first. Watch the number: down is warmer, up is " +
-               "colder. That's the whole game.";
+        return t("Guess a second word, related to your first. Watch the number: down is warmer, up is " +
+                 "colder. That's the whole game.");
       }
     },
     {
@@ -3793,12 +3926,13 @@
         var sorted = play.rows.slice().sort(function (a, b) { return a.rank - b.rank; });
         var near = sorted[0], far = sorted[sorted.length - 1];
         if (near.rank === far.rank) {
-          return "Both landed the same — that happens. Keep going. Your closest guess always stays " +
-                 "on top of the list, so that's the one to think from.";
+          return t("Both landed the same — that happens. Keep going. Your closest guess always stays " +
+                   "on top of the list, so that's the one to think from.");
         }
-        return near.word + " (" + near.rank + ") is warmer than " + far.word + " (" + far.rank +
-               "), so the answer is closer in meaning to " + near.word + ". Your closest guess always " +
-               "stays on top of the list, so that's the one to think from.";
+        return tf("{near} ({nearRank}) is warmer than {far} ({farRank}), so the answer is closer in " +
+                  "meaning to {near}. Your closest guess always stays on top of the list, so that's " +
+                  "the one to think from.",
+                  { near: near.word, nearRank: near.rank, far: far.word, farRank: far.rank });
       }
     },
     {
@@ -3806,17 +3940,23 @@
       say: function () {
         var mins = Math.round((LIMITS[play.level] || LIMITS.normal) / 60);
         var cheapest = cheapestItem();
-        return "Two more things. Hint suggests your best next word — you have " + tally(hints(), "left", "left") +
-               ", and " + tally(cheapest.price, "coin", "coins") + " in the shop buys " +
-               tally(cheapest.hints, "more", "more") + ". And you're on a " + mins + "-minute clock, " +
-               "starting the moment you close this — finish in time and you earn a coin.";
+        // Counts go in raw and the sentence supplies its own verb, so French
+        // can say "il vous en reste 3" rather than gluing a tally phrase into
+        // a slot that leaves it verbless.
+        return tf("Two more things. Hint suggests your best next word — you have {have} left, and " +
+                  "{price} in the shop buys {bought} more. And you're on a {mins}-minute clock, " +
+                  "starting the moment you close this — finish in time and you earn a coin.",
+                  { have: hints(),
+                    price: tally(cheapest.price, "coin", "coins"),
+                    bought: cheapest.hints,
+                    mins: mins });
       }
     }
   ];
 
   function paintCoach() {
     var step = TOUR[tour.at];
-    $("coach-step").textContent = "step " + (tour.at + 1) + " of " + TOUR.length;
+    $("coach-step").textContent = tf("step {n} of {total}", { n: tour.at + 1, total: TOUR.length });
     $("coach-text").textContent = step.say();
     $("coach-next").hidden = step.until !== "read";
     $("coach").hidden = false;
@@ -4035,11 +4175,11 @@
     w = resolve(w);
     if (!(n > 0)) { say($("solve-notice"), "Rank is a whole number, 1 or higher."); return; }
     if (observations.some(function (o) { return o.word === w; })) {
-      say($("solve-notice"), w + " is already listed.");
+      say($("solve-notice"), tf("{word} is already listed.", { word: w }));
       return;
     }
     if (!inLexicon(w)) {
-      say($("solve-notice"), w + " isn't in this dictionary, so it can't steer the search. Try a plainer word.");
+      say($("solve-notice"), tf("{word} isn't in this dictionary, so it can't steer the search. Try a plainer word.", { word: w }));
       return;
     }
 
@@ -4191,7 +4331,7 @@
 
     if (!main) { say($("cmp-notice"), "Give a main word first."); return; }
     main = resolve(main);
-    if (!inLexicon(main)) { say($("cmp-notice"), main + " isn't in this dictionary. Try a plainer word."); return; }
+    if (!inLexicon(main)) { say($("cmp-notice"), tf("{word} isn't in this dictionary. Try a plainer word.", { word: main })); return; }
 
     var listed = readWords($("cmp-others").value).map(resolve).filter(function (w) { return w !== main; });
     if (!listed.length) { say($("cmp-notice"), "Add at least one word to place against it."); return; }
@@ -4205,12 +4345,12 @@
     });
 
     if (!known.length) {
-      say($("cmp-notice"), "None of those are in this dictionary: " + unknown.join(", ") + ".");
+      say($("cmp-notice"), tf("None of those are in this dictionary: {words}.", { words: unknown.join(", ") }));
       $("cmp-out").textContent = "";
       return;
     }
 
-    say($("cmp-notice"), unknown.length ? "Not in this dictionary: " + unknown.join(", ") + "." : "");
+    say($("cmp-notice"), unknown.length ? tf("Not in this dictionary: {words}.", { words: unknown.join(", ") }) : "");
 
     var rows = known.map(function (w) { return { word: w, rank: rankOf(main, w) }; });
 
@@ -4240,7 +4380,6 @@
   /* ================================================================
      8. BOOT
      ================================================================ */
-  $("dictline").textContent = V + " words · ranks computed here, offline";
   applyLang();
   paintPurse();
   renderAdminAvailability();
