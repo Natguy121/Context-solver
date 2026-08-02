@@ -1959,6 +1959,7 @@
 
     if (typeof paintPurse === "function") paintPurse();
     if (typeof renderGlobalChat === "function") renderGlobalChat();
+    if (typeof renderAnnounceLog === "function") renderAnnounceLog();
     if (typeof refreshPlay === "function" && play && play.secret) refreshPlay();
     if (typeof paintCoach === "function" && tour && tour.on) paintCoach();
   }
@@ -2619,6 +2620,32 @@
     }).catch(function () { translateCache[key] = false; return false; });
   }
 
+  // Shared by global chat and the admin updates feed: works out whether a
+  // message needs translating for the viewer's current language, kicks off
+  // the fetch at most once per text+direction (the cache is keyed on both),
+  // and returns the markup to append after the message itself. onReady is
+  // whichever render function should re-run once the translation lands.
+  function translatedHtml(text, onReady) {
+    var msgLang = looksFrench(text) ? "fr" : "en";
+    var viewerLang = LANG === "fr" ? "fr" : "en";
+    if (msgLang === viewerLang) return "";
+
+    var cacheKey = viewerLang + "|" + text;
+    var known = cacheKey in translateCache;
+    var cached = translateCache[cacheKey];
+    if (!known) translateText(text, viewerLang).then(onReady);
+
+    if (!known || cached === null) {
+      return '<div class="translated">' + escapeHtml(t("translating…")) + '</div>';
+    }
+    if (cached) {
+      var fromLabel = t(msgLang === "fr" ? "translated from French" : "translated from English");
+      return '<div class="translated">' + escapeHtml(cached) + ' <span class="from-lang">(' +
+        escapeHtml(fromLabel) + ')</span></div>';
+    }
+    return "";
+  }
+
   function globalChatSay(message) {
     var node = $("global-chat-notice");
     node.textContent = t(message) || "";
@@ -2638,24 +2665,7 @@
         if (votes[uid] === "yes") yes++; else if (votes[uid] === "no") no++;
       });
 
-      var msgLang = looksFrench(m.text) ? "fr" : "en";
-      var viewerLang = LANG === "fr" ? "fr" : "en";
-      var translation = "";
-      if (msgLang !== viewerLang) {
-        var cacheKey = viewerLang + "|" + m.text;
-        var known = cacheKey in translateCache;
-        var cached = translateCache[cacheKey];
-        if (!known) {
-          translateText(m.text, viewerLang).then(function () { renderGlobalChat(); });
-        }
-        if (!known || cached === null) {
-          translation = '<div class="translated">' + escapeHtml(t("translating…")) + '</div>';
-        } else if (cached) {
-          var fromLabel = t(msgLang === "fr" ? "translated from French" : "translated from English");
-          translation = '<div class="translated">' + escapeHtml(cached) + ' <span class="from-lang">(' +
-            escapeHtml(fromLabel) + ')</span></div>';
-        }
-      }
+      var translation = translatedHtml(m.text, function () { renderGlobalChat(); });
 
       var canDelete = account && (m.uid === account.uid || myRole() === "admin");
 
@@ -3165,7 +3175,8 @@
     var log = $("announce-log");
     var canDelete = myRole() === "admin";
     log.innerHTML = announceList.map(function (a) {
-      return '<li class="chat-line" data-id="' + escapeHtml(a.id) + '">' + escapeHtml(a.text) +
+      var translation = translatedHtml(a.text, function () { renderAnnounceLog(); });
+      return '<li class="chat-line" data-id="' + escapeHtml(a.id) + '">' + escapeHtml(a.text) + translation +
         (canDelete ? ' <button type="button" class="linkish delete-announce">' + escapeHtml(t("Delete")) + '</button>' : '') +
         '</li>';
     }).join("");
