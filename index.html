@@ -936,6 +936,8 @@
   #spectate-chat-box .row { margin-top: 0.5rem; }
   #spectate-chat-box input { font-size: var(--micro); }
 
+  #spectate-progress { margin-top: 0.875rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
   @media (min-width: 46rem) {
     .wrap.wide-play { max-width: 58rem; }
     #play-live.with-roster {
@@ -1420,6 +1422,12 @@
             <button type="button" class="ghost" id="spectate-stop" data-i18n="stop-spectating">Stop spectating</button>
           </div>
           <ul class="roster-list" id="spectate-roster"></ul>
+
+          <div id="spectate-progress" hidden>
+            <p class="gloss" id="spectate-legend"></p>
+            <div id="spectate-verdict"></div>
+            <ul class="readings" id="spectate-ladder"></ul>
+          </div>
 
           <div id="spectate-chat-box">
             <div class="eyebrow chat-eyebrow" data-i18n="chat">chat</div>
@@ -1926,6 +1934,7 @@
     "the word was": "le mot était", "out of time — the word was": "temps écoulé — le mot était",
     "found in {count}": "trouvé en {count}",
     "{who} found it — {count} between you": "{who} l'a trouvé — {count} à vous tous",
+    "{who} found it — {count}": "{who} l'a trouvé — {count}",
     "Its nearest neighbours were {words}.": "Ses plus proches voisins étaient {words}.",
     "Your result, ready to send": "Votre résultat, prêt à envoyer",
     "Copy result": "Copier le résultat", "Copied": "Copié", "Hide another": "Cacher un autre mot",
@@ -2026,6 +2035,7 @@
     if (typeof paintPurse === "function") paintPurse();
     if (typeof renderGlobalChat === "function") renderGlobalChat();
     if (typeof renderAnnounceLog === "function") renderAnnounceLog();
+    if (typeof renderSpectateProgress === "function") renderSpectateProgress();
     if (typeof refreshPlay === "function" && play && play.secret) refreshPlay();
     if (typeof paintCoach === "function" && tour && tour.on) paintCoach();
   }
@@ -3106,18 +3116,66 @@
     return label + " " + (account ? account.name : (role === "assistant" ? "Assistant" : "Admin"));
   }
 
+  // The room's shared guess feed, same rows every player's own ladder is
+  // built from. A rank of 1 *is* the secret — nobody ever writes the secret
+  // itself anywhere, so the first such row appearing is both the win
+  // condition and the reveal, exactly like it is for a player who lands it.
+  var spectateGuesses = [];
+
+  function spectateVerdictCard(winner) {
+    var card = document.createElement("div");
+    card.className = "card keyed";
+    card.style.color = heat(1);
+
+    var key = document.createElement("div");
+    key.className = "eyebrow";
+    key.style.color = "var(--muted)";
+    key.textContent = tf("{who} found it — {count}",
+      { who: winner.by, count: tally(spectateGuesses.length, "guess", "guesses") });
+    card.appendChild(key);
+
+    var word = document.createElement("div");
+    word.className = "verdict";
+    word.style.color = "var(--ink)";
+    word.textContent = show(winner.word);
+    card.appendChild(word);
+
+    return card;
+  }
+
+  function renderSpectateProgress() {
+    var box = $("spectate-progress");
+    box.hidden = !spectateGuesses.length;
+    if (!spectateGuesses.length) return;
+
+    var best = spectateGuesses.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
+    $("spectate-legend").textContent = tally(spectateGuesses.length, "guess", "guesses") +
+      (best ? " · " + t("closest") + " " + best.rank : "");
+
+    var verdictBox = $("spectate-verdict");
+    verdictBox.textContent = "";
+    var winner = spectateGuesses.filter(function (g) { return g.rank === 1; })[0];
+    if (winner) verdictBox.appendChild(spectateVerdictCard(winner));
+
+    paintLadder($("spectate-ladder"), spectateGuesses.map(function (g) {
+      return { word: g.word, rank: g.rank, gloss: g.by };
+    }));
+  }
+
   function startSpectating(code) {
     if (!window.LiveRoom || !window.LiveRoom.ready) { spectateSay("Can't reach the live service right now."); return; }
     spectateCode = code;
     spectateSay("");
     resetChatLog("spectate-chat-log", "No messages yet.");
+    spectateGuesses = [];
+    $("spectate-progress").hidden = true;
     window.LiveRoom.spectate(code, {
       onPlayers: function (list) { spectateRoster = list; renderSpectateRoster(); renderSpectateStatus(list); },
       onChat: function (msg) {
         if (!msg) return;
         appendChatLine("spectate-chat-log", msg, msg.name === spectateChatName());
       },
-      onGuesses: function () {},
+      onGuesses: function (list) { spectateGuesses = list; renderSpectateProgress(); },
       onError: function () { spectateSay("Live sync dropped — try spectating again."); }
     });
     $("spectate-code-label").textContent = code;
@@ -3167,8 +3225,10 @@
     if (window.LiveRoom) window.LiveRoom.stopSpectating();
     spectateCode = null;
     spectateRoster = [];
+    spectateGuesses = [];
     $("spectate-live").hidden = true;
     $("spectate-status").textContent = "";
+    $("spectate-progress").hidden = true;
   });
 
   $("spectate-roster").addEventListener("click", function (e) {
