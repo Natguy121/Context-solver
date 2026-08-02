@@ -40,14 +40,26 @@
     --step-4: clamp(2.125rem, 1.6rem + 2.6vw, 3rem);
     --micro: 0.6875rem;
 
-    /* Print-flat by heritage, so elevation stays at paper-lift weight:
-       tight blur, low alpha, never a floating-card drop shadow. */
-    --lift-1: 0 1px 2px rgba(25, 23, 37, 0.05);
-    --lift-2: 0 1px 2px rgba(25, 23, 37, 0.06), 0 4px 12px rgba(25, 23, 37, 0.07);
-    --lift-3: 0 2px 4px rgba(25, 23, 37, 0.07), 0 12px 28px rgba(25, 23, 37, 0.10);
+    /* Deeper and darker than a paper-lift shadow on purpose — this page
+       wants to feel like it has weight, not like it's printed flat. */
+    --lift-1: 0 1px 2px rgba(17, 15, 28, 0.14);
+    --lift-2: 0 2px 3px rgba(17, 15, 28, 0.16), 0 8px 20px rgba(17, 15, 28, 0.18);
+    --lift-3: 0 3px 6px rgba(17, 15, 28, 0.20), 0 20px 40px rgba(17, 15, 28, 0.26);
 
-    --radius: 3px;
-    --radius-lg: 5px;
+    /* Sharp, near-square corners read as harder-edged than the soft 3-5px
+       the page used before — a deliberate part of the tougher, more serious
+       tone, not a rounding-value afterthought. */
+    --radius: 1px;
+    --radius-lg: 2px;
+
+    /* Escalates with the difficulty picked on the setup screen: cool and
+       calm for easy, hot for nightmare. Held here (not per-theme) so a
+       level's colour identity doesn't shift between light and dark. */
+    --lvl-easy: #2E63C7;
+    --lvl-normal: var(--accent);
+    --lvl-hard: #B5670E;
+    --lvl-nightmare: #C81E3A;
+    --lvl-nightmare-glow: color-mix(in srgb, var(--lvl-nightmare) 38%, transparent);
 
     /* Held outside the theme blocks on purpose: the win flash is white on
        both themes, so its ink must stay dark on both. */
@@ -170,8 +182,8 @@
     font-size: var(--step-4);
     line-height: 1;
     margin: 0;
-    font-weight: 400;
-    letter-spacing: -0.015em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
 
@@ -218,12 +230,13 @@
     appearance: none;
     background: none;
     border: 0;
-    border-bottom: 2px solid transparent;
+    border-bottom: 3px solid transparent;
     margin-bottom: -1px;
     padding: 0 0 0.625rem;
     min-height: 2.75rem;
     font-family: var(--mono);
     font-size: var(--micro);
+    font-weight: 600;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--muted);
@@ -235,7 +248,7 @@
     transition: color var(--fast) var(--ease), border-color var(--slow) var(--ease);
   }
 
-  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
   .tab:hover { color: var(--ink); }
   .tab:hover:not([aria-selected="true"]) { border-bottom-color: var(--rule); }
 
@@ -311,6 +324,7 @@
   button {
     font-family: var(--sans);
     font-size: var(--step-1);
+    font-weight: 600;
     min-height: 3rem;
     padding: 0 1.25rem;
     border-radius: var(--radius);
@@ -344,6 +358,16 @@
     border-color: var(--accent-edge);
     background: var(--accent-wash);
     box-shadow: var(--lift-1);
+  }
+
+  /* Destructive actions — kicking a player, deleting a message, a shop
+     item, a request — turn danger-red on hover instead of the ordinary
+     accent wash, so the colour itself warns what the click is about to do. */
+  button[class*="kick"]:hover:not(:disabled),
+  button[class*="del"]:hover:not(:disabled) {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+    color: var(--danger);
   }
 
   button:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
@@ -526,6 +550,31 @@
     50% { opacity: 0.55; }
   }
 
+  /* The difficulty picked on the setup screen follows the round in, scoped
+     to #play-live only (see beginGame's data-play-level) so it never
+     touches the setup picker's own colours. Hard gets a modest tint; easy
+     stays untouched — it's the one level that isn't supposed to feel like
+     anything. Nightmare is the one meant to actually read as tougher:
+     the guess button, the input's focus ring and the clock's resting
+     colour all pick up its red instead of the ordinary accent. */
+  :root[data-play-level="hard"] #play-live #play-input:focus-visible {
+    border-color: var(--lvl-hard);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--lvl-hard) 22%, transparent);
+  }
+  :root[data-play-level="nightmare"] #play-live #play-input:focus-visible {
+    border-color: var(--lvl-nightmare);
+    box-shadow: 0 0 0 3px var(--lvl-nightmare-glow);
+  }
+  :root[data-play-level="nightmare"] #play-live #play-controls button:not(.ghost) {
+    background: var(--lvl-nightmare);
+    border-color: var(--lvl-nightmare);
+  }
+  :root[data-play-level="nightmare"] #play-live #play-controls button:not(.ghost):hover:not(:disabled) {
+    box-shadow: var(--lift-2), 0 6px 16px -4px var(--lvl-nightmare-glow);
+  }
+  :root[data-play-level="nightmare"] #play-live #play-clock:not(.urgent) { color: var(--lvl-nightmare); }
+  :root[data-play-level="nightmare"] #play-live .roster { border-color: color-mix(in srgb, var(--lvl-nightmare) 30%, var(--rule)); }
+
   .coach {
     display: flex;
     flex-direction: column;
@@ -546,6 +595,23 @@
     border-color: var(--accent-edge);
     background: var(--accent-wash);
   }
+
+  /* The difficulty picker escalates in colour rather than staying one
+     accent for every level — cool and unremarkable for easy, hot for
+     nightmare, so the choice itself signals what you're picking before
+     the round note even says "the word count kept in your head." */
+  #levels button[data-level="easy"][aria-pressed="true"] { background: var(--lvl-easy); border-color: var(--lvl-easy); }
+  #levels button[data-level="hard"][aria-pressed="true"] { background: var(--lvl-hard); border-color: var(--lvl-hard); }
+  #levels button[data-level="nightmare"][aria-pressed="true"] {
+    background: var(--lvl-nightmare);
+    border-color: var(--lvl-nightmare);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    box-shadow: var(--lift-1), 0 0 0 3px var(--lvl-nightmare-glow);
+  }
+  #levels button[data-level="easy"][aria-pressed="false"]:hover:not(:disabled) { border-color: var(--lvl-easy); background: color-mix(in srgb, var(--lvl-easy) 10%, var(--surface)); }
+  #levels button[data-level="hard"][aria-pressed="false"]:hover:not(:disabled) { border-color: var(--lvl-hard); background: color-mix(in srgb, var(--lvl-hard) 10%, var(--surface)); }
+  #levels button[data-level="nightmare"][aria-pressed="false"]:hover:not(:disabled) { border-color: var(--lvl-nightmare); background: color-mix(in srgb, var(--lvl-nightmare) 10%, var(--surface)); }
 
   .linkish {
     background: none;
@@ -3451,6 +3517,11 @@
     if (window.LiveRoom) window.LiveRoom.leave();
     stopBots();
     closeMyOpenGame();
+
+    // Carries the picked difficulty onto the root element so #play-live can
+    // escalate its own colour with it — scoped to that one screen (see the
+    // CSS) so it never bleeds into the setup picker's own level colours.
+    document.documentElement.setAttribute("data-play-level", play.level);
 
     play.secret = secret;
     play.code = code || null;
