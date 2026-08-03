@@ -1364,16 +1364,6 @@
       <button type="button" id="admin-broadcast-send" data-i18n="post-everyone">Post to everyone</button>
     </div>
 
-    <div id="admin-race" hidden>
-      <span class="key" data-i18n="race-mode">race mode (beta)</span>
-      <p class="gloss" data-i18n="race-blurb">Ends an online round for everyone the moment anybody finds the word, instead
-        of each of you finishing on your own. Test it yourself first — nobody else sees it until you turn it on.</p>
-      <div class="row">
-        <button type="button" class="ghost" id="race-test-btn"></button>
-        <button type="button" id="race-publish-btn" data-i18n="race-publish">Turn on for everyone</button>
-      </div>
-    </div>
-
     <div id="admin-shop-editor" hidden>
       <div class="field">
         <span class="key" data-i18n="shop-items">shop items</span>
@@ -1449,6 +1439,16 @@
           </div>
         </div>
         <p class="gloss" id="spectate-notice" hidden></p>
+      </div>
+    </div>
+
+    <div id="admin-race" hidden>
+      <span class="key" data-i18n="race-mode">race mode (beta)</span>
+      <p class="gloss" data-i18n="race-blurb">Ends an online round for everyone the moment anybody finds the word, instead
+        of each of you finishing on your own. Test it yourself first — nobody else sees it until an admin turns it on.</p>
+      <div class="row">
+        <button type="button" class="ghost" id="race-test-btn"></button>
+        <button type="button" id="race-publish-btn" hidden data-i18n="race-publish">Turn on for everyone</button>
       </div>
     </div>
 
@@ -3351,25 +3351,33 @@
      race mode on for real means every online round ends for every player
      the instant anyone finds the word, not just the one who found it, so
      there's a way to feel that out first: raceTestLocal is a flag that
-     never leaves this browser and only does anything for the admin who
-     set it, so trying it can't put a stranger's round into a mode they
-     never agreed to. Once the real switch flips, that local one stops
-     mattering — raceModeActive() only even looks at it while the
-     published flag is still off. */
+     never leaves this browser and only does anything for whoever set it,
+     so trying it can't put a stranger's round into a mode they never
+     agreed to — that's true for an assistant same as an admin, so both
+     roles get the test button (it sits with the rest of what an
+     assistant can already do — spectate, kick — none of which touch
+     anyone else's game either). Publishing for real is the one part
+     that's admin-only, same as the shop and the broadcast: it changes
+     what every visitor's games do, not just the person clicking it.
+     Once the real switch flips, the local one stops mattering —
+     raceModeActive() only even looks at it while the published flag is
+     still off. */
   var features = {};
   var raceTestLocal = (function () {
     try { return localStorage.getItem("contexto-race-test") === "1"; } catch (e) { return false; }
   })();
 
   function raceModeActive() {
-    return !!features.race || (raceTestLocal && myRole() === "admin");
+    return !!features.race || (raceTestLocal && !!myRole());
   }
 
   function renderRacePanel() {
     var box = $("admin-race");
-    if (myRole() !== "admin" || features.race) { box.hidden = true; return; }
+    var role = myRole();
+    if (!role || features.race) { box.hidden = true; return; }
     box.hidden = false;
     $("race-test-btn").textContent = t(raceTestLocal ? "Stop testing" : "Test race mode");
+    $("race-publish-btn").hidden = role !== "admin";
   }
 
   $("race-test-btn").addEventListener("click", function () {
