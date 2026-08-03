@@ -1214,7 +1214,10 @@
       </div>
 
       <div id="online-only" class="panel" hidden>
-        <p class="gloss race-note" id="online-race-note" hidden></p>
+        <div id="online-race-box" hidden>
+          <p class="gloss race-note" id="online-race-note"></p>
+          <button type="button" class="ghost" id="race-optout-btn" hidden></button>
+        </div>
 
         <div class="field">
           <label class="key" for="online-name" data-i18n="your-name">your name</label>
@@ -1848,6 +1851,10 @@
     "Test race mode": "Tester le mode course", "Stop testing": "Arrêter le test",
     "⚡ Race mode is on — the round ends for everyone the instant anyone finds the word.":
       "⚡ Le mode course est activé — la partie se termine pour tout le monde dès que quelqu'un trouve le mot.",
+    "Race mode is off for you — everyone else still races.":
+      "Le mode course est désactivé pour vous — tout le monde continue à courir.",
+    "Turn race mode back on for me": "Réactiver le mode course pour moi",
+    "Turn off for me": "Désactiver pour moi",
     "add-item-key": "ajouter un article", "add-item": "Ajouter l'article", "reset-default": "Réinitialiser",
     "send-request": "envoyer une demande", "feature": "fonctionnalité", "bug": "bug",
     "everyone": "Tout le monde", "requests-bugs": "demandes et bugs", "admin-chat": "discussion admin",
@@ -3382,9 +3389,16 @@
   var raceTestLocal = (function () {
     try { return localStorage.getItem("contexto-race-test") === "1"; } catch (e) { return false; }
   })();
+  // Once race mode is published for everyone, individual players still get
+  // a say over their own games — this is the opt-out, never leaves this
+  // browser, same as raceTestLocal never does.
+  var raceOptOut = (function () {
+    try { return localStorage.getItem("contexto-race-optout") === "1"; } catch (e) { return false; }
+  })();
 
   function raceModeActive() {
-    return !!features.race || (raceTestLocal && !!myRole());
+    if (raceTestLocal && myRole()) return true;
+    return !!features.race && !raceOptOut;
   }
 
   function renderRacePanel() {
@@ -3399,18 +3413,38 @@
   // The setup screen's own heads-up: shown the moment "online" is picked,
   // not tucked away in the admin panel, so a player finds out their round
   // will end the instant someone else wins before they've even hosted or
-  // joined one — not partway through, when the round just stops.
+  // joined one — not partway through, when the round just stops. Once
+  // it's published for everyone, this is also where any player — not
+  // just an admin or assistant — can turn it back off for their own
+  // games with the opt-out button.
   function renderRaceStatusNote() {
+    var box = $("online-race-box");
     var note = $("online-race-note");
+    var optBtn = $("race-optout-btn");
     // Checked here rather than left to the ancestor's own [hidden] — this
     // runs from places that don't know or care which mode is selected
     // (the features subscription, the test toggle), so the element's own
     // hidden state has to be correct on its own instead of only ending up
     // correct because #online-only happens to be hidden too.
-    var on = play.mode === "online" && raceModeActive();
-    note.hidden = !on;
-    if (on) note.textContent = t("⚡ Race mode is on — the round ends for everyone the instant anyone finds the word.");
+    var globalOn = play.mode === "online" && !!features.race;
+    var testOn = play.mode === "online" && !features.race && raceTestLocal && !!myRole();
+    box.hidden = !globalOn && !testOn;
+    if (!globalOn && !testOn) return;
+    optBtn.hidden = !globalOn;
+    if (globalOn && raceOptOut) {
+      note.textContent = t("Race mode is off for you — everyone else still races.");
+      optBtn.textContent = t("Turn race mode back on for me");
+    } else {
+      note.textContent = t("⚡ Race mode is on — the round ends for everyone the instant anyone finds the word.");
+      optBtn.textContent = t("Turn off for me");
+    }
   }
+
+  $("race-optout-btn").addEventListener("click", function () {
+    raceOptOut = !raceOptOut;
+    try { localStorage.setItem("contexto-race-optout", raceOptOut ? "1" : "0"); } catch (e) {}
+    renderRaceStatusNote();
+  });
 
   $("race-test-btn").addEventListener("click", function () {
     raceTestLocal = !raceTestLocal;
