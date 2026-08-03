@@ -4,60 +4,117 @@
 
 <style>
   :root {
+    color-scheme: light;
+
     --ground: #F1F0F6;
     --surface: #FFFFFF;
     --sunken: #E7E5EF;
     --ink: #191725;
     --muted: #6A6680;
     --rule: #DEDBE8;
-    --accent: #4E3FA8;
-    --focus: #4E3FA8;
+    /* Was #4E3FA8 — a muted, greyed-down violet. Same hue, pushed to a
+       saturated electric violet so it actually reads as a colour choice
+       rather than a slightly-tinted ink. Contrast against ground: 7.86:1. */
+    --accent: #4B1FCB;
+    --focus: #4B1FCB;
+
+    /* Derived tints, so accent-keyed surfaces don't need a second hand-picked
+       hex per theme. Kept as separate tokens rather than inline color-mix()
+       so the dark block can override any that need a different weighting. */
+    --accent-wash: color-mix(in srgb, var(--accent) 9%, var(--surface));
+    --accent-edge: color-mix(in srgb, var(--accent) 32%, var(--rule));
+    --ring: color-mix(in srgb, var(--focus) 22%, transparent);
+    --glow: color-mix(in srgb, var(--accent) 32%, transparent);
+    --danger: #C0392B;
 
     --serif: ui-serif, "Iowan Old Style", Charter, Georgia, Cambria, serif;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --mono: ui-monospace, Menlo, "SF Mono", "Cascadia Mono", monospace;
 
+    /* The big two scale with the viewport; the body sizes stay fixed so
+       reading measure and rhythm don't drift between phone and desktop. */
     --step-0: 0.9375rem;
     --step-1: 1.0625rem;
     --step-2: 1.25rem;
-    --step-3: 1.75rem;
-    --step-4: 2.5rem;
+    --step-3: clamp(1.5rem, 1.2rem + 1.4vw, 1.875rem);
+    --step-4: clamp(2.125rem, 1.6rem + 2.6vw, 3rem);
     --micro: 0.6875rem;
+
+    /* Deeper and darker than a paper-lift shadow on purpose — this page
+       wants to feel like it has weight, not like it's printed flat. */
+    --lift-1: 0 1px 2px rgba(17, 15, 28, 0.14);
+    --lift-2: 0 2px 3px rgba(17, 15, 28, 0.16), 0 8px 20px rgba(17, 15, 28, 0.18);
+    --lift-3: 0 3px 6px rgba(17, 15, 28, 0.20), 0 20px 40px rgba(17, 15, 28, 0.26);
+
+    /* Sharp, near-square corners read as harder-edged than the soft 3-5px
+       the page used before — a deliberate part of the tougher, more serious
+       tone, not a rounding-value afterthought. */
+    --radius: 1px;
+    --radius-lg: 2px;
+
+    /* Escalates with the difficulty picked on the setup screen: cool and
+       calm for easy, hot for nightmare. Held here (not per-theme) so a
+       level's colour identity doesn't shift between light and dark. */
+    --lvl-easy: #2E63C7;
+    --lvl-normal: var(--accent);
+    --lvl-hard: #B5670E;
+    --lvl-nightmare: #C81E3A;
+    --lvl-nightmare-glow: color-mix(in srgb, var(--lvl-nightmare) 38%, transparent);
+
+    /* Held outside the theme blocks on purpose: the win flash is white on
+       both themes, so its ink must stay dark on both. */
+    --flash-veil: 255, 255, 255;
+    --flash-ink: #17152A;
+
+    --ease: cubic-bezier(0.2, 0.6, 0.3, 1);
+    --fast: 120ms;
+    --slow: 240ms;
   }
 
+  /* One definition per themed token, shared by the media query and the
+     explicit toggle below, so the two can never drift apart. */
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
       --ground: #131220;
       --surface: #1C1A2B;
       --sunken: #262338;
       --ink: #ECEAF4;
       --muted: #9793AC;
       --rule: #2E2B43;
-      --accent: #A99CF0;
-      --focus: #A99CF0;
+      /* Was #A99CF0 — a pastel lavender that barely read as colour on dark
+         ground. Same hue, saturated up so it still glows rather than fades. */
+      --accent: #B18AFF;
+      --focus: #B18AFF;
+      --accent-wash: color-mix(in srgb, var(--accent) 12%, var(--surface));
+      --accent-edge: color-mix(in srgb, var(--accent) 38%, var(--rule));
+      --glow: color-mix(in srgb, var(--accent) 30%, transparent);
+      --danger: #E8705C;
+      /* Shadows read as murk on dark ground, so depth comes mostly from a
+         hairline top highlight with only a whisper of cast shadow. */
+      --lift-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --lift-2: 0 1px 2px rgba(0, 0, 0, 0.34), 0 4px 12px rgba(0, 0, 0, 0.3);
+      --lift-3: 0 2px 4px rgba(0, 0, 0, 0.38), 0 12px 28px rgba(0, 0, 0, 0.36);
     }
   }
 
   :root[data-theme="dark"] {
+    color-scheme: dark;
     --ground: #131220;
     --surface: #1C1A2B;
     --sunken: #262338;
     --ink: #ECEAF4;
     --muted: #9793AC;
     --rule: #2E2B43;
-    --accent: #A99CF0;
-    --focus: #A99CF0;
-  }
-
-  :root[data-theme="light"] {
-    --ground: #F1F0F6;
-    --surface: #FFFFFF;
-    --sunken: #E7E5EF;
-    --ink: #191725;
-    --muted: #6A6680;
-    --rule: #DEDBE8;
-    --accent: #4E3FA8;
-    --focus: #4E3FA8;
+    --accent: #B18AFF;
+    --focus: #B18AFF;
+    --accent-wash: color-mix(in srgb, var(--accent) 12%, var(--surface));
+    --accent-edge: color-mix(in srgb, var(--accent) 38%, var(--rule));
+    --glow: color-mix(in srgb, var(--accent) 30%, transparent);
+    --danger: #E8705C;
+    --lift-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --lift-2: 0 1px 2px rgba(0, 0, 0, 0.34), 0 4px 12px rgba(0, 0, 0, 0.3);
+    --lift-3: 0 2px 4px rgba(0, 0, 0, 0.38), 0 12px 28px rgba(0, 0, 0, 0.36);
   }
 
   * { box-sizing: border-box; }
@@ -70,12 +127,39 @@
     font-size: var(--step-0);
     line-height: 1.55;
     -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--accent); color: var(--surface); }
+
+  /* The only two <a> tags in the page were falling through to the browser's
+     default link blue, which fought the rest of the accent-keyed palette. */
+  a {
+    color: var(--accent);
+    text-decoration-color: var(--accent-edge);
+    text-underline-offset: 0.15em;
+    transition: color var(--fast) var(--ease), text-decoration-color var(--fast) var(--ease);
+  }
+  a:hover { text-decoration-color: currentColor; }
+  a:visited { color: var(--accent); }
+
+  /* Every transition in the sheet is opt-in through these two properties, so
+     one media query can retire all of them for reduced-motion users. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   .wrap {
     max-width: 34rem;
     margin: 0 auto;
-    padding: 2rem 1.25rem 4rem;
+    padding: clamp(1.25rem, 0.9rem + 1.8vw, 2.25rem) clamp(1rem, 0.7rem + 1.5vw, 1.5rem) 4rem;
     display: flex;
     flex-direction: column;
     gap: 1.75rem;
@@ -98,38 +182,75 @@
     font-size: var(--step-4);
     line-height: 1;
     margin: 0;
-    font-weight: 400;
-    letter-spacing: -0.01em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
 
-  .standfirst { margin: 0; color: var(--muted); max-width: 34ch; }
+  .standfirst { margin: 0; color: var(--muted); max-width: 34ch; text-wrap: pretty; }
 
-  /* ---------- tabs ---------- */
+  /* A brief nudge toward the tour right after signing in — not the
+     celebratory win-flash (full screen, purchased, tied to a win), just an
+     accent wash pulsing behind the CTA a couple of times to catch the eye.
+     Negative margin matches the padding so the box doesn't shift the line
+     around it, only its own background. */
+  #tour-cta.nudge {
+    padding: 0.25rem 0.375rem;
+    margin: -0.25rem -0.375rem;
+    border-radius: var(--radius);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    #tour-cta.nudge { animation: tour-nudge 1.4s var(--ease) 2; }
+  }
+  @keyframes tour-nudge {
+    0%, 100% { background: transparent; }
+    35% { background: var(--accent-wash); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #tour-cta.nudge { background: var(--accent-wash); }
+  }
+
+  /* ---------- tabs ----------
+     Five uppercase mono labels overrun a narrow phone, so the strip scrolls
+     sideways instead of wrapping into a second row that would shift the whole
+     page down. The scrollbar itself is hidden — the fade at the edge is the
+     affordance. */
   .tabs {
     display: flex;
     gap: 1.5rem;
     border-bottom: 1px solid var(--rule);
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
   }
+  .tabs::-webkit-scrollbar { display: none; }
 
   .tab {
     appearance: none;
     background: none;
     border: 0;
-    border-bottom: 2px solid transparent;
+    border-bottom: 3px solid transparent;
     margin-bottom: -1px;
     padding: 0 0 0.625rem;
     min-height: 2.75rem;
     font-family: var(--mono);
     font-size: var(--micro);
+    font-weight: 600;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--muted);
     cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+    scroll-snap-align: start;
+    box-shadow: none;
+    transition: color var(--fast) var(--ease), border-color var(--slow) var(--ease);
   }
 
-  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
   .tab:hover { color: var(--ink); }
+  .tab:hover:not([aria-selected="true"]) { border-bottom-color: var(--rule); }
 
   /* ---------- panels ---------- */
   /* The hidden attribute sets display:none from the browser's own stylesheet,
@@ -155,18 +276,29 @@
     color: var(--ink);
     background: var(--surface);
     border: 1px solid var(--rule);
-    border-radius: 2px;
+    border-radius: var(--radius);
     padding: 0.75rem 0.875rem;
     min-height: 3rem;
     width: 100%;
     outline: none;
+    box-shadow: var(--lift-1);
+    transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
   }
 
+  input:hover, textarea:hover, select:hover { border-color: var(--accent-edge); }
   textarea { resize: vertical; line-height: 1.6; }
   input.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.7; }
 
-  input:focus-visible, textarea:focus-visible, select:focus-visible,
-  button:focus-visible {
+  /* Focus reads as a soft ring plus a coloured edge rather than a hard
+     outline sitting off the control — closer to how the rest of the page
+     handles emphasis, and it survives on both themes. */
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    border-color: var(--focus);
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+
+  button:focus-visible, .tab:focus-visible, [tabindex]:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
@@ -175,30 +307,93 @@
   .row > .grow { flex: 1; }
   .row > .fixed { width: 6rem; flex: none; }
 
+  /* The guess row is input + Guess + Hint. On a narrow phone the two buttons
+     leave the input barely wide enough for a short word, so below 26rem the
+     input takes a line of its own and the buttons share the one under it. */
+  @media (max-width: 26rem) {
+    #play-controls { flex-wrap: wrap; }
+    #play-controls #play-input { flex: 1 0 100%; }
+    #play-controls button { flex: 1; }
+  }
+
+  /* Primary buttons take the accent fill rather than flat ink/ground. Text
+     stays on --ground: in light theme that's near-white on the dark violet
+     fill, and in dark theme --ground is the near-black page colour, which
+     happens to be exactly right for text on the light-lavender fill — the
+     two theme blocks were already built to invert together. */
   button {
     font-family: var(--sans);
     font-size: var(--step-1);
+    font-weight: 600;
     min-height: 3rem;
     padding: 0 1.25rem;
-    border-radius: 2px;
-    border: 1px solid var(--ink);
-    background: var(--ink);
+    border-radius: var(--radius);
+    border: 1px solid var(--accent);
+    background: var(--accent);
     color: var(--ground);
     cursor: pointer;
+    box-shadow: var(--lift-1);
+    transition: background-color var(--fast) var(--ease), border-color var(--fast) var(--ease),
+                color var(--fast) var(--ease), box-shadow var(--fast) var(--ease),
+                transform var(--fast) var(--ease), opacity var(--fast) var(--ease);
   }
 
-  button.ghost { background: transparent; color: var(--ink); }
-  button:disabled { opacity: 0.45; cursor: default; }
+  /* A press should feel like the button takes the weight: lift on hover,
+     settle flush on the way down. 1px is enough to read as physical. The
+     filled accent buttons get a tinted glow layered under the lift instead
+     of a neutral shadow, so the colour itself feels like the source of it. */
+  button:hover:not(:disabled) {
+    box-shadow: var(--lift-2), 0 6px 16px -4px var(--glow);
+    transform: translateY(-1px);
+  }
+  button:active:not(:disabled) { box-shadow: var(--lift-1); transform: translateY(0); }
+
+  button.ghost {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--rule);
+    box-shadow: none;
+  }
+  button.ghost:hover:not(:disabled) {
+    border-color: var(--accent-edge);
+    background: var(--accent-wash);
+    box-shadow: var(--lift-1);
+  }
+
+  /* Destructive actions — kicking a player, deleting a message, a shop
+     item, a request — turn danger-red on hover instead of the ordinary
+     accent wash, so the colour itself warns what the click is about to do. */
+  button[class*="kick"]:hover:not(:disabled),
+  button[class*="del"]:hover:not(:disabled) {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+    color: var(--danger);
+  }
+
+  button:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
   button.wide { width: 100%; }
+
+  /* The link-shaped controls borrow the button element but none of its
+     chrome, so they opt out of the lift in one place. */
+  .purse, .admin-btn, .linkish, .drop, .vote-btn {
+    box-shadow: none;
+  }
+  .purse:hover, .admin-btn:hover, .linkish:hover, .drop:hover, .vote-btn:hover {
+    box-shadow: none;
+    transform: none;
+  }
 
   .segmented { display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .segmented button { flex: 1 1 5.5rem; padding: 0 0.5rem; }
 
+  /* Wraps as two whole groups when the strapline and the account controls
+     can't share a line, instead of breaking the eyebrow mid-phrase. */
   .masthead-top {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: 0.375rem 1rem;
   }
   .masthead-left { display: flex; align-items: baseline; gap: 0.875rem; min-width: 0; }
   .purse {
@@ -233,14 +428,19 @@
   .admin-btn:hover { color: var(--ink); }
   .admin-btn.is-on { color: var(--accent); }
 
-  .admin-panel {
-    padding: 1rem;
-    background: var(--sunken);
+  /* The four accent-keyed blocks — admin, account, announcements, coach —
+     all say "this is set apart from the page" the same way, so they share
+     one definition instead of four near-copies that drift. */
+  .admin-panel, .account-panel, .announce, .coach {
+    background: var(--accent-wash);
     border: 1px solid var(--rule);
     border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    box-shadow: var(--lift-1);
   }
+
+  .admin-panel { padding: 1.125rem; }
   .masthead-right { display: flex; align-items: baseline; gap: 0.875rem; flex: none; }
-  .account-panel { border-left: 3px solid var(--accent); }
   .user-row {
     display: flex;
     flex-direction: column;
@@ -265,10 +465,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.625rem;
-    padding: 1rem;
-    background: var(--sunken);
-    border: 1px solid var(--rule);
-    border-left: 3px solid var(--accent);
+    padding: 1.125rem;
   }
   .announce .chat-log { max-height: none; }
   .announce .chat-line { font-size: var(--step-0); line-height: 1.5; }
@@ -293,10 +490,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.875rem;
-    padding: 1rem;
+    padding: 1.125rem;
     margin-bottom: 1.5rem;
     background: var(--sunken);
     border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: var(--lift-1);
   }
   .shop-list {
     list-style: none;
@@ -307,20 +506,80 @@
     gap: 0.875rem;
   }
   .shop-list li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+
+  /* Only the two lists of buyable/joinable things become cards. The admin,
+     everyone and request lists below stay divider-separated rows — they're
+     dense editing surfaces, and boxing every row there just adds noise. */
+  #shop-list-live, #spectate-open-list { gap: 0.375rem; }
+  #shop-list-live li, #spectate-open-list li {
+    padding: 0.8125rem 0.875rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+  }
+  #shop-list-live li:hover, #spectate-open-list li:hover {
+    border-color: var(--accent-edge);
+    box-shadow: var(--lift-1);
+  }
+  #shop-list-live li.chat-empty, #spectate-open-list li.chat-empty {
+    background: none;
+    border-style: dashed;
+    box-shadow: none;
+  }
   .shop-list button { flex: 0 0 auto; }
   .shop-name { display: block; }
-  .shop-note { display: block; color: var(--muted); font-size: var(--step-0); }
-  #play-clock { font-family: var(--mono); margin-left: auto; }
-  #play-clock.urgent { color: var(--accent); font-weight: 600; }
+  .shop-note { display: block; color: var(--muted); font-size: var(--step-0); text-wrap: pretty; }
+  /* Shop items are things with names; open games are codes. Set each in the
+     face that suits it rather than one font for both. */
+  #shop-list-live .shop-name { font-family: var(--serif); font-size: var(--step-1); }
+  #spectate-open-list .shop-name {
+    font-family: var(--mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  #play-clock { font-family: var(--mono); margin-left: auto; font-variant-numeric: tabular-nums; }
+  #play-clock.urgent { color: var(--danger); font-weight: 600; }
+  /* Time running out earns a heartbeat, not a strobe: one slow pulse a
+     second, and nothing at all for reduced-motion. */
+  @media (prefers-reduced-motion: no-preference) {
+    #play-clock.urgent { animation: clock-pulse 1s ease-in-out infinite; }
+  }
+  @keyframes clock-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
+  /* The difficulty picked on the setup screen follows the round in, scoped
+     to #play-live only (see beginGame's data-play-level) so it never
+     touches the setup picker's own colours. Hard gets a modest tint; easy
+     stays untouched — it's the one level that isn't supposed to feel like
+     anything. Nightmare is the one meant to actually read as tougher:
+     the guess button, the input's focus ring and the clock's resting
+     colour all pick up its red instead of the ordinary accent. */
+  :root[data-play-level="hard"] #play-live #play-input:focus-visible {
+    border-color: var(--lvl-hard);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--lvl-hard) 22%, transparent);
+  }
+  :root[data-play-level="nightmare"] #play-live #play-input:focus-visible {
+    border-color: var(--lvl-nightmare);
+    box-shadow: 0 0 0 3px var(--lvl-nightmare-glow);
+  }
+  :root[data-play-level="nightmare"] #play-live #play-controls button:not(.ghost) {
+    background: var(--lvl-nightmare);
+    border-color: var(--lvl-nightmare);
+  }
+  :root[data-play-level="nightmare"] #play-live #play-controls button:not(.ghost):hover:not(:disabled) {
+    box-shadow: var(--lift-2), 0 6px 16px -4px var(--lvl-nightmare-glow);
+  }
+  :root[data-play-level="nightmare"] #play-live #play-clock:not(.urgent) { color: var(--lvl-nightmare); }
+  :root[data-play-level="nightmare"] #play-live .roster { border-color: color-mix(in srgb, var(--lvl-nightmare) 30%, var(--rule)); }
 
   .coach {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    padding: 1rem;
-    background: var(--sunken);
-    border: 1px solid var(--rule);
-    border-left: 3px solid var(--accent);
+    padding: 1.125rem;
   }
   .coach p { margin: 0; }
   .coach .row { align-items: center; gap: 1rem; }
@@ -329,7 +588,30 @@
     background: transparent;
     color: var(--muted);
     border-color: var(--rule);
+    box-shadow: none;
   }
+  .segmented button[aria-pressed="false"]:hover:not(:disabled) {
+    color: var(--ink);
+    border-color: var(--accent-edge);
+    background: var(--accent-wash);
+  }
+
+  /* The difficulty picker escalates in colour rather than staying one
+     accent for every level — cool and unremarkable for easy, hot for
+     nightmare, so the choice itself signals what you're picking before
+     the round note even says "the word count kept in your head." */
+  #levels button[data-level="easy"][aria-pressed="true"] { background: var(--lvl-easy); border-color: var(--lvl-easy); }
+  #levels button[data-level="hard"][aria-pressed="true"] { background: var(--lvl-hard); border-color: var(--lvl-hard); }
+  #levels button[data-level="nightmare"][aria-pressed="true"] {
+    background: var(--lvl-nightmare);
+    border-color: var(--lvl-nightmare);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    box-shadow: var(--lift-1), 0 0 0 3px var(--lvl-nightmare-glow);
+  }
+  #levels button[data-level="easy"][aria-pressed="false"]:hover:not(:disabled) { border-color: var(--lvl-easy); background: color-mix(in srgb, var(--lvl-easy) 10%, var(--surface)); }
+  #levels button[data-level="hard"][aria-pressed="false"]:hover:not(:disabled) { border-color: var(--lvl-hard); background: color-mix(in srgb, var(--lvl-hard) 10%, var(--surface)); }
+  #levels button[data-level="nightmare"][aria-pressed="false"]:hover:not(:disabled) { border-color: var(--lvl-nightmare); background: color-mix(in srgb, var(--lvl-nightmare) 10%, var(--surface)); }
 
   .linkish {
     background: none;
@@ -349,14 +631,20 @@
   /* ---------- readings (the ladder) ---------- */
   .readings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 
+  /* Rows are padded into the gutter so a hover tint reads as a full-width
+     band, the way a ruled table highlights, without shifting any text. */
   .reading {
-    padding: 0.875rem 0 0.9375rem;
+    padding: 0.875rem 0.625rem 0.9375rem;
+    margin: 0 -0.625rem;
     border-bottom: 1px solid var(--rule);
+    border-radius: var(--radius);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    transition: background-color var(--fast) var(--ease);
   }
 
+  .reading:hover { background: var(--accent-wash); }
   .reading:first-child { border-top: 1px solid var(--rule); }
 
   /* A guess that has just landed says so, and how loudly it says so is how
@@ -407,6 +695,18 @@
 
   .gloss { color: var(--muted); font-size: var(--step-0); margin: 0; }
 
+  /* A gloss line, but meant to be noticed rather than read past — the one
+     spot on the setup screen that says a normal-looking online room is
+     about to behave differently. */
+  .gloss.race-note {
+    color: var(--accent);
+    font-weight: 600;
+    padding: 0.625rem 0.75rem;
+    background: var(--accent-wash);
+    border: 1px solid var(--accent-edge);
+    border-radius: var(--radius);
+  }
+
   .drop {
     appearance: none;
     background: none;
@@ -430,6 +730,8 @@
     height: 1px;
     background: var(--rule);
   }
+  /* The tick carries the guess's heat colour inline, so the halo is drawn
+     from currentColor and needs no second variable to stay in step. */
   .tick {
     position: absolute;
     top: 0;
@@ -437,50 +739,72 @@
     height: 0.5rem;
     border-radius: 1px;
     transform: translateX(-1px);
+    background: currentColor;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 18%, transparent);
+    transition: left var(--slow) var(--ease);
   }
 
   /* ---------- verdict card ---------- */
   .card {
     background: var(--surface);
     border: 1px solid var(--rule);
-    border-radius: 2px;
-    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    padding: 1.375rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    box-shadow: var(--lift-2);
   }
 
-  .card.keyed { border-color: currentColor; }
+  /* The end of a round is the loudest moment on the page, so the card is
+     allowed to arrive rather than appear. */
+  @media (prefers-reduced-motion: no-preference) {
+    .card { animation: card-in var(--slow) var(--ease) both; }
+  }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(0.5rem) scale(0.99); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .card.keyed {
+    border-color: currentColor;
+    box-shadow: var(--lift-3);
+  }
 
   .verdict {
     font-family: var(--serif);
     font-size: var(--step-3);
     line-height: 1.1;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
   }
 
   .empty {
     border: 1px dashed var(--rule);
-    border-radius: 2px;
+    border-radius: var(--radius);
     padding: 1.25rem;
     color: var(--muted);
     margin: 0;
+    text-wrap: pretty;
   }
 
-  .notice { color: #C0392B; margin: 0; }
-  :root[data-theme="dark"] .notice,
-  :root:not([data-theme="light"]) .notice { color: #E8705C; }
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) .notice { color: #C0392B; }
-  }
+  /* One token, set per theme up top, instead of three overlapping overrides. */
+  .notice { color: var(--danger); margin: 0; text-wrap: pretty; }
 
+  /* The clock takes margin-left:auto to pin itself right, which eats the free
+     space space-between would have used — so the count and the best rank need
+     a real gap of their own or they run together as "4 GUESSESCLOSEST 1645". */
   .scale-legend {
     display: flex;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.875rem;
     font-family: var(--mono);
     font-size: var(--micro);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--muted);
+    font-variant-numeric: tabular-nums;
   }
 
   /* ---------- multiplayer ---------- */
@@ -494,12 +818,13 @@
     flex-direction: column;
     gap: 0.625rem;
     border: 1px solid var(--rule);
-    border-radius: 2px;
-    padding: 1rem;
+    border-radius: var(--radius);
+    padding: 1.125rem;
     background: var(--sunken);
+    box-shadow: var(--lift-1);
   }
 
-  .roster-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .roster-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.375rem; }
 
   .roster-item {
     display: flex;
@@ -509,16 +834,51 @@
     font-family: var(--mono);
     font-size: var(--micro);
     letter-spacing: 0.06em;
-    padding: 0.5rem 0.625rem;
+    padding: 0.5625rem 0.6875rem;
     border: 1px solid var(--rule);
-    border-radius: 2px;
+    border-radius: var(--radius);
     color: var(--muted);
     background: var(--surface);
+    transition: border-color var(--fast) var(--ease), background-color var(--fast) var(--ease),
+                color var(--fast) var(--ease);
   }
-  .roster-item.is-turn { color: var(--ground); background: var(--ink); border-color: var(--ink); }
-  .roster-item.is-me { border-color: var(--accent); color: var(--ink); }
+  .roster-item.is-turn {
+    color: var(--ground);
+    background: var(--ink);
+    border-color: var(--ink);
+    box-shadow: var(--lift-1);
+  }
+  /* Your own row is marked with a left rail as well as the accent border, so
+     it stays findable in a full ten-player roster at a glance. */
+  .roster-item.is-me {
+    border-color: var(--accent);
+    border-left-width: 3px;
+    color: var(--ink);
+    background: var(--accent-wash);
+  }
   .roster-item .who { text-transform: uppercase; }
-  .roster-item .stat { white-space: nowrap; }
+  .roster-item .stat { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* A full-size 3rem button dwarfs a row set in micro mono, so controls
+     living inside a roster row take the row's scale instead. */
+  .roster-item button {
+    min-height: 1.875rem;
+    padding: 0 0.5625rem;
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    align-self: center;
+    flex: none;
+  }
+  #spectate-roster .roster-item { flex-wrap: wrap; }
+  #spectate-roster .roster-item .typing {
+    flex-basis: 100%;
+    text-transform: none;
+    letter-spacing: 0;
+    font-style: italic;
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
 
   .chat-eyebrow { margin-top: 0.25rem; }
 
@@ -531,23 +891,47 @@
     gap: 0.375rem;
     max-height: 12rem;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
   }
-  .chat-line { font-size: var(--micro); line-height: 1.4; }
+  /* The only scrolling regions on the page; a default chrome scrollbar is a
+     wide grey slab next to type this fine. */
+  .chat-log::-webkit-scrollbar { width: 8px; }
+  .chat-log::-webkit-scrollbar-track { background: transparent; }
+  .chat-log::-webkit-scrollbar-thumb {
+    background: var(--rule);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .chat-log::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: content-box; }
+
+  .chat-line {
+    font-size: var(--micro);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
   .chat-line .from { font-family: var(--mono); text-transform: uppercase; color: var(--muted); margin-right: 0.375rem; }
   .chat-line.mine .from { color: var(--accent); }
-  .chat-empty { font-size: var(--micro); color: var(--muted); }
+  .chat-empty { font-size: var(--micro); color: var(--muted); font-style: italic; }
 
-  .chat-line .votes { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; }
+  .chat-line .votes { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3125rem; }
   .chat-line .vote-btn {
     font-size: var(--micro);
     font-family: var(--mono);
     border: 1px solid var(--rule);
+    border-radius: var(--radius);
     background: none;
     color: var(--muted);
-    padding: 0.125rem 0.5rem;
+    padding: 0.1875rem 0.5rem;
+    min-height: 0;
     cursor: pointer;
+    transition: border-color var(--fast) var(--ease), color var(--fast) var(--ease),
+                background-color var(--fast) var(--ease);
   }
-  .chat-line .vote-btn.mine-yes { border-color: var(--accent); color: var(--accent); }
+  .chat-line .vote-btn:hover { border-color: var(--accent-edge); color: var(--ink); background: var(--accent-wash); }
+  .chat-line .vote-btn.mine-yes { border-color: var(--accent); color: var(--accent); background: var(--accent-wash); }
   .chat-line .vote-btn.mine-no { border-color: var(--ink); color: var(--ink); }
 
   .chat-line .translated { margin-top: 0.25rem; color: var(--muted); font-style: italic; }
@@ -560,6 +944,12 @@
   #chat-box .row { margin-top: 0.5rem; }
   #chat-box input { font-size: var(--micro); }
 
+  #spectate-chat-box { margin-top: 0.875rem; }
+  #spectate-chat-box .row { margin-top: 0.5rem; }
+  #spectate-chat-box input { font-size: var(--micro); }
+
+  #spectate-progress { margin-top: 0.875rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
   @media (min-width: 46rem) {
     .wrap.wide-play { max-width: 58rem; }
     #play-live.with-roster {
@@ -570,11 +960,22 @@
     #play-live.with-roster .roster { width: 17rem; flex-shrink: 0; }
   }
 
+  /* The code is the thing people read aloud and retype, so it gets the
+     largest tracking on the page and sits on its own tinted slab. */
   .code {
     font-family: var(--mono);
     font-size: var(--step-3);
     letter-spacing: 0.24em;
     color: var(--ink);
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 0.625rem 0.875rem;
+    text-align: center;
+    /* letter-spacing pads the right of the last glyph; pull it back so the
+       run of characters is actually centred in the slab. */
+    text-indent: 0.24em;
+    font-variant-numeric: tabular-nums;
   }
 
   input.code-input {
@@ -592,6 +993,7 @@
     border-top: 1px solid var(--rule);
     padding-top: 0.375rem;
   }
+  .tally .rank { font-variant-numeric: tabular-nums; }
 
   .result {
     font-family: var(--mono);
@@ -599,10 +1001,12 @@
     line-height: 1.7;
     background: var(--sunken);
     border: 1px solid var(--rule);
+    border-radius: var(--radius);
     color: var(--ink);
     padding: 0.75rem;
     min-height: 0;
     resize: none;
+    box-shadow: none;
   }
 
   .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
@@ -610,7 +1014,7 @@
   .chip {
     background: var(--surface);
     border: 1px solid var(--rule);
-    border-radius: 2px;
+    border-radius: var(--radius);
     padding: 0.625rem 0.75rem;
     min-height: 3rem;
     text-align: left;
@@ -621,6 +1025,7 @@
     gap: 0.125rem;
     cursor: pointer;
   }
+  .chip:hover:not(:disabled) { border-color: var(--accent-edge); background: var(--accent-wash); }
   .chip .cw { font-family: var(--serif); font-size: var(--step-1); }
   .chip .cf {
     font-family: var(--mono);
@@ -655,25 +1060,30 @@
     pointer-events: none;
   }
   .win-flash.playing { animation: win-flash-bg 1.8s ease-out; }
+  /* The veil is white on both themes — that's what makes it a flash — so the
+     word is keyed to a fixed dark ink rather than var(--ink), which in dark
+     mode is near-white and left the word invisible against its own flash. */
   .win-flash-word {
     font-family: var(--serif);
     font-size: clamp(2.5rem, 12vw, 6rem);
     font-weight: 700;
-    color: var(--ink);
+    color: var(--flash-ink);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     text-align: center;
     opacity: 0;
     padding: 0 1rem;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
   }
   .win-flash.playing .win-flash-word { animation: win-flash-word 1.8s ease-out; }
   @keyframes win-flash-bg {
-    0%   { background: rgba(255, 255, 255, 0); }
-    12%  { background: rgba(255, 255, 255, 0.92); }
-    24%  { background: rgba(255, 255, 255, 0.12); }
-    36%  { background: rgba(255, 255, 255, 0.92); }
-    50%  { background: rgba(255, 255, 255, 0.2); }
-    100% { background: rgba(255, 255, 255, 0.2); }
+    0%   { background: rgba(var(--flash-veil), 0); }
+    12%  { background: rgba(var(--flash-veil), 0.92); }
+    24%  { background: rgba(var(--flash-veil), 0.12); }
+    36%  { background: rgba(var(--flash-veil), 0.92); }
+    50%  { background: rgba(var(--flash-veil), 0.2); }
+    100% { background: rgba(var(--flash-veil), 0.2); }
   }
   @keyframes win-flash-word {
     0%   { opacity: 0; transform: scale(0.8); }
@@ -682,7 +1092,7 @@
     100% { opacity: 1; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .win-flash.playing { animation: none; background: rgba(255, 255, 255, 0.92); }
+    .win-flash.playing { animation: none; background: rgba(var(--flash-veil), 0.92); }
     .win-flash.playing .win-flash-word { animation: none; opacity: 1; }
   }
 </style>
@@ -706,12 +1116,11 @@
     </div>
     <h1 data-i18n="title">Contexto</h1>
     <p class="standfirst" data-i18n="standfirst">A word is hidden. Every guess comes back with its distance from it.</p>
-    <p class="gloss">
-      New here? <a href="#" id="start-tour" data-i18n="take-tour">Take the tour</a> — it deals you a real round and
-      talks you through it.
+    <p class="gloss" id="tour-cta">
+      <span data-i18n="new-here">New here?</span> <a href="#" id="start-tour" data-i18n="take-tour">Take the tour</a><span data-i18n="tour-after"> — it deals you a real round and talks you through it.</span>
     </p>
     <p class="gloss">
-      <a href="#" id="save-copy" data-i18n="save-page">Save this page</a> to play with no connection, no account, on any device.
+      <a href="#" id="save-copy" data-i18n="save-page">Save this page</a><span data-i18n="save-after"> to play with no connection, no account, on any device.</span>
     </p>
   </header>
 
@@ -730,7 +1139,7 @@
         other players send you gifts.</p>
       <div class="field">
         <label class="key" for="account-name" data-i18n="username">username</label>
-        <input id="account-name" placeholder="yourname" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" />
+        <input id="account-name" data-i18n-ph="ph-yourname" placeholder="yourname" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" />
       </div>
       <div class="field">
         <label class="key" for="account-pass" data-i18n="password">password</label>
@@ -805,9 +1214,14 @@
       </div>
 
       <div id="online-only" class="panel" hidden>
+        <div id="online-race-box" hidden>
+          <p class="gloss race-note" id="online-race-note"></p>
+          <button type="button" class="ghost" id="race-optout-btn" hidden></button>
+        </div>
+
         <div class="field">
           <label class="key" for="online-name" data-i18n="your-name">your name</label>
-          <input id="online-name" placeholder="Player" autocapitalize="words" spellcheck="false" />
+          <input id="online-name" data-i18n-ph="ph-player" placeholder="Player" autocapitalize="words" spellcheck="false" />
         </div>
 
         <button class="wide" id="join-any" data-i18n="join-last">Join the last online game</button>
@@ -850,7 +1264,7 @@
         </aside>
 
         <div class="row" id="play-controls">
-          <input class="grow" id="play-input" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" />
+          <input class="grow" id="play-input" data-i18n-ph="ph-your-guess" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" />
           <button id="play-go" data-i18n="guess">Guess</button>
           <button type="button" class="ghost" id="play-hint" data-i18n="hint">Hint</button>
         </div>
@@ -869,7 +1283,7 @@
           <div class="eyebrow chat-eyebrow" data-i18n="chat">chat</div>
           <ul class="chat-log" id="chat-log"></ul>
           <div class="row">
-            <input class="grow" id="chat-input" placeholder="say something" maxlength="140" autocomplete="off" />
+            <input class="grow" id="chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" />
             <button type="button" class="ghost" id="chat-send" data-i18n="send">Send</button>
           </div>
         </div>
@@ -882,8 +1296,8 @@
     <p class="gloss" data-i18n="solve-blurb">Playing the real Contexto elsewhere? Type the ranks it gave you. Each one narrows which word fits.</p>
 
     <div class="row">
-      <input class="grow" id="obs-word" placeholder="word" autocapitalize="none" autocorrect="off" spellcheck="false" />
-      <input class="fixed num" id="obs-rank" placeholder="rank" inputmode="numeric" />
+      <input class="grow" id="obs-word" data-i18n-ph="ph-word" placeholder="word" autocapitalize="none" autocorrect="off" spellcheck="false" />
+      <input class="fixed num" id="obs-rank" data-i18n-ph="ph-rank" placeholder="rank" inputmode="numeric" />
       <button id="obs-add" data-i18n="add">Add</button>
     </div>
 
@@ -925,7 +1339,7 @@
     <div class="field">
       <span class="key" data-i18n="send-gift">send one as a gift</span>
       <p class="gloss" id="gift-note" data-i18n="gift-note">You pay the coins; the hints land in their account.</p>
-      <input id="gift-to" placeholder="their username" autocapitalize="none" autocorrect="off" spellcheck="false" />
+      <input id="gift-to" data-i18n-ph="ph-their-username" placeholder="their username" autocapitalize="none" autocorrect="off" spellcheck="false" />
       <div class="row">
         <select id="gift-item" class="grow"></select>
         <button type="button" class="ghost" id="gift-send" data-i18n="send-gift-btn">Send gift</button>
@@ -939,7 +1353,7 @@
     <p class="gloss" data-i18n="chat-blurb">Everyone signed in can post here and vote yes or no on what others say.</p>
     <ul class="chat-log" id="global-chat-log"><li class="chat-empty" data-i18n="no-messages">No messages yet.</li></ul>
     <div class="row">
-      <input class="grow" id="global-chat-input" placeholder="say something" maxlength="200" autocomplete="off" />
+      <input class="grow" id="global-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="200" autocomplete="off" />
       <button type="button" class="ghost" id="global-chat-send" data-i18n="send">Send</button>
     </div>
     <p class="gloss" id="global-chat-notice" hidden></p>
@@ -947,7 +1361,7 @@
     <div class="field">
       <button type="button" class="wide ghost" id="suggest-feature-btn" data-i18n="suggest-feature">Suggest a feature</button>
       <div id="suggest-feature-box" hidden>
-        <textarea id="suggest-feature-text" rows="3" placeholder="What should be added?"></textarea>
+        <textarea id="suggest-feature-text" rows="3" data-i18n-ph="ph-what-added" placeholder="What should be added?"></textarea>
         <button type="button" id="suggest-feature-send" data-i18n="send-admins">Send to the admins</button>
         <p class="gloss" id="suggest-feature-notice" hidden></p>
       </div>
@@ -1019,13 +1433,39 @@
             <span data-i18n="spectating">Spectating</span> <code id="spectate-code-label"></code> —
             <span id="spectate-visibility"></span>
           </p>
+          <p class="gloss" id="spectate-status"></p>
           <div class="row">
             <button type="button" class="ghost" id="spectate-reveal" data-i18n="show-myself">Show myself</button>
             <button type="button" class="ghost" id="spectate-stop" data-i18n="stop-spectating">Stop spectating</button>
           </div>
           <ul class="roster-list" id="spectate-roster"></ul>
+
+          <div id="spectate-progress" hidden>
+            <p class="gloss" id="spectate-legend"></p>
+            <div id="spectate-verdict"></div>
+            <ul class="readings" id="spectate-ladder"></ul>
+          </div>
+
+          <div id="spectate-chat-box">
+            <div class="eyebrow chat-eyebrow" data-i18n="chat">chat</div>
+            <ul class="chat-log" id="spectate-chat-log"></ul>
+            <div class="row">
+              <input class="grow" id="spectate-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" />
+              <button type="button" class="ghost" id="spectate-chat-send" data-i18n="send">Send</button>
+            </div>
+          </div>
         </div>
         <p class="gloss" id="spectate-notice" hidden></p>
+      </div>
+    </div>
+
+    <div id="admin-race" hidden>
+      <span class="key" data-i18n="race-mode">race mode (beta)</span>
+      <p class="gloss" data-i18n="race-blurb">Ends an online round for everyone the moment anybody finds the word, instead
+        of each of you finishing on your own. Test it yourself first — nobody else sees it until an admin turns it on.</p>
+      <div class="row">
+        <button type="button" class="ghost" id="race-test-btn"></button>
+        <button type="button" id="race-publish-btn" hidden data-i18n="race-publish">Turn on for everyone</button>
       </div>
     </div>
 
@@ -1048,8 +1488,8 @@
   </section>
 
   <div class="colophon">
-    <p><b>How the ranks are made.</b> Every word here carries a hundred numbers, blended from two models: GloVe, which read six billion words of Wikipedia and newswire and learned what keeps company with what, and counter-fitted vectors, tuned so that words meaning the same thing sit together while merely-related ones drift apart. Two words are scored by the angle between them, then all fifty thousand are sorted against the target. Rank 1 is the word itself.</p>
-    <p>The whole model runs in this page. Nothing is sent anywhere, and it works with no connection.</p>
+    <p><b data-i18n="rank-how-title">How the ranks are made.</b> <span data-i18n="rank-how-body">Every word here carries a hundred numbers, blended from two models: GloVe, which read six billion words of Wikipedia and newswire and learned what keeps company with what, and counter-fitted vectors, tuned so that words meaning the same thing sit together while merely-related ones drift apart. Two words are scored by the angle between them, then all fifty thousand are sorted against the target. Rank 1 is the word itself.</span></p>
+    <p data-i18n="rank-how-offline">The whole model runs in this page. Nothing is sent anywhere, and it works with no connection.</p>
   </div>
 </div>
 
@@ -1092,7 +1532,158 @@
     ALIAS[pair.slice(0, cut)] = pair.slice(cut + 1);
   });
 
-  function resolve(word) { return ALIAS[word] || word; }
+  /* ---------- guessing in French ----------
+     The lexicon and every secret are English, so a French guess is resolved
+     to its English word before it is scored, and scored rows are turned back
+     into French for display. Written as fr:en pairs, deaccented on both
+     sides, and every English side was checked against the lexicon when this
+     table was built — a pair whose target isn't a scorable word is no use.
+
+     This only applies while the page is in French, because plenty of these
+     keys are also ordinary English words meaning something else entirely:
+     "coin" is a corner, "pain" is bread, "chat" is a cat, "or" is gold. In
+     English the table is skipped, so those keep their English meaning. */
+  var FR_GUESS = Object.create(null);
+  var FR_OF = Object.create(null);
+  (
+  "abeille:bee achat:purchase acheter:buy adulte:adult aeroport:airport aider:help aigle:eagle aiguille:needle " +
+  "ail:garlic aimer:love allegorie:allegory ambiguite:ambiguity ami:friend amie:friend amour:love an:year " +
+  "ananas:pineapple ancien:ancient ane:donkey anglais:english animaux:animals annee:year aout:august " +
+  "apathie:apathy appartement:apartment apprendre:learn araignee:spider arbitraire:arbitrary arbre:tree " +
+  "argent:money argente:silver armee:army armoire:closet arreter:stop assez:enough assiette:plate " +
+  "astucieux:astute attendre:wait aujourd:today aussi:also austerite:austerity auto:car automne:autumn " +
+  "avenir:future avion:plane avocat:lawyer avoir:have bague:ring balai:broom baleine:whale balle:ball " +
+  "ballon:ball banal:mundane banane:banana banque:bank bas:low bateau:boat beau:beautiful beaucoup:many " +
+  "beaute:beauty bebe:baby beurre:butter bibliotheque:library bienveillant:benevolent biere:beer bijou:jewel " +
+  "billet:ticket biscuit:cookie blanc:white bleu:blue boeuf:beef boire:drink bois:wood boite:box bol:bowl " +
+  "bon:good bonbon:candy bonheur:happiness bonhomme:fellow bonjour:hello bord:edge botte:boot bouche:mouth " +
+  "boue:mud bougie:candle bout:end bouteille:bottle boutique:shop bouton:button branche:branch bras:arm " +
+  "brosse:brush brouillard:fog bruit:noise brun:brown bruyant:noisy bureau:office but:goal cacher:hide " +
+  "cadeau:gift cafe:coffee cahier:notebook calcul:calculation calendrier:calendar calme:calm camion:truck " +
+  "canape:couch canard:duck carotte:carrot carre:square carte:map casquette:cap casser:break casserole:pot " +
+  "catalyseur:catalyst ceinture:belt cendre:ash cent:hundred centre:center cercle:circle cerf:deer " +
+  "cerise:cherry cerveau:brain chagrin:grief chaise:chair chaleur:heat chambre:room champ:field " +
+  "champignon:mushroom chance:luck changer:change chanson:song chanter:sing chapeau:hat charbon:coal chat:cat " +
+  "chaud:hot chaussette:sock chaussure:shoe chaussures:shoes chef:chief chemin:path chemise:shirt " +
+  "cher:expensive chercher:search cheval:horse cheveux:hair chevre:goat chien:dog chiffre:digit " +
+  "chocolat:chocolate choisir:choose choix:choice chose:thing chou:cabbage ciel:sky cinq:five ciseaux:scissors " +
+  "citoyen:citizen citron:lemon clair:light clavier:keyboard cle:key clou:nail cochon:pig coeur:heart " +
+  "coin:corner colere:anger collier:necklace colline:hill commencer:begin complique:complicated " +
+  "comprendre:understand compter:count concombre:cucumber conduire:drive confiance:trust confiture:jam " +
+  "connaissance:knowledge construire:build conte:tale content:glad continuer:continue convaincant:cogent " +
+  "copain:friend coq:rooster corbeau:crow corde:rope corps:body cote:side coton:cotton cou:neck couleur:color " +
+  "couper:cut courir:run couronne:crown court:short cout:cost couteau:knife couverture:blanket crabe:crab " +
+  "cravate:tie crayon:pencil creme:cream crier:shout croire:believe croyance:belief cuillere:spoon cuir:leather " +
+  "cuire:cook cuisine:kitchen cynisme:cynicism dame:lady dangereux:dangerous danse:dance danser:dance " +
+  "dauphin:dolphin debut:beginning dedans:inside dehors:outside dejeuner:lunch demain:tomorrow demander:ask " +
+  "demesure:hubris dent:tooth dents:teeth dernier:last descendre:descend desir:yearning dessous:below " +
+  "dessus:above destin:fate detester:hate detruire:destroy dette:debt deux:two devoir:must difficile:difficult " +
+  "dilemme:dilemma diner:dinner dire:say dix:ten dogme:dogma doigt:finger donner:give dore:golden dormir:sleep " +
+  "dos:back douleur:pain doute:doubt doux:soft douze:twelve drap:sheet droit:right droite:right dur:hard " +
+  "eau:water echarpe:scarf echelle:ladder echouer:fail eclair:lightning ecole:school ecouter:listen " +
+  "ecran:screen ecrire:write eglise:church eleve:pupil empathie:empathy empirique:empirical emploi:job " +
+  "employe:employee encore:again encre:ink enfant:child enfants:children enseigner:teach ensemble:together " +
+  "entendre:hear entreprise:company entrer:enter envie:envy epais:thick epaule:shoulder ephemere:ephemeral " +
+  "epouse:wife epoux:spouse equilibre:equilibrium equipe:team escalier:stairs escargot:snail " +
+  "esoterique:esoteric espoir:hope esprit:spirit essayer:try essence:gasoline esthetique:aesthetic " +
+  "estomac:stomach etagere:shelf etat:state ete:summer etoile:star etroit:narrow etudiant:student " +
+  "evasion:escape examen:scrutiny exemple:example expliquer:explain fache:angry facile:easy facon:way " +
+  "faible:weak faiblesse:weakness faim:hunger famille:family fantaisie:whimsy farine:flour fatigue:tired " +
+  "fauteuil:armchair faux:false femme:woman fenetre:window ferme:farm fermer:close fermeture:zipper feu:fire " +
+  "feuille:leaf fidelite:fidelity fierte:pride fil:thread fille:girl fils:son fin:end finir:finish flamme:flame " +
+  "fleur:flower fleuve:river foi:faith foie:liver fois:time fonce:dark force:strength foret:forest forme:shape " +
+  "fort:strong four:oven fourchette:fork fourmi:ant fraise:strawberry franc:candid francais:french " +
+  "franchise:candour frere:brother frigo:fridge froid:cold fromage:cheese frontiere:border fumee:smoke " +
+  "gagner:win gant:glove garcon:boy gare:station gars:lad gateau:cake gauche:left gel:frost genou:knee " +
+  "gens:people gentil:kind girafe:giraffe glace:ice gout:taste gouvernement:government graine:seed grand:big " +
+  "grandmere:grandmother grandpere:grandfather gratuit:free gravite:gravity gregaire:gregarious grenouille:frog " +
+  "gris:gray gros:fat groupe:group guerre:war haine:hatred haricot:bean hasard:chance haut:high havre:harbor " +
+  "herbe:grass heresie:heresy heritage:legacy heure:hour heureux:happy hibou:owl hier:yesterday " +
+  "histoire:history hiver:winter homard:lobster homme:man honte:shame hopital:hospital horloge:clock huile:oil " +
+  "huit:eight ici:here idee:idea ideologie:ideology ile:island impot:tax indigne:indignant inertie:inertia " +
+  "infini:infinity infirmiere:nurse insecte:insect integrite:integrity ironie:irony jamais:never jambe:leg " +
+  "jambon:ham jardin:garden jaune:yellow jeu:game jeune:young joie:joy joli:pretty jouer:play jouet:toy " +
+  "jour:day journal:newspaper journee:day juge:judge jupe:skirt jus:juice juste:right labyrinthe:labyrinth " +
+  "lac:lake laid:ugly laideur:ugliness laine:wool lait:milk laitue:lettuce lampe:lamp langue:tongue " +
+  "lapin:rabbit large:wide larme:tear laver:wash leger:light legume:vegetable lent:slow lettre:letter " +
+  "liberte:freedom libre:free ligne:line lire:read liste:list lit:bed livre:book logique:logic loi:law loin:far " +
+  "loup:wolf lourd:heavy lucide:lucid lumiere:light lune:moon madame:madam magasin:store main:hand " +
+  "maintenant:now maire:mayor mais:corn maison:house malade:sick maladie:disease malveillant:malevolent " +
+  "maman:mom manger:eat maniere:manner manteau:coat marche:market marcher:walk mari:husband marron:brown " +
+  "mars:march marteau:hammer mathematiques:mathematics matin:morning mauvais:bad mec:guy medecin:doctor " +
+  "meilleur:better melancolie:melancholy meme:same memoire:memory mensonge:lie mer:sea mere:mother " +
+  "metaphore:metaphor meticuleux:meticulous metier:trade metro:subway mettre:put midi:noon miel:honey " +
+  "milieu:middle mille:thousand milliard:billion mince:thin ministre:minister miroir:mirror moderne:modern " +
+  "moins:less mois:month moitie:half monde:world monsieur:mister montagne:mountain monter:climb montre:watch " +
+  "montrer:show moralite:morality morceau:piece mort:death mosaique:mosaic mot:word moteur:engine " +
+  "moto:motorcycle mouche:fly mouille:wet mourir:die moustique:mosquito mouton:sheep mur:wall musee:museum " +
+  "musique:music mythe:myth nager:swim naitre:born navire:ship necessaire:necessary neige:snow nerf:nerve " +
+  "nettoyer:clean neuf:new neveu:nephew nez:nose nid:nest niveau:level noir:black nom:name nombre:number " +
+  "nostalgie:nostalgia nourriture:food nuage:cloud nuit:night obscurcir:obfuscate obscurite:obscurity " +
+  "odeur:smell odyssee:odyssey oeil:eye oeuf:egg oie:goose oignon:onion oiseau:bird ombre:shadow " +
+  "omnipresent:ubiquitous oncle:uncle ongle:nail onze:eleven or:gold orage:storm ordinateur:computer " +
+  "ordre:order oreille:ear oreiller:pillow os:bone oubli:oblivion oublier:forget oui:yes ours:bear outil:tool " +
+  "ouvrier:worker ouvrir:open pain:bread paix:peace panier:basket pantalon:pants papa:dad papier:paper " +
+  "papillon:butterfly paradigme:paradigm paradis:paradise paradoxal:paradoxical paradoxe:paradox parc:park " +
+  "parfois:sometimes parler:speak parole:speech partie:part partir:leave passe:past patate:potato pate:pasta " +
+  "patron:boss pauvre:poor pauvrete:poverty payer:pay pays:country peau:skin peche:peach peigne:comb " +
+  "peinture:painting pensee:thought penser:think perdre:lose pere:father personne:person petit:small peu:few " +
+  "peuple:people peur:fear phrase:sentence piece:room pied:foot pieds:feet pierre:stone pieuvre:octopus " +
+  "piscine:pool place:square placide:placid plafond:ceiling plage:beach plante:plant plein:full pleurer:cry " +
+  "pluie:rain plume:feather plus:more poche:pocket poele:pan poeme:poem poire:pear pois:pea poisson:fish " +
+  "poitrine:chest poivre:pepper policier:officer pomme:apple pont:bridge porc:pork porte:door porter:carry " +
+  "poule:hen poulet:chicken poumon:lung poussiere:dust pouvoir:can pragmatique:pragmatic premier:first " +
+  "prendre:take pres:near presage:omen printemps:spring prix:price probleme:problem prochain:next " +
+  "produit:product professeur:teacher projet:project prophetie:prophecy propre:clean pudique:demure " +
+  "pull:sweater quartier:neighborhood quatre:four quelque:some quichottesque:quixotic racine:root raconter:tell " +
+  "raisin:grape raison:reason raisonnement:rationale rapide:fast rappeler:remember recette:recipe " +
+  "reclus:reclusive recolte:harvest reconfort:solace regarder:watch regle:ruler reine:queen renard:fox " +
+  "reparer:repair repas:meal repondre:answer reponse:answer requin:shark resolu:resolute rester:stay " +
+  "reunion:meeting reussir:succeed reve:dream revenir:return revue:magazine rhetorique:rhetoric riche:rich " +
+  "richesse:wealth rideau:curtain rien:nothing rire:laugh rituel:ritual riviere:river riz:rice robe:dress " +
+  "rocher:rock roi:king rose:pink roue:wheel rouge:red route:road royaume:realm rue:street sable:sand sac:bag " +
+  "sagesse:wisdom saintete:sanctity saison:season salade:salad salaire:salary sale:dirty sanctuaire:sanctuary " +
+  "sang:blood sanglier:boar sante:health sauter:jump sauvage:wild savoir:know savon:soap scepticisme:scepticism " +
+  "scie:saw seau:bucket sec:dry seconde:second sel:salt semaine:week sentir:feel sept:seven serenite:serenity " +
+  "serpent:snake serrure:lock serviette:towel seuil:threshold seul:alone siecle:century signe:sign singe:monkey " +
+  "societe:society soeur:sister soie:silk soif:thirst soir:evening sol:floor soldat:soldier soleil:sun " +
+  "solitaire:solitary sommet:pinnacle son:sound sophisme:fallacy sortir:exit soupe:soup souper:supper " +
+  "souris:mouse souvent:often souverainete:sovereignty spectre:spectrum stade:stadium stigmate:stigma " +
+  "stoique:stoic stylo:pen subtil:subtle sucre:sugar suite:sequence suivre:follow sur:sure symbole:symbol " +
+  "symetrie:symmetry symphonie:symphony synthese:synthesis tacite:tacit tante:aunt tapis:carpet tarte:pie " +
+  "tasse:cup telephone:phone temps:time tenacite:tenacity tenir:hold tenu:tenuous terre:earth tete:head " +
+  "texte:text the:tea theatre:theater tiede:warm tigre:tiger tiroir:drawer tissu:fabric titre:title toit:roof " +
+  "tomate:tomato tomber:fall tonnerre:thunder tortue:turtle toucher:touch toujours:always tour:tower " +
+  "tourment:torment tout:all transitoire:transient travail:work travailler:work tres:very triste:sad " +
+  "tristesse:sadness trois:three trop:too trouver:find truc:thing tuer:kill type:guy un:one " +
+  "universite:university usine:factory utopie:utopia vacarme:turmoil vache:cow valise:suitcase vallee:valley " +
+  "vanite:vanity veille:vigil velo:bike vendre:sell venir:come vent:wind vente:sale ventre:belly ver:worm " +
+  "verite:truth vernis:veneer verre:glass vert:green vertige:vertigo vertu:virtue veste:jacket " +
+  "vetement:clothing viande:meat vide:empty vie:life vieux:old vif:vivid ville:city vin:wine vinaigre:vinegar " +
+  "vingt:twenty violet:purple vis:screw visage:face vitesse:speed vivant:alive vivre:live voir:see " +
+  "voisin:neighbor voisine:neighbor voiture:car voix:voice vol:theft voler:fly voleur:thief vouloir:want " +
+  "voyage:trip voyager:travel vrai:true yaourt:yogurt yeux:eyes zele:zeal"
+  ).split(" ").forEach(function (pair) {
+    if (!pair) return;
+    var cut = pair.indexOf(":");
+    var fr = pair.slice(0, cut), en = pair.slice(cut + 1);
+    FR_GUESS[fr] = en;
+    if (FR_OF[en] === undefined) FR_OF[en] = fr;   // first French spelling wins
+  });
+
+  // A word on its way in: French to English when the page is in French, then
+  // the plural/tense fold that English guesses already went through.
+  function resolve(word) {
+    if (LANG === "fr" && FR_GUESS[word]) return FR_GUESS[word];
+    return ALIAS[word] || word;
+  }
+
+  // A word on its way out. Falls back to the English word, which for the many
+  // words spelled the same in both languages is already the French one.
+  function show(word, typed) {
+    if (LANG !== "fr") return word;
+    return typed || FR_OF[word] || word;
+  }
 
   // Unpack into one long Float32Array of unit-length vectors, so a similarity
   // is a bare dot product with no division left to do at ranking time.
@@ -1180,8 +1771,10 @@
   var SOLVE_WORDS = "were time people good first know think back these want because well most very even need really year work right going still take those world life down great through last best love home long something look same both every state part come between around better find since high help little another things game thing school house place give next each without against found show team feel sure family keep please money second free someone left number away city until play name night company real called different having thought however government group public women week business system start care case today already person nothing anything told point change full enough live everything read support hard tell mean including power music water seen stop national based took white small head call believe came went though side party later service line less order actually country season open thank united general children everyone area following black together whole president story face kind maybe news least health within important course hope means early local information young book post able video friends social talk court half given level single hand fact mind guys south office death become control food hours body problem true several university known history lost large research almost room wrong john along matter anyone else girl pretty remember york probably friend understand nice yeah international past close possible class comes idea members months series human move woman question cause happy wait north late community special leave data watch million police taken future short morning light either stay third report whether deal soon rather turn reason among development minutes form heart check major although players fire media child phone political market west near plan building behind easy quite gonna former according final street education front list available ready kids program college current meet example bring experience heard type march process father study song chance word baby month across students outside action gave clear self held town main board road field cost instead mother seems moment points played force department issue term results price energy wife summer fight space rest fine hear killed strong site land shot project date goes miss beautiful record total include period position similar especially parents account eyes military security film lead died club share likely common personal knew happened perfect center county industry return player private english test star dead hold inside view online couple sense happen member higher middle result event training present break hour wish sorry policy interest king gold society finally design gone answer learn guess bank added east press received church role park average sent medical brought performance original movie longer worth certain alone meeting became director bill provide ground value source relationship sound exactly cool official round rate production evidence lives stand save follow whatever stuff league federal match fall management green step blue drive size felt amount model fast picture trust trade central various forward range science paid upon review page chief football vote lower james attention cannot natural style brother property character quality send looked hate china economic august title involved stage language serious related complete blood lord hell amazing french born attack decision release technology situation decided written poor entire perhaps article kill enjoy foreign union election council financial race continue increase staff legal considered sign cover simply choice super door lose seem pick simple code walk hair began career built hospital published daily popular loss difficult version daughter modern figure paper writing voice safe ones crazy army goal success rules practice huge towards earth forget listen okay mark base offer created risk access professional pass deep missing table truth sleep percent minister district recent visit wrote products wall ball build straight note card dark piece wanna growth river allowed paul officer rock response married fans standard culture places specific respect speak write pain tonight peace sales century album network spent track charge create effect student limited required store cold except weight tomorrow funny capital committee conference population station moved western island association radio ahead anti pressure allow beat brown addition potential double treatment expect normal difference text region campaign despite nearly miles previous described cross beginning travel credit quickly focus kept husband individual join message speed section female particular certainly completely sort content interesting tour throughout feet positive drop sale consider fair contact link welcome earlier immediately conditions significant minute sell additional beyond nature extra unless quick absolutely statement manager justice construction sold movement computer income safety scene episode spend agree clean posted favorite photo announced coach heavy wide search train ability subject collection knowledge definitely leader secretary german workers named global judge developed unit hotel letter material regular centre product opportunity claim generally fear author sister plus lady nobody gotta sports majority battle annual contract growing reach finished rule successful features insurance floor degree image hurt meant opinion physical brain anymore stupid stock administration defense civil biggest independent weekend ship active approach worst cancer none direction dance master wonder trump senior organization band operation effort latest compared commercial passed impact cash lack beach protect spring older secret multiple wear imagine awesome commission competition grand details activities address direct necessary resources thus patients finish rich bought marriage easily analysis color supposed yesterday dream choose touch sweet skin anyway luck literally largest congress established overall professor disease trip greater damage shown caught doctor fish grow machine doubt notice drink glad japan texas associated smith plant crime captain winter carry highly spot fully basic effective male reality worse explain nation agreement award eventually peter comment equipment primary responsible challenge block theory broken teacher holy otherwise purpose shop advice sick economy agency executive drug trial coast mission produced hall mass politics status environment avoid weather cell foot therefore catch camera truly located division interview condition highest flight murder freedom complex evening activity heat location queen library application coffee northern fell exchange species royal religious attempt speech serve broke placed protection powerful traffic channel appear receive accept prior slow distance mobile screen tree glass ride actual wonderful southern investment airport demand raised begin square traditional twice famous benefits partner structure engine solution bottom animals wind everybody worry fourth appeared remain forced lake mostly separate critical score owner fresh scale digital surface count brand mentioned throw mental mouth realize wedding totally cent smart twitter rose village budget failed fund paris arms hill target seat larger louis estate push feature acting generation benefit jack sexual metal fashion faith pull profile click prime served rise authority employees foundation basis spread supply draw follows gain silver agent enter animal memory ring apply waste soul weird dude chairman senate prison institute winner mike smaller apparently artist stone strength wild engineering edition users grade option method healthy adult obviously window somebody television firm arrived camp prevent improve cast trouble leaves removed dangerous negative greatest extremely indeed spirit handle correct till dollars eastern fifth progress customers produce influence shooting items mary advantage decide marketing require shut apart wood function impossible aware dinner gift proud thousands labor carried leadership journal software host tough bridge background onto neither rare possibly birth garden length prove concept skills patient copy lucky dear managed fellow request vehicle volume balance connection horse alive wake apple easier boss magic birthday stick dress liked billion violence weapons investigation believed raise operating criminal concerned responsibility cultural develop youth driver farm slightly technical frank variety existing corner surprise file unique roll guide suggest busy beauty treat conversation parliament magazine ordered martin injury strategy henry prepared discovered edge stated wine religion iron reference bigger evil forever somewhere excited appreciate lovely nuclear democratic victory issued jones guard port mountain reduce presence sport audience medicine closer reaction core solid exist mention description shoot stress excellent taste honest quarter regional toward plane johnson mail emergency session fuel festival valley zone afternoon citizens introduced assistant prince initial failure massive willing upper electric classic transfer pair flat shape watched teaching harry kick entirely proper clothes plenty facts useful hello vice governor joint museum proposed industrial capacity climate accident advanced steel rain boat alternative purchase duty path remove bear hundred discussion promise warm anywhere feelings cheap tired terrible fantastic soldiers border republican intelligence profit command crowd crew environmental ensure intended forest limit suit ocean elements filled enemy labour moon fixed beer proof afraid noted domestic attorney debt supreme writer survey native grew launch appearance historical younger honor tech yellow expensive behavior jump minimum suddenly chair user update honestly formed illegal performed transport combined loan ancient contains selected restaurant express exercise flow sugar connected taught soft communication hero planet stuck girlfriend joke download email relations boston measures affairs confirmed route lawyer appeal squad grant golden scientific schedule drama entry grown walked factor platform pool device regarding appropriate mistake smoke feed legs lying shoes teach strike candidate sector concern discuss jersey storm facilities studio internal liberal relatively holiday abuse snow weak hole perform angry emotional comfortable payment lunch milk pack everywhere laugh finance confidence measure committed actor numerous advance task maintain urban split leads revealed chain apartment identity equal cook specifically quiet chapter journey twenty kitchen fake cute troops arrested residents".split(" ").filter(inLexicon);
   var POOL_INDEX = Object.create(null);
   for (var pi = 0; pi < SOLVE_WORDS.length; pi++) POOL_INDEX[SOLVE_WORDS[pi]] = pi;
-  /* ---------- heat: one ramp, legible on both grounds ---------- */
-  var FAR = [78, 111, 208], MID = [192, 138, 46], NEAR = [214, 64, 43];
+  /* ---------- heat: one ramp, legible on both grounds ----------
+     Saturation only, lightness untouched, so the light/dark contrast
+     balance the original values were tuned for doesn't shift. */
+  var FAR = [68, 106, 218], MID = [203, 141, 35], NEAR = [227, 54, 30];
 
   function closeness(rank) {
     var t = 1 - Math.log(Math.max(1, rank)) / Math.log(V);
@@ -1202,13 +1795,17 @@
   var $ = function (id) { return document.getElementById(id); };
 
   /* ---------- language ----------
-     One flat French dictionary, looked up two ways: elements tagged
-     data-i18n="key" in the markup look up that key, and notices built
+     One flat French dictionary, looked up three ways: elements tagged
+     data-i18n="key" in the markup look up that key, elements tagged
+     data-i18n-ph="key" get their placeholder from it, and notices built
      in JS look up their own English text directly, so a call site never
-     needs to change — just add the sentence to FR once. Messages built
-     by gluing a variable into the middle of a sentence (a username, a
-     count) are left in English; splitting those into a French word
-     order isn't something a lookup table can do. */
+     needs to change — just add the sentence to FR once.
+
+     Sentences with a variable in the middle go through tf() instead: the
+     English template with {named} slots is the lookup key, and French
+     fills the same slots in whatever order its own grammar wants. That is
+     what lets a rank, a word or a count sit in a different place in the
+     two languages instead of forcing the sentence to stay English. */
   var LANG = localStorage.getItem("contexto_lang") || "en";
 
   var FR = {
@@ -1246,6 +1843,17 @@
     "send-admins": "Envoyer aux admins", "admin": "admin",
     "post-update": "publier une actualité — tous les visiteurs la voient, vous seul pouvez publier",
     "post-everyone": "Publier pour tout le monde", "shop-items": "articles de la boutique",
+    "race-mode": "mode course (bêta)",
+    "race-blurb": "Termine une partie en ligne pour tout le monde dès que quelqu'un trouve le mot, au lieu que " +
+      "chacun finisse de son côté. Testez-le d'abord vous-même — personne d'autre ne le voit avant que vous " +
+      "ne l'activiez.",
+    "race-publish": "Activer pour tout le monde",
+    "Test race mode": "Tester le mode course", "Stop testing": "Arrêter le test",
+    "⚡ Race mode is on — the round ends for everyone the instant anyone finds the word.":
+      "⚡ Le mode course est activé — la partie se termine pour tout le monde dès que quelqu'un trouve le mot.",
+    "Race mode is off for you — everyone else still races.":
+      "Le mode course est désactivé pour vous — tout le monde continue à courir.",
+    "Turn on": "Activer", "Turn off": "Désactiver",
     "add-item-key": "ajouter un article", "add-item": "Ajouter l'article", "reset-default": "Réinitialiser",
     "send-request": "envoyer une demande", "feature": "fonctionnalité", "bug": "bug",
     "everyone": "Tout le monde", "requests-bugs": "demandes et bugs", "admin-chat": "discussion admin",
@@ -1253,9 +1861,11 @@
     "show-myself": "Me montrer", "stop-spectating": "Arrêter d'observer",
     "invisible": "invisible", "visible to players": "visible pour les joueurs",
     "Spectate": "Observer", "Show myself": "Me montrer", "Hide myself": "Me cacher",
-    "Kick": "Expulser", "Delete": "Supprimer",
+    "Kick": "Expulser", "Delete": "Supprimer", "typing": "en train d'écrire",
     "Nobody here yet.": "Personne ici pour l'instant.",
     "No games open right now.": "Aucune partie ouverte pour l'instant.",
+    "This room is online": "Cette partie est en ligne",
+    "This room is online, but empty right now.": "Cette partie est en ligne, mais vide pour l'instant.",
     "Live sync dropped — try spectating again.": "Synchronisation en direct interrompue — réessayez d'observer.",
     "close": "Fermer", "closest": "le plus proche", "(you)": "(vous)", "joined": "arrivé",
     "guessing…": "propose…", "waiting": "en attente",
@@ -1311,10 +1921,123 @@
     "No account with that name — check the spelling.": "Aucun compte à ce nom — vérifiez l'orthographe.",
     "Couldn't send that. Try again in a moment.": "Échec de l'envoi. Réessayez dans un instant.",
     "yes": "oui", "no": "non", "delete": "supprimer", "translated from French": "traduit du français",
-    "translated from English": "traduit de l'anglais", "translating…": "traduction…"
+    "translated from English": "traduit de l'anglais", "translating…": "traduction…",
+
+    /* ---- placeholders (data-i18n-ph) ---- */
+    "ph-your-guess": "votre proposition", "ph-say-something": "dites quelque chose",
+    "ph-player": "Joueur", "ph-word": "mot", "ph-rank": "rang", "ph-yourname": "votrenom",
+    "ph-their-username": "son nom d'utilisateur", "ph-what-added": "Qu'est-ce qui devrait être ajouté ?",
+
+    "{total} words · ranks computed here, offline": "{total} mots · rangs calculés ici, hors ligne",
+    "Hint": "Indice", "Sign in": "Se connecter",
+    "new-here": "Nouveau ici ?",
+    "tour-after": " — elle vous distribue une vraie partie et vous explique tout.",
+    "save-after": " pour jouer sans connexion, sans compte, sur n'importe quel appareil.",
+
+    /* ---- how the ranks are made ---- */
+    "rank-how-title": "Comment les rangs sont calculés.",
+    "rank-how-body": "Chaque mot ici porte cent nombres, issus de deux modèles combinés : GloVe, qui a lu six " +
+      "milliards de mots de Wikipédia et de dépêches et appris quels mots se côtoient, et des vecteurs " +
+      "contre-ajustés, réglés pour que les mots de même sens se regroupent tandis que les mots simplement " +
+      "liés s'écartent. Deux mots sont notés par l'angle entre eux, puis les cinquante mille sont classés " +
+      "par rapport au mot cible. Le rang 1 est le mot lui-même.",
+    "rank-how-offline": "Tout le modèle tourne dans cette page. Rien n'est envoyé nulle part, et cela " +
+      "fonctionne sans connexion.",
+
+    /* ---- the tour ---- */
+    "step {n} of {total}": "étape {n} sur {total}",
+    "One word is hidden. Type any word below and press Guess — it doesn't matter which. Even a wrong one shows you where you stand.":
+      "Un mot est caché. Entrez n'importe quel mot ci-dessous et appuyez sur Proposer — peu importe " +
+      "lequel. Même un mot faux vous montre où vous en êtes.",
+    "“{word}” landed at {rank}. Every one of the {total} words is ranked by how close it is in meaning to the answer — rank 1 is the answer itself. Lower is warmer. The colour and the bar say the same thing at a glance.":
+      "« {word} » est arrivé au rang {rank}. Chacun des {total} mots est classé selon sa proximité de " +
+      "sens avec la réponse — le rang 1 est la réponse elle-même. Plus c'est bas, plus c'est chaud. La " +
+      "couleur et la barre disent la même chose d'un coup d'œil.",
+    "Guess a second word, related to your first. Watch the number: down is warmer, up is colder. That's the whole game.":
+      "Proposez un deuxième mot, lié au premier. Observez le nombre : vers le bas c'est plus chaud, vers " +
+      "le haut c'est plus froid. C'est tout le jeu.",
+    "Both landed the same — that happens. Keep going. Your closest guess always stays on top of the list, so that's the one to think from.":
+      "Les deux sont arrivés au même rang — cela arrive. Continuez. Votre proposition la plus proche " +
+      "reste toujours en haut de la liste, c'est donc celle à partir de laquelle réfléchir.",
+    "{near} ({nearRank}) is warmer than {far} ({farRank}), so the answer is closer in meaning to {near}. Your closest guess always stays on top of the list, so that's the one to think from.":
+      "{near} ({nearRank}) est plus chaud que {far} ({farRank}) : la réponse est donc plus proche de " +
+      "{near} par le sens. Votre proposition la plus proche reste toujours en haut de la liste, c'est " +
+      "donc celle à partir de laquelle réfléchir.",
+    "Two more things. Hint suggests your best next word — you have {have} left, and {price} in the shop buys {bought} more. And you're on a {mins}-minute clock, starting the moment you close this — finish in time and you earn a coin.":
+      "Deux dernières choses. Indice vous suggère le meilleur mot suivant — il vous en reste {have}, et " +
+      "vous pouvez en acheter {bought} de plus pour {price} à la boutique. Et vous avez {mins} minutes " +
+      "au chrono, à partir du moment où vous fermez ceci — trouvez à temps et vous gagnez une pièce.",
+
+    /* ---- the end of a round ---- */
+    "the word was": "le mot était", "out of time — the word was": "temps écoulé — le mot était",
+    "{who} found it first — the word was": "{who} l'a trouvé en premier — le mot était",
+    "found in {count}": "trouvé en {count}",
+    "{who} found it — {count} between you": "{who} l'a trouvé — {count} à vous tous",
+    "{who} found it — {count}": "{who} l'a trouvé — {count}",
+    "Its nearest neighbours were {words}.": "Ses plus proches voisins étaient {words}.",
+    "Your result, ready to send": "Votre résultat, prêt à envoyer",
+    "Copy result": "Copier le résultat", "Copied": "Copié", "Hide another": "Cacher un autre mot",
+
+    /* ---- sharing a code ---- */
+    "send this to your friends": "envoyez ceci à vos amis",
+    "You don't know the word either, so you can play along.":
+      "Vous ne connaissez pas le mot non plus, vous pouvez donc jouer aussi.",
+    "Copy code": "Copier le code", "Play it now": "Y jouer maintenant",
+
+    /* ---- being kicked ---- */
+    "removed from this room": "retiré de cette partie",
+    "An admin sent you out of this room. You're free to join again anytime.":
+      "Un admin vous a retiré de cette partie. Vous pouvez la rejoindre à tout moment.",
+    "Back to setup": "Retour aux réglages",
+
+    /* ---- guessing ---- */
+    "{word} isn't in this dictionary — try another word.":
+      "{word} n'est pas dans ce dictionnaire — essayez un autre mot.",
+    "You've already tried {word}.": "Vous avez déjà essayé {word}.",
+    "Someone's already tried {word}.": "Quelqu'un a déjà essayé {word}.",
+    "Try {word} — it's among the 50 closest words.":
+      "Essayez {word} — il fait partie des 50 mots les plus proches.",
+    "Nothing useful left to suggest — you've already tried the closest words.":
+      "Plus rien d'utile à suggérer — vous avez déjà essayé les mots les plus proches.",
+
+    /* ---- solver and compare ---- */
+    "{word} is already listed.": "{word} est déjà dans la liste.",
+    "{word} isn't in this dictionary, so it can't steer the search. Try a plainer word.":
+      "{word} n'est pas dans ce dictionnaire, il ne peut donc pas guider la recherche. Essayez un mot plus courant.",
+    "{word} isn't in this dictionary. Try a plainer word.":
+      "{word} n'est pas dans ce dictionnaire. Essayez un mot plus courant.",
+    "None of those are in this dictionary: {words}.":
+      "Aucun de ceux-ci n'est dans ce dictionnaire : {words}.",
+    "Not in this dictionary: {words}.": "Absents de ce dictionnaire : {words}.",
+    "against {word}": "face à {word}",
+
+    /* ---- when the shared services can't be reached ---- */
+    "Can't reach the accounts service from here, so signing in isn't possible right now. Your coins still work on this device.":
+      "Impossible de joindre le service de comptes d'ici, la connexion n'est donc pas possible pour le " +
+      "moment. Vos pièces fonctionnent toujours sur cet appareil.",
+    "Couldn't reach the shared database, so this only applies here. See the comment above FIREBASE_CONFIG in the page source for the database rule this needs.":
+      "Impossible de joindre la base de données partagée, ceci ne s'applique donc qu'ici. Voir le " +
+      "commentaire au-dessus de FIREBASE_CONFIG dans le source de la page pour la règle nécessaire."
   };
 
   function t(text) { return (LANG === "fr" && FR[text]) ? FR[text] : text; }
+
+  // Translate a sentence that has variable parts. The English template is
+  // the key, so adding a translation never means touching the call site;
+  // slots are named, so French can reorder them freely. An unknown slot is
+  // left visible rather than silently blanked — that way a typo shows up
+  // on screen instead of quietly losing a word mid-sentence.
+  function tf(template, values) {
+    return t(template).replace(/\{(\w+)\}/g, function (whole, key) {
+      return values[key] === undefined ? whole : values[key];
+    });
+  }
+
+  // Thousands separators are part of the language, not the browser — French
+  // groups with a space where English uses a comma — so numbers sitting
+  // inside translated prose follow the chosen language rather than whatever
+  // locale the device happens to be set to.
+  function num(n) { return Number(n).toLocaleString(LANG === "fr" ? "fr-FR" : "en-US"); }
 
   var FR_UNITS = {
     "coin":   ["pièce", "pièces"],
@@ -1331,10 +2054,29 @@
       if (el.dataset.en === undefined) el.dataset.en = el.textContent;
       el.textContent = (LANG === "fr" && FR[key]) ? FR[key] : el.dataset.en;
     });
+    // Placeholders are attributes, not text, so they need their own pass —
+    // and their own stash of the original, since textContent is untouched.
+    document.querySelectorAll("[data-i18n-ph]").forEach(function (el) {
+      var key = el.getAttribute("data-i18n-ph");
+      if (el.dataset.enPh === undefined) el.dataset.enPh = el.getAttribute("placeholder") || "";
+      el.setAttribute("placeholder", (LANG === "fr" && FR[key]) ? FR[key] : el.dataset.enPh);
+    });
     $("lang-btn").textContent = LANG === "fr" ? "EN" : "FR";
     $("lang-btn").title = LANG === "fr" ? "English" : "Français";
     $("lang-btn").setAttribute("aria-pressed", LANG === "fr" ? "true" : "false");
+
+    // Surfaces already on screen are built in JS, so flipping the language
+    // has to rebuild them — otherwise the page ends up half-translated
+    // until the next guess. Each is guarded because applyLang runs once at
+    // startup, before some of this has anything to show.
+    $("dictline").textContent = tf("{total} words · ranks computed here, offline", { total: num(V) });
+
+    if (typeof paintPurse === "function") paintPurse();
     if (typeof renderGlobalChat === "function") renderGlobalChat();
+    if (typeof renderAnnounceLog === "function") renderAnnounceLog();
+    if (typeof renderSpectateProgress === "function") renderSpectateProgress();
+    if (typeof refreshPlay === "function" && play && play.secret) refreshPlay();
+    if (typeof paintCoach === "function" && tour && tour.on) paintCoach();
   }
 
   $("lang-btn").addEventListener("click", function () {
@@ -1343,10 +2085,18 @@
     applyLang();
   });
 
-  function normalize(s) { return String(s || "").toLowerCase().trim(); }
+  // Accents come off here rather than at the lookup, because the guess box
+  // only accepts a-z — without this, "café" and "élève" would be turned away
+  // as "letters only" before any French lookup got a chance to run.
+  function normalize(s) {
+    return String(s || "").toLowerCase().trim()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
 
   function readWords(text) {
-    var found = String(text || "").toLowerCase().match(/[a-z]+/g) || [];
+    // Accents come off first, or an accented French word in the compare box
+    // would be chopped at the accent — "café" splitting into "caf".
+    var found = normalize(text).match(/[a-z]+/g) || [];
     return found.filter(function (w) { return w.length > 1; });
   }
 
@@ -1372,7 +2122,7 @@
 
     var name = document.createElement("span");
     name.className = "specimen";
-    name.textContent = row.word;
+    name.textContent = show(row.word, row.typed);
     head.appendChild(name);
 
     var rank = document.createElement("span");
@@ -1405,7 +2155,9 @@
     var tick = document.createElement("span");
     tick.className = "tick";
     tick.style.left = (closeness(row.rank) * 100).toFixed(2) + "%";
-    tick.style.background = heat(row.rank);
+    // Set as colour, not background: the stylesheet paints both the bar and
+    // its halo from currentColor so the two can't fall out of step.
+    tick.style.color = heat(row.rank);
     spectrum.appendChild(tick);
     li.appendChild(spectrum);
 
@@ -1631,8 +2383,11 @@
   function paintPurse() {
     var coins = purse(), left = hints();
     $("purse").textContent = tally(coins, "coin", "coins") + " · " + tally(left, "hint", "hints");
-    $("play-hint").textContent = left > 0 ? "Hint · " + left : "Hint";
-    $("account-btn").textContent = account ? account.name : "Sign in";
+    // These three overwrite their markup's data-i18n text, so they have to
+    // translate themselves — and applyLang has to re-run this — or the
+    // masthead stays in whichever language it was first painted in.
+    $("play-hint").textContent = left > 0 ? t("Hint") + " · " + left : t("Hint");
+    $("account-btn").textContent = account ? account.name : t("Sign in");
     $("account-btn").classList.toggle("is-on", !!account);
     renderShopList();
     renderGiftItems();
@@ -1816,6 +2571,19 @@
     return "Couldn't do that (" + (code || "no error code came back") + "). Check the connection and try again.";
   }
 
+  // A couple of accent pulses behind the tour link, restartable — signing
+  // in twice in a row (or straight after signing up) should nudge again,
+  // not silently no-op because the class was already there.
+  var tourNudgeTimer = null;
+  function nudgeTour() {
+    var el = $("tour-cta");
+    el.classList.remove("nudge");
+    void el.offsetWidth;
+    el.classList.add("nudge");
+    clearTimeout(tourNudgeTimer);
+    tourNudgeTimer = setTimeout(function () { el.classList.remove("nudge"); }, 2900);
+  }
+
   $("account-btn").addEventListener("click", openAccountPanel);
 
   $("account-signout").addEventListener("click", function () {
@@ -1837,6 +2605,7 @@
     }).then(function () {
       $("account-pass").value = "";
       accountSay("Account made. The coins you already had came with you.");
+      nudgeTour();
     }).catch(function (e) { accountSay(authTrouble(e)); });
   });
 
@@ -1848,6 +2617,7 @@
       $("account-pass").value = "";
       accountSay("");
       $("tab-play").click();
+      nudgeTour();
     }).catch(function (e) { accountSay(authTrouble(e)); });
   });
 
@@ -1965,6 +2735,32 @@
     }).catch(function () { translateCache[key] = false; return false; });
   }
 
+  // Shared by global chat and the admin updates feed: works out whether a
+  // message needs translating for the viewer's current language, kicks off
+  // the fetch at most once per text+direction (the cache is keyed on both),
+  // and returns the markup to append after the message itself. onReady is
+  // whichever render function should re-run once the translation lands.
+  function translatedHtml(text, onReady) {
+    var msgLang = looksFrench(text) ? "fr" : "en";
+    var viewerLang = LANG === "fr" ? "fr" : "en";
+    if (msgLang === viewerLang) return "";
+
+    var cacheKey = viewerLang + "|" + text;
+    var known = cacheKey in translateCache;
+    var cached = translateCache[cacheKey];
+    if (!known) translateText(text, viewerLang).then(onReady);
+
+    if (!known || cached === null) {
+      return '<div class="translated">' + escapeHtml(t("translating…")) + '</div>';
+    }
+    if (cached) {
+      var fromLabel = t(msgLang === "fr" ? "translated from French" : "translated from English");
+      return '<div class="translated">' + escapeHtml(cached) + ' <span class="from-lang">(' +
+        escapeHtml(fromLabel) + ')</span></div>';
+    }
+    return "";
+  }
+
   function globalChatSay(message) {
     var node = $("global-chat-notice");
     node.textContent = t(message) || "";
@@ -1984,24 +2780,7 @@
         if (votes[uid] === "yes") yes++; else if (votes[uid] === "no") no++;
       });
 
-      var msgLang = looksFrench(m.text) ? "fr" : "en";
-      var viewerLang = LANG === "fr" ? "fr" : "en";
-      var translation = "";
-      if (msgLang !== viewerLang) {
-        var cacheKey = viewerLang + "|" + m.text;
-        var known = cacheKey in translateCache;
-        var cached = translateCache[cacheKey];
-        if (!known) {
-          translateText(m.text, viewerLang).then(function () { renderGlobalChat(); });
-        }
-        if (!known || cached === null) {
-          translation = '<div class="translated">' + escapeHtml(t("translating…")) + '</div>';
-        } else if (cached) {
-          var fromLabel = t(msgLang === "fr" ? "translated from French" : "translated from English");
-          translation = '<div class="translated">' + escapeHtml(cached) + ' <span class="from-lang">(' +
-            escapeHtml(fromLabel) + ')</span></div>';
-        }
-      }
+      var translation = translatedHtml(m.text, function () { renderGlobalChat(); });
 
       var canDelete = account && (m.uid === account.uid || myRole() === "admin");
 
@@ -2153,13 +2932,14 @@
     var role = adminRole();
     $("admin-role-note").textContent = role === "admin"
       ? "Full admin — post updates everyone sees, edit the shop, and see requests and bugs sent in."
-      : "Assistant admin — send feature requests and bug reports, and chat here.";
+      : "Assistant admin — send feature requests and bug reports, spectate rooms, kick players, and chat here.";
     $("admin-broadcast").hidden = role !== "admin";
     $("admin-shop-editor").hidden = role !== "admin";
     $("admin-everyone").hidden = role !== "admin";
-    $("admin-spectate").hidden = role !== "admin";
+    $("admin-spectate").hidden = !role;
     $("admin-requests").hidden = role !== "admin";
     $("admin-request-form").hidden = role !== "assistant";
+    renderRacePanel();
     adminSay("");
     if (role === "admin") { renderAdminItemList(); renderAdminRequestList(); renderEveryone(); }
   }
@@ -2252,7 +3032,10 @@
           '<input class="num fixed give-amount" type="number" min="1" value="1" />' +
           '<button type="button" class="ghost grow give-coins">Give coins</button>' +
           '<button type="button" class="ghost grow take-coins">Take coins</button>' +
+        '</div>' +
+        '<div class="row">' +
           '<button type="button" class="ghost grow give-hints">Give hints</button>' +
+          '<button type="button" class="ghost grow take-hints">Take hints</button>' +
         '</div>' +
         (adminUids[u.uid] ? "" :
           '<button type="button" class="ghost make-assistant">' +
@@ -2290,6 +3073,7 @@
     if (e.target.classList.contains("give-coins")) patch = { coins: user.coins + amount };
     else if (e.target.classList.contains("take-coins")) patch = { coins: Math.max(0, user.coins - amount) };
     else if (e.target.classList.contains("give-hints")) patch = { hints: user.hints + amount };
+    else if (e.target.classList.contains("take-hints")) patch = { hints: Math.max(0, user.hints - amount) };
     if (!patch) return;
 
     window.AccountRoom.updateUser(uid, patch).then(function () {
@@ -2342,25 +3126,113 @@
       return '<li class="roster-item' + (isMe ? " is-me" : "") + '" data-id="' + escapeHtml(p.id) + '">' +
         '<span class="who">' + escapeHtml(p.name) + (isMe ? " " + escapeHtml(t("(you)")) : "") + '</span>' +
         '<span class="stat">' + tally(p.guesses, "guess", "guesses") + (p.best ? " · " + p.best : "") + '</span>' +
+        (!isMe && p.typing ? '<span class="typing">' + escapeHtml(t("typing")) + ': "' + escapeHtml(p.typing) + '"</span>' : "") +
         (isMe ? "" : '<button type="button" class="ghost kick-player">' + escapeHtml(t("Kick")) + '</button>') +
         '</li>';
     }).join("") || '<li class="chat-empty">' + escapeHtml(t("Nobody here yet.")) + '</li>';
+  }
+
+  // The roster is the only signal this system has for "is this room actually
+  // live" — there's no separate room record, just presence rows — so online
+  // just means at least one of those rows currently exists. spectate()'s
+  // list carries no isMe flag (only join()'s does), so a revealed spectator
+  // — who does have a presence row of their own — is excluded the same way
+  // renderSpectateRoster excludes them: by id, against spectatorId().
+  function renderSpectateStatus(list) {
+    var node = $("spectate-status");
+    var myId = window.LiveRoom && window.LiveRoom.spectatorId ? window.LiveRoom.spectatorId() : null;
+    var real = (list || []).filter(function (p) { return p.id !== myId; });
+    node.textContent = real.length
+      ? t("This room is online") + " — " + tally(real.length, "player", "players")
+      : t("This room is online, but empty right now.");
+  }
+
+  // The name a message sent from spectate shows up under — same "(admin)"/
+  // "(assistant)" convention as revealSpectator, so a room's own chat log
+  // can't confuse an incognito admin message for a regular player's.
+  function spectateChatName() {
+    var role = myRole();
+    var label = role === "assistant" ? "(assistant)" : "(admin)";
+    return label + " " + (account ? account.name : (role === "assistant" ? "Assistant" : "Admin"));
+  }
+
+  // The room's shared guess feed, same rows every player's own ladder is
+  // built from. A rank of 1 *is* the secret — nobody ever writes the secret
+  // itself anywhere, so the first such row appearing is both the win
+  // condition and the reveal, exactly like it is for a player who lands it.
+  var spectateGuesses = [];
+
+  function spectateVerdictCard(winner) {
+    var card = document.createElement("div");
+    card.className = "card keyed";
+    card.style.color = heat(1);
+
+    var key = document.createElement("div");
+    key.className = "eyebrow";
+    key.style.color = "var(--muted)";
+    key.textContent = tf("{who} found it — {count}",
+      { who: winner.by, count: tally(spectateGuesses.length, "guess", "guesses") });
+    card.appendChild(key);
+
+    var word = document.createElement("div");
+    word.className = "verdict";
+    word.style.color = "var(--ink)";
+    word.textContent = show(winner.word);
+    card.appendChild(word);
+
+    return card;
+  }
+
+  function renderSpectateProgress() {
+    var box = $("spectate-progress");
+    box.hidden = !spectateGuesses.length;
+    if (!spectateGuesses.length) return;
+
+    var best = spectateGuesses.slice().sort(function (a, b) { return a.rank - b.rank; })[0];
+    $("spectate-legend").textContent = tally(spectateGuesses.length, "guess", "guesses") +
+      (best ? " · " + t("closest") + " " + best.rank : "");
+
+    var verdictBox = $("spectate-verdict");
+    verdictBox.textContent = "";
+    var winner = spectateGuesses.filter(function (g) { return g.rank === 1; })[0];
+    if (winner) verdictBox.appendChild(spectateVerdictCard(winner));
+
+    paintLadder($("spectate-ladder"), spectateGuesses.map(function (g) {
+      return { word: g.word, rank: g.rank, gloss: g.by };
+    }));
   }
 
   function startSpectating(code) {
     if (!window.LiveRoom || !window.LiveRoom.ready) { spectateSay("Can't reach the live service right now."); return; }
     spectateCode = code;
     spectateSay("");
+    resetChatLog("spectate-chat-log", "No messages yet.");
+    spectateGuesses = [];
+    $("spectate-progress").hidden = true;
     window.LiveRoom.spectate(code, {
-      onPlayers: function (list) { spectateRoster = list; renderSpectateRoster(); },
-      onChat: function () {},
-      onGuesses: function () {},
+      onPlayers: function (list) { spectateRoster = list; renderSpectateRoster(); renderSpectateStatus(list); },
+      onChat: function (msg) {
+        if (!msg) return;
+        appendChatLine("spectate-chat-log", msg, msg.name === spectateChatName());
+      },
+      onGuesses: function (list) { spectateGuesses = list; renderSpectateProgress(); },
       onError: function () { spectateSay("Live sync dropped — try spectating again."); }
     });
     $("spectate-code-label").textContent = code;
     $("spectate-live").hidden = false;
     renderSpectateVisibility();
   }
+
+  function sendSpectateChat() {
+    var input = $("spectate-chat-input");
+    var text = input.value.trim();
+    if (!text || !window.LiveRoom || !spectateCode) return;
+    window.LiveRoom.sendSpectatorChat(spectateChatName(), text);
+    input.value = "";
+    input.focus();
+  }
+  $("spectate-chat-send").addEventListener("click", sendSpectateChat);
+  $("spectate-chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendSpectateChat(); });
 
   $("spectate-btn").addEventListener("click", function () {
     var box = $("spectate-box");
@@ -2385,7 +3257,7 @@
     var revealed = window.LiveRoom.isRevealed && window.LiveRoom.isRevealed();
     var action = revealed
       ? window.LiveRoom.hideSpectator()
-      : window.LiveRoom.revealSpectator("(admin) " + (account ? account.name : "Admin"));
+      : window.LiveRoom.revealSpectator(spectateChatName());
     Promise.resolve(action).then(renderSpectateVisibility).catch(adminDbNote);
   });
 
@@ -2393,7 +3265,10 @@
     if (window.LiveRoom) window.LiveRoom.stopSpectating();
     spectateCode = null;
     spectateRoster = [];
+    spectateGuesses = [];
     $("spectate-live").hidden = true;
+    $("spectate-status").textContent = "";
+    $("spectate-progress").hidden = true;
   });
 
   $("spectate-roster").addEventListener("click", function (e) {
@@ -2466,7 +3341,8 @@
     var log = $("announce-log");
     var canDelete = myRole() === "admin";
     log.innerHTML = announceList.map(function (a) {
-      return '<li class="chat-line" data-id="' + escapeHtml(a.id) + '">' + escapeHtml(a.text) +
+      var translation = translatedHtml(a.text, function () { renderAnnounceLog(); });
+      return '<li class="chat-line" data-id="' + escapeHtml(a.id) + '">' + escapeHtml(a.text) + translation +
         (canDelete ? ' <button type="button" class="linkish delete-announce">' + escapeHtml(t("Delete")) + '</button>' : '') +
         '</li>';
     }).join("");
@@ -2490,6 +3366,108 @@
     }).catch(adminDbNote);
   });
 
+  /* ---------- race mode: a feature flag with its own dry run ----------
+     "features" is the one published, shared-by-everyone switch (empty
+     object until an admin turns something on — read by every visitor, no
+     login needed, same as the shop and the announcements feed). Turning
+     race mode on for real means every online round ends for every player
+     the instant anyone finds the word, not just the one who found it, so
+     there's a way to feel that out first: raceTestLocal is a flag that
+     never leaves this browser and only does anything for whoever set it,
+     so trying it can't put a stranger's round into a mode they never
+     agreed to — that's true for an assistant same as an admin, so both
+     roles get the test button (it sits with the rest of what an
+     assistant can already do — spectate, kick — none of which touch
+     anyone else's game either). Publishing for real is the one part
+     that's admin-only, same as the shop and the broadcast: it changes
+     what every visitor's games do, not just the person clicking it.
+     Once the real switch flips, the local one stops mattering —
+     raceModeActive() only even looks at it while the published flag is
+     still off. */
+  var features = {};
+  var raceTestLocal = (function () {
+    try { return localStorage.getItem("contexto-race-test") === "1"; } catch (e) { return false; }
+  })();
+  // Once race mode is published for everyone, individual players still get
+  // a say over their own games — this is the opt-out, never leaves this
+  // browser, same as raceTestLocal never does.
+  var raceOptOut = (function () {
+    try { return localStorage.getItem("contexto-race-optout") === "1"; } catch (e) { return false; }
+  })();
+
+  function raceModeActive() {
+    if (raceTestLocal && myRole()) return true;
+    return !!features.race && !raceOptOut;
+  }
+
+  function renderRacePanel() {
+    var box = $("admin-race");
+    var role = myRole();
+    if (!role || features.race) { box.hidden = true; return; }
+    box.hidden = false;
+    $("race-test-btn").textContent = t(raceTestLocal ? "Stop testing" : "Test race mode");
+    $("race-publish-btn").hidden = role !== "admin";
+  }
+
+  // The setup screen's own heads-up: shown the moment "online" is picked,
+  // not tucked away in the admin panel, so a player finds out their round
+  // will end the instant someone else wins before they've even hosted or
+  // joined one — not partway through, when the round just stops. Once
+  // it's published for everyone, this is also where any player — not
+  // just an admin or assistant — can turn it back off for their own
+  // games with the opt-out button.
+  function renderRaceStatusNote() {
+    var box = $("online-race-box");
+    var note = $("online-race-note");
+    var optBtn = $("race-optout-btn");
+    // Checked here rather than left to the ancestor's own [hidden] — this
+    // runs from places that don't know or care which mode is selected
+    // (the features subscription, the test toggle), so the element's own
+    // hidden state has to be correct on its own instead of only ending up
+    // correct because #online-only happens to be hidden too.
+    var globalOn = play.mode === "online" && !!features.race;
+    var testOn = play.mode === "online" && !features.race && raceTestLocal && !!myRole();
+    box.hidden = !globalOn && !testOn;
+    if (!globalOn && !testOn) return;
+    optBtn.hidden = !globalOn;
+    if (globalOn && raceOptOut) {
+      note.textContent = t("Race mode is off for you — everyone else still races.");
+      optBtn.textContent = t("Turn on");
+    } else {
+      note.textContent = t("⚡ Race mode is on — the round ends for everyone the instant anyone finds the word.");
+      optBtn.textContent = t("Turn off");
+    }
+  }
+
+  $("race-optout-btn").addEventListener("click", function () {
+    raceOptOut = !raceOptOut;
+    try { localStorage.setItem("contexto-race-optout", raceOptOut ? "1" : "0"); } catch (e) {}
+    renderRaceStatusNote();
+  });
+
+  $("race-test-btn").addEventListener("click", function () {
+    raceTestLocal = !raceTestLocal;
+    try { localStorage.setItem("contexto-race-test", raceTestLocal ? "1" : "0"); } catch (e) {}
+    renderRacePanel();
+    renderRaceStatusNote();
+    adminSay(raceTestLocal
+      ? "Race mode is on for your own games only — nobody else sees it."
+      : "Back to normal for your own games.");
+  });
+
+  $("race-publish-btn").addEventListener("click", function () {
+    if (!window.AdminRoom) { adminDbNote(); return; }
+    window.AdminRoom.setFeature("race", true).then(function () {
+      // Don't wait on the subscription's own round-trip to hide the panel —
+      // update the local copy and repaint right away, the same way
+      // persistShopItems() doesn't wait to repaint the shop list either.
+      features.race = true;
+      renderRaceStatusNote();
+      renderRacePanel();
+      adminSay("Race mode is on for everyone.");
+    }).catch(adminDbNote);
+  });
+
   // The shop and the announcements feed are the same for every visitor,
   // admin or not, so they sync as soon as the shared database answers — no
   // password needed to read either, only to change them. Chat and the
@@ -2507,6 +3485,11 @@
     window.AdminRoom.onAnnouncements(function (list) {
       announceList = list;
       renderAnnounceLog();
+    });
+    window.AdminRoom.onFeatures(function (map) {
+      features = map;
+      renderRacePanel();
+      renderRaceStatusNote();
     });
   }
 
@@ -2600,6 +3583,15 @@
     justGuessed: null // the word to single out in the ladder, so only it animates
   };
 
+  // Debounced so typing doesn't push a database write on every keystroke —
+  // spectators just see the box settle a beat behind the real thing.
+  var typingSyncTimer = null;
+  function syncTyping(text) {
+    if (play.mode !== "online" || !window.LiveRoom) return;
+    clearTimeout(typingSyncTimer);
+    typingSyncTimer = setTimeout(function () { window.LiveRoom.updateTyping(text); }, 200);
+  }
+
   // Wire a segmented control: press one, release the others.
   function pressGroup(container, key, onPick) {
     Array.prototype.forEach.call(container.children, function (button) {
@@ -2653,6 +3645,7 @@
       ? "Up to four of you on this phone, taking turns at one hidden word."
       : "Hide a word, send the code, and race it on your own phones.";
     say($("code-notice"), "");
+    if (mode === "online") renderRaceStatusNote();
   });
 
   pressGroup($("levels"), "level", function (level) { play.level = level; });
@@ -2728,9 +3721,15 @@
   }
 
   function beginGame(secret, code) {
+    clearTimeout(typingSyncTimer);
     if (window.LiveRoom) window.LiveRoom.leave();
     stopBots();
     closeMyOpenGame();
+
+    // Carries the picked difficulty onto the root element so #play-live can
+    // escalate its own colour with it — scoped to that one screen (see the
+    // CSS) so it never bleeds into the setup picker's own level colours.
+    document.documentElement.setAttribute("data-play-level", play.level);
 
     play.secret = secret;
     play.code = code || null;
@@ -2771,14 +3770,14 @@
   // at the bottom of the page). If Firebase isn't configured or the
   // connection fails, the game still works — you just won't see anyone else.
   function joinLiveRoom(code, name) {
-    var chatLog = $("chat-log");
-    chatLog.textContent = "";
-    var empty = document.createElement("li");
-    empty.className = "chat-empty";
-    empty.textContent = "No messages yet.";
-    chatLog.appendChild(empty);
+    resetChatLog("chat-log", "No messages yet.");
 
     if (!code) return;
+
+    // Set once we've seen our own presence row in a snapshot, so a kick
+    // (which just deletes that row) can be told apart from the split second
+    // before our own join-write has round-tripped back to us.
+    var hasSeenSelf = false;
 
     function attach() {
       if (!window.LiveRoom || !window.LiveRoom.ready) return;
@@ -2798,15 +3797,33 @@
             }
             return;
           }
+          var amPresent = list.some(function (p) { return p.isMe; });
+          if (amPresent) {
+            hasSeenSelf = true;
+          } else if (hasSeenSelf && !play.done) {
+            kickedFromRoom();
+            return;
+          }
           play.live = list;
           refreshPlay();
         },
         onChat: function (msg) {
           if (!msg) return;
-          appendChatLine(msg);
+          appendChatLine("chat-log", msg, msg.name === play.myName);
         },
         onGuesses: function (list) {
           play.liveRows = list;
+          // Race mode: the shared feed is already sorted by time, so the
+          // first rank-1 row in it is whoever found the word first. If
+          // that's someone else, the round ends here too, not just for
+          // them — that's the whole difference race mode makes. If it's
+          // my own guess, my own guess() already called finish() before
+          // this round-trip landed, so play.done is already true and this
+          // is a no-op.
+          if (raceModeActive() && !play.done) {
+            var winner = list.filter(function (g) { return g.rank === 1; })[0];
+            if (winner && winner.by !== play.myName) { finish(false, null, false, winner.by); return; }
+          }
           refreshPlay();
         },
         onError: function () {
@@ -2828,13 +3845,16 @@
     }
   }
 
-  function appendChatLine(msg) {
-    var log = $("chat-log");
+  // Shared by the room's own chat and the spectate chat below it — same log
+  // shape, same rendering, just a different target list and a different
+  // idea of which messages are "mine".
+  function appendChatLine(logId, msg, isMine) {
+    var log = $(logId);
     var empty = log.querySelector(".chat-empty");
     if (empty) empty.remove();
 
     var li = document.createElement("li");
-    li.className = "chat-line" + (msg.name === play.myName ? " mine" : "");
+    li.className = "chat-line" + (isMine ? " mine" : "");
     var from = document.createElement("span");
     from.className = "from";
     from.textContent = msg.name;
@@ -2842,6 +3862,15 @@
     li.appendChild(document.createTextNode(msg.text));
     log.appendChild(li);
     log.scrollTop = log.scrollHeight;
+  }
+
+  function resetChatLog(logId, emptyText) {
+    var log = $(logId);
+    log.textContent = "";
+    var empty = document.createElement("li");
+    empty.className = "chat-empty";
+    empty.textContent = emptyText;
+    log.appendChild(empty);
   }
 
   function showCode(code) {
@@ -2852,7 +3881,7 @@
 
     var key = document.createElement("div");
     key.className = "eyebrow";
-    key.textContent = "send this to your friends";
+    key.textContent = t("send this to your friends");
     card.appendChild(key);
 
     var big = document.createElement("div");
@@ -2862,8 +3891,15 @@
 
     var note = document.createElement("p");
     note.className = "gloss";
-    note.textContent = "You don't know the word either, so you can play along.";
+    note.textContent = t("You don't know the word either, so you can play along.");
     card.appendChild(note);
+
+    if (raceModeActive()) {
+      var raceNote = document.createElement("p");
+      raceNote.className = "gloss race-note";
+      raceNote.textContent = t("⚡ Race mode is on — the round ends for everyone the instant anyone finds the word.");
+      card.appendChild(raceNote);
+    }
 
     var row = document.createElement("div");
     row.className = "row";
@@ -2871,13 +3907,13 @@
     var copy = document.createElement("button");
     copy.type = "button";
     copy.className = "ghost";
-    copy.textContent = "Copy code";
-    copy.addEventListener("click", function () { copyText(code, copy, "Copied"); });
+    copy.textContent = t("Copy code");
+    copy.addEventListener("click", function () { copyText(code, copy, t("Copied")); });
     row.appendChild(copy);
 
     var go = document.createElement("button");
     go.type = "button";
-    go.textContent = "Play it now";
+    go.textContent = t("Play it now");
     go.addEventListener("click", function () { beginGame(WORDS[readCode(code)], code); });
     row.appendChild(go);
 
@@ -3007,15 +4043,76 @@
     }, 1850);
   }
 
-  function finish(won, who, ranOut) {
+  // A kick just deletes the presence row an admin/assistant can already see
+  // and write (see LiveRoom.kick below) — it's not a ban, nothing stops the
+  // same person rejoining with the same code a moment later. This is what
+  // turns that deletion into something the kicked player actually notices:
+  // stop the round right here instead of leaving them guessing into a room
+  // that no longer lists them.
+  function kickedFromRoom() {
+    if (play.done) return;
     play.done = true;
+    clearTimeout(typingSyncTimer);
+    stopClock();
+    tour.on = false;
+    $("coach").hidden = true;
+    $("play-clock").hidden = true;
+    $("tab-solve").hidden = false;
+    $("play-controls").hidden = true;
+    $("play-quit").hidden = true;
+    $("roster").hidden = true;
+    $("chat-box").hidden = true;
+    if (window.LiveRoom) window.LiveRoom.leave();
+    stopBots();
+    closeMyOpenGame();
+
+    var card = document.createElement("div");
+    card.className = "card keyed";
+    card.style.color = "var(--rule)";
+
+    var key = document.createElement("div");
+    key.className = "eyebrow";
+    key.style.color = "var(--muted)";
+    key.textContent = t("removed from this room");
+    card.appendChild(key);
+
+    var word = document.createElement("div");
+    word.className = "verdict";
+    word.style.color = "var(--ink)";
+    word.textContent = t("An admin sent you out of this room. You're free to join again anytime.");
+    card.appendChild(word);
+
+    var buttons = document.createElement("div");
+    buttons.className = "row";
+
+    var again = document.createElement("button");
+    again.type = "button";
+    again.textContent = t("Back to setup");
+    again.addEventListener("click", function () {
+      $("play-live").hidden = true;
+      $("play-setup").hidden = false;
+      document.querySelector(".wrap").classList.remove("wide-play");
+      $("code-out").textContent = "";
+      $("code-in").value = "";
+    });
+    buttons.appendChild(again);
+
+    card.appendChild(buttons);
+
+    $("play-verdict").textContent = "";
+    $("play-verdict").appendChild(card);
+  }
+
+  function finish(won, who, ranOut, racedBy) {
+    play.done = true;
+    clearTimeout(typingSyncTimer);
     stopClock();
     tour.on = false;
     $("coach").hidden = true;
     $("play-clock").hidden = true;
     $("tab-solve").hidden = false;
     if (won) earnCoin();
-    if (won && ownsFlash()) playWinFlash(play.secret);
+    if (won && ownsFlash()) playWinFlash(show(play.secret));
     $("play-controls").hidden = true;
     $("play-quit").hidden = true;
     $("roster").hidden = true;
@@ -3034,21 +4131,22 @@
     var key = document.createElement("div");
     key.className = "eyebrow";
     key.style.color = "var(--muted)";
-    if (!won) key.textContent = ranOut ? "out of time — the word was" : "the word was";
-    else if (shared) key.textContent = who + " found it — " + count + " between you";
-    else key.textContent = "found in " + count;
+    if (!won && racedBy) key.textContent = tf("{who} found it first — the word was", { who: racedBy });
+    else if (!won) key.textContent = t(ranOut ? "out of time — the word was" : "the word was");
+    else if (shared) key.textContent = tf("{who} found it — {count} between you", { who: who, count: count });
+    else key.textContent = tf("found in {count}", { count: count });
     card.appendChild(key);
 
     var word = document.createElement("div");
     word.className = "verdict";
     word.style.color = "var(--ink)";
-    word.textContent = play.secret;
+    word.textContent = show(play.secret);
     card.appendChild(word);
 
     if (!won) {
       var near = document.createElement("p");
       near.className = "gloss";
-      near.textContent = "Its nearest neighbours were " + nearestTo(play.secret, 5).join(", ") + ".";
+      near.textContent = tf("Its nearest neighbours were {words}.", { words: nearestTo(play.secret, 5).map(function (w) { return show(w); }).join(", ") });
       card.appendChild(near);
     }
 
@@ -3067,7 +4165,7 @@
         var stat = document.createElement("span");
         stat.className = "rank";
         stat.style.color = closest ? heat(closest.rank) : "var(--muted)";
-        stat.textContent = mine.length + (closest ? " · closest " + closest.rank : "");
+        stat.textContent = mine.length + (closest ? " · " + t("closest") + " " + closest.rank : "");
         line.appendChild(stat);
 
         tallyList.appendChild(line);
@@ -3080,7 +4178,7 @@
       share.className = "result";
       share.rows = 3;
       share.readOnly = true;
-      share.setAttribute("aria-label", "Your result, ready to send");
+      share.setAttribute("aria-label", t("Your result, ready to send"));
       share.value = resultText();
       card.appendChild(share);
     }
@@ -3092,16 +4190,16 @@
       var send = document.createElement("button");
       send.type = "button";
       send.className = "ghost";
-      send.textContent = "Copy result";
+      send.textContent = t("Copy result");
       send.addEventListener("click", function () {
-        copyText(card.querySelector(".result").value, send, "Copied");
+        copyText(card.querySelector(".result").value, send, t("Copied"));
       });
       buttons.appendChild(send);
     }
 
     var again = document.createElement("button");
     again.type = "button";
-    again.textContent = "Hide another";
+    again.textContent = t("Hide another");
     again.addEventListener("click", function () {
       $("play-live").hidden = true;
       $("play-setup").hidden = false;
@@ -3122,21 +4220,27 @@
     var w = normalize($("play-input").value);
 
     if (!w || /[^a-z]/.test(w)) { say($("play-notice"), "One plain word, letters only."); return; }
+    // Kept so the ladder can show the French word actually typed rather than
+    // whichever synonym happens to be this English word's first French form —
+    // type "voiture" and it should not come back as "auto".
+    var typed = w;
     w = resolve(w);
-    if (!inLexicon(w)) { say($("play-notice"), w + " isn't in this dictionary — try another word."); return; }
+    if (!inLexicon(w)) { say($("play-notice"), tf("{word} isn't in this dictionary — try another word.", { word: w })); return; }
     var isOnlineGuess = play.mode === "online";
     var tried = isOnlineGuess && play.liveRows ? play.liveRows : play.rows;
     if (tried.some(function (r) { return r.word === w; })) {
-      say($("play-notice"), isOnlineGuess ? "Someone's already tried " + w + "." : "You've already tried " + w + ".");
+      say($("play-notice"), tf(isOnlineGuess ? "Someone's already tried {word}." : "You've already tried {word}.", { word: show(w) }));
       return;
     }
 
     say($("play-notice"), "");
     var rank = rankOf(play.secret, w);
     var who = play.players[play.turn];
-    play.rows.push({ word: w, rank: rank, by: who });
+    play.rows.push({ word: w, rank: rank, by: who, typed: typed !== w ? typed : null });
     if (play.mode === "online" && window.LiveRoom) window.LiveRoom.addGuess(who, w, rank);
     $("play-input").value = "";
+    clearTimeout(typingSyncTimer);
+    if (play.mode === "online" && window.LiveRoom) window.LiveRoom.updateTyping("");
 
     // Marked so the ladder can single this row out; cleared once the animation
     // has run, or a later repaint would set it off again.
@@ -3256,8 +4360,8 @@
     }
 
     say($("play-notice"), next
-      ? "Try " + next + " — it's among the 50 closest words."
-      : "Nothing useful left to suggest — you've already tried the closest words.");
+      ? tf("Try {word} — it's among the 50 closest words.", { word: show(next) })
+      : t("Nothing useful left to suggest — you've already tried the closest words."));
   }
 
   /* ---------- the tour: a real round, narrated ---------- */
@@ -3268,27 +4372,25 @@
     {
       until: "guess",
       say: function () {
-        return "Somewhere behind this page is one hidden word. Type any word at all in the box " +
-               "below and press Guess — it honestly doesn't matter which one. A guess that is " +
-               "nowhere near is still how you find out where you are.";
+        return t("One word is hidden. Type any word below and press Guess — it doesn't matter which. " +
+                 "Even a wrong one shows you where you stand.");
       }
     },
     {
       until: "read",
       say: function () {
         var row = play.rows[play.rows.length - 1];
-        return "“" + row.word + "” came back at " + row.rank + ". Every one of the " +
-               V.toLocaleString() + " words is sorted by how close it is in meaning to the hidden " +
-               "word, and that is the position yours landed in. Rank 1 is the word itself, so the " +
-               "smaller the number, the warmer you are. The colour and the little bar underneath " +
-               "say the same thing without you having to read the number.";
+        return tf("“{word}” landed at {rank}. Every one of the {total} words is ranked by how close it " +
+                  "is in meaning to the answer — rank 1 is the answer itself. Lower is warmer. The " +
+                  "colour and the bar say the same thing at a glance.",
+                  { word: show(row.word), rank: row.rank, total: num(V) });
       }
     },
     {
       until: "guess",
       say: function () {
-        return "Now guess a second word, something with a bit to do with your first. Watch which " +
-               "way the number moves: down is warmer, up is colder. That is the entire game.";
+        return t("Guess a second word, related to your first. Watch the number: down is warmer, up is " +
+                 "colder. That's the whole game.");
       }
     },
     {
@@ -3297,13 +4399,13 @@
         var sorted = play.rows.slice().sort(function (a, b) { return a.rank - b.rank; });
         var near = sorted[0], far = sorted[sorted.length - 1];
         if (near.rank === far.rank) {
-          return "Both landed in the same place, which happens. Keep going — the list above always " +
-                 "keeps your closest guess at the top, so it's the one to think from.";
+          return t("Both landed the same — that happens. Keep going. Your closest guess always stays " +
+                   "on top of the list, so that's the one to think from.");
         }
-        return near.word + " at " + near.rank + " is warmer than " + far.word + " at " + far.rank +
-               ", so the hidden word has more to do with " + near.word + " than with " + far.word +
-               ". Follow that. The list above always keeps your closest guess on top, so the word " +
-               "to think from is the one at the top.";
+        return tf("{near} ({nearRank}) is warmer than {far} ({farRank}), so the answer is closer in " +
+                  "meaning to {near}. Your closest guess always stays on top of the list, so that's " +
+                  "the one to think from.",
+                  { near: show(near.word), nearRank: near.rank, far: show(far.word), farRank: far.rank });
       }
     },
     {
@@ -3311,19 +4413,23 @@
       say: function () {
         var mins = Math.round((LIMITS[play.level] || LIMITS.normal) / 60);
         var cheapest = cheapestItem();
-        return "Two last things. Hint names the word worth trying next — it works out what " +
-               "you've narrowed down and picks whatever would tell you the most. You have " +
-               tally(hints(), "of them", "of them") + " to spend, and " + tally(cheapest.price, "coin", "coins") +
-               " buys " + tally(cheapest.hints, "more", "more") + " from the shop behind the coin count up top. " +
-               "And this round is on a " + mins + "-minute clock, which starts the moment you " +
-               "close this. Find the word before it runs out and you earn a coin.";
+        // Counts go in raw and the sentence supplies its own verb, so French
+        // can say "il vous en reste 3" rather than gluing a tally phrase into
+        // a slot that leaves it verbless.
+        return tf("Two more things. Hint suggests your best next word — you have {have} left, and " +
+                  "{price} in the shop buys {bought} more. And you're on a {mins}-minute clock, " +
+                  "starting the moment you close this — finish in time and you earn a coin.",
+                  { have: hints(),
+                    price: tally(cheapest.price, "coin", "coins"),
+                    bought: cheapest.hints,
+                    mins: mins });
       }
     }
   ];
 
   function paintCoach() {
     var step = TOUR[tour.at];
-    $("coach-step").textContent = "step " + (tour.at + 1) + " of " + TOUR.length;
+    $("coach-step").textContent = tf("step {n} of {total}", { n: tour.at + 1, total: TOUR.length });
     $("coach-text").textContent = step.say();
     $("coach-next").hidden = step.until !== "read";
     $("coach").hidden = false;
@@ -3377,6 +4483,7 @@
   $("play-hint").addEventListener("click", playHint);
   $("play-go").addEventListener("click", guess);
   $("play-input").addEventListener("keydown", function (e) { if (e.key === "Enter") guess(); });
+  $("play-input").addEventListener("input", function () { syncTyping($("play-input").value); });
   $("play-quit").addEventListener("click", function () { finish(false, null); });
 
   function sendChat() {
@@ -3541,11 +4648,11 @@
     w = resolve(w);
     if (!(n > 0)) { say($("solve-notice"), "Rank is a whole number, 1 or higher."); return; }
     if (observations.some(function (o) { return o.word === w; })) {
-      say($("solve-notice"), w + " is already listed.");
+      say($("solve-notice"), tf("{word} is already listed.", { word: w }));
       return;
     }
     if (!inLexicon(w)) {
-      say($("solve-notice"), w + " isn't in this dictionary, so it can't steer the search. Try a plainer word.");
+      say($("solve-notice"), tf("{word} isn't in this dictionary, so it can't steer the search. Try a plainer word.", { word: w }));
       return;
     }
 
@@ -3696,10 +4803,16 @@
     var main = normalize($("cmp-main").value);
 
     if (!main) { say($("cmp-notice"), "Give a main word first."); return; }
+    var mainTyped = main !== resolve(main) ? main : null;
     main = resolve(main);
-    if (!inLexicon(main)) { say($("cmp-notice"), main + " isn't in this dictionary. Try a plainer word."); return; }
+    if (!inLexicon(main)) { say($("cmp-notice"), tf("{word} isn't in this dictionary. Try a plainer word.", { word: main })); return; }
 
-    var listed = readWords($("cmp-others").value).map(resolve).filter(function (w) { return w !== main; });
+    var typedOf = Object.create(null);
+    var listed = readWords($("cmp-others").value).map(function (raw) {
+      var w = resolve(raw);
+      if (typedOf[w] === undefined && raw !== w) typedOf[w] = raw;
+      return w;
+    }).filter(function (w) { return w !== main; });
     if (!listed.length) { say($("cmp-notice"), "Add at least one word to place against it."); return; }
 
     var seen = Object.create(null);
@@ -3711,20 +4824,20 @@
     });
 
     if (!known.length) {
-      say($("cmp-notice"), "None of those are in this dictionary: " + unknown.join(", ") + ".");
+      say($("cmp-notice"), tf("None of those are in this dictionary: {words}.", { words: unknown.join(", ") }));
       $("cmp-out").textContent = "";
       return;
     }
 
-    say($("cmp-notice"), unknown.length ? "Not in this dictionary: " + unknown.join(", ") + "." : "");
+    say($("cmp-notice"), unknown.length ? tf("Not in this dictionary: {words}.", { words: unknown.join(", ") }) : "");
 
-    var rows = known.map(function (w) { return { word: w, rank: rankOf(main, w) }; });
+    var rows = known.map(function (w) { return { word: w, rank: rankOf(main, w), typed: typedOf[w] || null }; });
 
     $("cmp-out").textContent = "";
 
     var heading = document.createElement("div");
     heading.className = "eyebrow";
-    heading.textContent = "against " + main;
+    heading.textContent = tf("against {word}", { word: show(main, mainTyped) });
     $("cmp-out").appendChild(heading);
 
     var list = document.createElement("ul");
@@ -3746,7 +4859,6 @@
   /* ================================================================
      8. BOOT
      ================================================================ */
-  $("dictline").textContent = V + " words · ranks computed here, offline";
   applyLang();
   paintPurse();
   renderAdminAvailability();
@@ -3790,6 +4902,8 @@
          "shop":   { ".read": true,
                      ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
          "announcements": { ".read": true,
+                     ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
+         "features": { ".read": true,
                      ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
 
          "admins":     { ".read": true, ".write": "auth != null && !data.exists()" },
@@ -3877,9 +4991,9 @@
   function noop() { return function () {}; }
 
   var LiveRoom = {
-    join: function () {}, leave: function () {}, updateProgress: function () {},
+    join: function () {}, leave: function () {}, updateProgress: function () {}, updateTyping: function () {},
     sendChat: function () {}, addGuess: function () {},
-    spectate: function () {}, stopSpectating: function () {},
+    spectate: function () {}, stopSpectating: function () {}, sendSpectatorChat: function () {},
     isRevealed: function () { return false; }, spectatorId: function () { return null; },
     revealSpectator: offline, hideSpectator: function () { return Promise.resolve(); }, kick: offline,
     ready: false, unavailable: false
@@ -3906,6 +5020,7 @@
     submitRequest: offline, onRequests: noop, markRequest: offline, deleteRequest: offline,
     setShopItems: offline, onShopItems: noop,
     postAnnouncement: offline, onAnnouncements: noop, deleteAnnouncement: offline,
+    setFeature: offline, onFeatures: noop,
     ready: false, unavailable: false
   };
 
@@ -3962,7 +5077,8 @@
           var val = snap.val() || {};
           callbacks.onPlayers(Object.keys(val).map(function (id) {
             var p = val[id] || {};
-            return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null, isMe: id === myId };
+            return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null,
+                     typing: p.typing || "", isMe: id === myId };
           }));
         }, function () { callbacks.onError && callbacks.onError(); });
 
@@ -3986,6 +5102,12 @@
       LiveRoom.leave = leave;
       LiveRoom.updateProgress = function (guesses, best) {
         if (current) dbMod.update(current.presenceRef, { guesses: guesses, best: best });
+      };
+      // Mirrors the input box live, so a spectator sees what's being typed
+      // before it's submitted as a guess. Debounced client-side (see the
+      // "input" listener on #play-input) so this isn't a write per keystroke.
+      LiveRoom.updateTyping = function (text) {
+        if (current) dbMod.update(current.presenceRef, { typing: text });
       };
       LiveRoom.sendChat = function (name, text) {
         if (current) dbMod.push(dbMod.ref(db, "rooms/" + current.code + "/chat"),
@@ -4026,7 +5148,8 @@
           var val = snap.val() || {};
           callbacks.onPlayers(Object.keys(val).map(function (id) {
             var p = val[id] || {};
-            return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null };
+            return { id: id, name: p.name || "Player", guesses: p.guesses || 0, best: p.best || null,
+                     typing: p.typing || "" };
           }));
         }, function () { callbacks.onError && callbacks.onError(); });
 
@@ -4068,6 +5191,15 @@
       };
       LiveRoom.kick = function (code, playerId) {
         return dbMod.remove(dbMod.ref(db, "rooms/" + code + "/players/" + playerId));
+      };
+      // Posts into a spectated room's chat without needing a presence entry
+      // there — same write a revealed spectator's own chat message would
+      // make, just addressed by the room the spectate subscription is
+      // watching instead of a joined room's own current.code.
+      LiveRoom.sendSpectatorChat = function (name, text) {
+        if (!spectating) return;
+        dbMod.push(dbMod.ref(db, "rooms/" + spectating.code + "/chat"),
+          { name: name, text: text, at: dbMod.serverTimestamp() });
       };
 
       LiveRoom.ready = true;
@@ -4238,6 +5370,20 @@
             list.sort(function (a, b) { return a.at - b.at; });
             cb(list);
           }, function () { cb([]); });
+      };
+
+      // One flat object of named on/off switches, so a new feature never
+      // needs a new database rule — just a new key inside the one node an
+      // admin can already write. onFeatures always calls back with an
+      // object (never null), so a call site can read features.race without
+      // a guard for "the node doesn't exist yet."
+      var featuresRef = dbMod.ref(db, "features");
+      AdminRoom.setFeature = function (name, on) {
+        return dbMod.update(featuresRef, on ? (function () { var p = {}; p[name] = true; return p; })()
+          : (function () { var p = {}; p[name] = null; return p; })());
+      };
+      AdminRoom.onFeatures = function (cb) {
+        return dbMod.onValue(featuresRef, function (s) { cb(s.val() || {}); }, function () { cb({}); });
       };
 
       AdminRoom.sendChat = function (name, text) {
