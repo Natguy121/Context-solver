@@ -695,6 +695,18 @@
 
   .gloss { color: var(--muted); font-size: var(--step-0); margin: 0; }
 
+  /* A gloss line, but meant to be noticed rather than read past — the one
+     spot on the setup screen that says a normal-looking online room is
+     about to behave differently. */
+  .gloss.race-note {
+    color: var(--accent);
+    font-weight: 600;
+    padding: 0.625rem 0.75rem;
+    background: var(--accent-wash);
+    border: 1px solid var(--accent-edge);
+    border-radius: var(--radius);
+  }
+
   .drop {
     appearance: none;
     background: none;
@@ -1202,6 +1214,8 @@
       </div>
 
       <div id="online-only" class="panel" hidden>
+        <p class="gloss race-note" id="online-race-note" hidden></p>
+
         <div class="field">
           <label class="key" for="online-name" data-i18n="your-name">your name</label>
           <input id="online-name" data-i18n-ph="ph-player" placeholder="Player" autocapitalize="words" spellcheck="false" />
@@ -1832,6 +1846,8 @@
       "ne l'activiez.",
     "race-publish": "Activer pour tout le monde",
     "Test race mode": "Tester le mode course", "Stop testing": "Arrêter le test",
+    "⚡ Race mode is on — the round ends for everyone the instant anyone finds the word.":
+      "⚡ Le mode course est activé — la partie se termine pour tout le monde dès que quelqu'un trouve le mot.",
     "add-item-key": "ajouter un article", "add-item": "Ajouter l'article", "reset-default": "Réinitialiser",
     "send-request": "envoyer une demande", "feature": "fonctionnalité", "bug": "bug",
     "everyone": "Tout le monde", "requests-bugs": "demandes et bugs", "admin-chat": "discussion admin",
@@ -3380,10 +3396,27 @@
     $("race-publish-btn").hidden = role !== "admin";
   }
 
+  // The setup screen's own heads-up: shown the moment "online" is picked,
+  // not tucked away in the admin panel, so a player finds out their round
+  // will end the instant someone else wins before they've even hosted or
+  // joined one — not partway through, when the round just stops.
+  function renderRaceStatusNote() {
+    var note = $("online-race-note");
+    // Checked here rather than left to the ancestor's own [hidden] — this
+    // runs from places that don't know or care which mode is selected
+    // (the features subscription, the test toggle), so the element's own
+    // hidden state has to be correct on its own instead of only ending up
+    // correct because #online-only happens to be hidden too.
+    var on = play.mode === "online" && raceModeActive();
+    note.hidden = !on;
+    if (on) note.textContent = t("⚡ Race mode is on — the round ends for everyone the instant anyone finds the word.");
+  }
+
   $("race-test-btn").addEventListener("click", function () {
     raceTestLocal = !raceTestLocal;
     try { localStorage.setItem("contexto-race-test", raceTestLocal ? "1" : "0"); } catch (e) {}
     renderRacePanel();
+    renderRaceStatusNote();
     adminSay(raceTestLocal
       ? "Race mode is on for your own games only — nobody else sees it."
       : "Back to normal for your own games.");
@@ -3396,6 +3429,7 @@
       // update the local copy and repaint right away, the same way
       // persistShopItems() doesn't wait to repaint the shop list either.
       features.race = true;
+      renderRaceStatusNote();
       renderRacePanel();
       adminSay("Race mode is on for everyone.");
     }).catch(adminDbNote);
@@ -3422,6 +3456,7 @@
     window.AdminRoom.onFeatures(function (map) {
       features = map;
       renderRacePanel();
+      renderRaceStatusNote();
     });
   }
 
@@ -3577,6 +3612,7 @@
       ? "Up to four of you on this phone, taking turns at one hidden word."
       : "Hide a word, send the code, and race it on your own phones.";
     say($("code-notice"), "");
+    if (mode === "online") renderRaceStatusNote();
   });
 
   pressGroup($("levels"), "level", function (level) { play.level = level; });
@@ -3824,6 +3860,13 @@
     note.className = "gloss";
     note.textContent = t("You don't know the word either, so you can play along.");
     card.appendChild(note);
+
+    if (raceModeActive()) {
+      var raceNote = document.createElement("p");
+      raceNote.className = "gloss race-note";
+      raceNote.textContent = t("⚡ Race mode is on — the round ends for everyone the instant anyone finds the word.");
+      card.appendChild(raceNote);
+    }
 
     var row = document.createElement("div");
     row.className = "row";
