@@ -1853,8 +1853,7 @@
       "⚡ Le mode course est activé — la partie se termine pour tout le monde dès que quelqu'un trouve le mot.",
     "Race mode is off for you — everyone else still races.":
       "Le mode course est désactivé pour vous — tout le monde continue à courir.",
-    "Turn race mode back on for me": "Réactiver le mode course pour moi",
-    "Turn off for me": "Désactiver pour moi",
+    "Turn on": "Activer", "Turn off": "Désactiver",
     "add-item-key": "ajouter un article", "add-item": "Ajouter l'article", "reset-default": "Réinitialiser",
     "send-request": "envoyer une demande", "feature": "fonctionnalité", "bug": "bug",
     "everyone": "Tout le monde", "requests-bugs": "demandes et bugs", "admin-chat": "discussion admin",
@@ -3433,10 +3432,10 @@
     optBtn.hidden = !globalOn;
     if (globalOn && raceOptOut) {
       note.textContent = t("Race mode is off for you — everyone else still races.");
-      optBtn.textContent = t("Turn race mode back on for me");
+      optBtn.textContent = t("Turn on");
     } else {
       note.textContent = t("⚡ Race mode is on — the round ends for everyone the instant anyone finds the word.");
-      optBtn.textContent = t("Turn off for me");
+      optBtn.textContent = t("Turn off");
     }
   }
 
