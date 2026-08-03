@@ -1364,6 +1364,16 @@
       <button type="button" id="admin-broadcast-send" data-i18n="post-everyone">Post to everyone</button>
     </div>
 
+    <div id="admin-race" hidden>
+      <span class="key" data-i18n="race-mode">race mode (beta)</span>
+      <p class="gloss" data-i18n="race-blurb">Ends an online round for everyone the moment anybody finds the word, instead
+        of each of you finishing on your own. Test it yourself first — nobody else sees it until you turn it on.</p>
+      <div class="row">
+        <button type="button" class="ghost" id="race-test-btn"></button>
+        <button type="button" id="race-publish-btn" data-i18n="race-publish">Turn on for everyone</button>
+      </div>
+    </div>
+
     <div id="admin-shop-editor" hidden>
       <div class="field">
         <span class="key" data-i18n="shop-items">shop items</span>
@@ -1816,6 +1826,12 @@
     "send-admins": "Envoyer aux admins", "admin": "admin",
     "post-update": "publier une actualité — tous les visiteurs la voient, vous seul pouvez publier",
     "post-everyone": "Publier pour tout le monde", "shop-items": "articles de la boutique",
+    "race-mode": "mode course (bêta)",
+    "race-blurb": "Termine une partie en ligne pour tout le monde dès que quelqu'un trouve le mot, au lieu que " +
+      "chacun finisse de son côté. Testez-le d'abord vous-même — personne d'autre ne le voit avant que vous " +
+      "ne l'activiez.",
+    "race-publish": "Activer pour tout le monde",
+    "Test race mode": "Tester le mode course", "Stop testing": "Arrêter le test",
     "add-item-key": "ajouter un article", "add-item": "Ajouter l'article", "reset-default": "Réinitialiser",
     "send-request": "envoyer une demande", "feature": "fonctionnalité", "bug": "bug",
     "everyone": "Tout le monde", "requests-bugs": "demandes et bugs", "admin-chat": "discussion admin",
@@ -1932,6 +1948,7 @@
 
     /* ---- the end of a round ---- */
     "the word was": "le mot était", "out of time — the word was": "temps écoulé — le mot était",
+    "{who} found it first — the word was": "{who} l'a trouvé en premier — le mot était",
     "found in {count}": "trouvé en {count}",
     "{who} found it — {count} between you": "{who} l'a trouvé — {count} à vous tous",
     "{who} found it — {count}": "{who} l'a trouvé — {count}",
@@ -2900,6 +2917,7 @@
     $("admin-spectate").hidden = !role;
     $("admin-requests").hidden = role !== "admin";
     $("admin-request-form").hidden = role !== "assistant";
+    renderRacePanel();
     adminSay("");
     if (role === "admin") { renderAdminItemList(); renderAdminRequestList(); renderEveryone(); }
   }
@@ -3326,6 +3344,55 @@
     }).catch(adminDbNote);
   });
 
+  /* ---------- race mode: a feature flag with its own dry run ----------
+     "features" is the one published, shared-by-everyone switch (empty
+     object until an admin turns something on — read by every visitor, no
+     login needed, same as the shop and the announcements feed). Turning
+     race mode on for real means every online round ends for every player
+     the instant anyone finds the word, not just the one who found it, so
+     there's a way to feel that out first: raceTestLocal is a flag that
+     never leaves this browser and only does anything for the admin who
+     set it, so trying it can't put a stranger's round into a mode they
+     never agreed to. Once the real switch flips, that local one stops
+     mattering — raceModeActive() only even looks at it while the
+     published flag is still off. */
+  var features = {};
+  var raceTestLocal = (function () {
+    try { return localStorage.getItem("contexto-race-test") === "1"; } catch (e) { return false; }
+  })();
+
+  function raceModeActive() {
+    return !!features.race || (raceTestLocal && myRole() === "admin");
+  }
+
+  function renderRacePanel() {
+    var box = $("admin-race");
+    if (myRole() !== "admin" || features.race) { box.hidden = true; return; }
+    box.hidden = false;
+    $("race-test-btn").textContent = t(raceTestLocal ? "Stop testing" : "Test race mode");
+  }
+
+  $("race-test-btn").addEventListener("click", function () {
+    raceTestLocal = !raceTestLocal;
+    try { localStorage.setItem("contexto-race-test", raceTestLocal ? "1" : "0"); } catch (e) {}
+    renderRacePanel();
+    adminSay(raceTestLocal
+      ? "Race mode is on for your own games only — nobody else sees it."
+      : "Back to normal for your own games.");
+  });
+
+  $("race-publish-btn").addEventListener("click", function () {
+    if (!window.AdminRoom) { adminDbNote(); return; }
+    window.AdminRoom.setFeature("race", true).then(function () {
+      // Don't wait on the subscription's own round-trip to hide the panel —
+      // update the local copy and repaint right away, the same way
+      // persistShopItems() doesn't wait to repaint the shop list either.
+      features.race = true;
+      renderRacePanel();
+      adminSay("Race mode is on for everyone.");
+    }).catch(adminDbNote);
+  });
+
   // The shop and the announcements feed are the same for every visitor,
   // admin or not, so they sync as soon as the shared database answers — no
   // password needed to read either, only to change them. Chat and the
@@ -3343,6 +3410,10 @@
     window.AdminRoom.onAnnouncements(function (list) {
       announceList = list;
       renderAnnounceLog();
+    });
+    window.AdminRoom.onFeatures(function (map) {
+      features = map;
+      renderRacePanel();
     });
   }
 
@@ -3665,6 +3736,17 @@
         },
         onGuesses: function (list) {
           play.liveRows = list;
+          // Race mode: the shared feed is already sorted by time, so the
+          // first rank-1 row in it is whoever found the word first. If
+          // that's someone else, the round ends here too, not just for
+          // them — that's the whole difference race mode makes. If it's
+          // my own guess, my own guess() already called finish() before
+          // this round-trip landed, so play.done is already true and this
+          // is a no-op.
+          if (raceModeActive() && !play.done) {
+            var winner = list.filter(function (g) { return g.rank === 1; })[0];
+            if (winner && winner.by !== play.myName) { finish(false, null, false, winner.by); return; }
+          }
           refreshPlay();
         },
         onError: function () {
@@ -3937,7 +4019,7 @@
     $("play-verdict").appendChild(card);
   }
 
-  function finish(won, who, ranOut) {
+  function finish(won, who, ranOut, racedBy) {
     play.done = true;
     clearTimeout(typingSyncTimer);
     stopClock();
@@ -3965,7 +4047,8 @@
     var key = document.createElement("div");
     key.className = "eyebrow";
     key.style.color = "var(--muted)";
-    if (!won) key.textContent = t(ranOut ? "out of time — the word was" : "the word was");
+    if (!won && racedBy) key.textContent = tf("{who} found it first — the word was", { who: racedBy });
+    else if (!won) key.textContent = t(ranOut ? "out of time — the word was" : "the word was");
     else if (shared) key.textContent = tf("{who} found it — {count} between you", { who: who, count: count });
     else key.textContent = tf("found in {count}", { count: count });
     card.appendChild(key);
@@ -4736,6 +4819,8 @@
                      ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
          "announcements": { ".read": true,
                      ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
+         "features": { ".read": true,
+                     ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
 
          "admins":     { ".read": true, ".write": "auth != null && !data.exists()" },
          "assistants": { ".read": true,
@@ -4851,6 +4936,7 @@
     submitRequest: offline, onRequests: noop, markRequest: offline, deleteRequest: offline,
     setShopItems: offline, onShopItems: noop,
     postAnnouncement: offline, onAnnouncements: noop, deleteAnnouncement: offline,
+    setFeature: offline, onFeatures: noop,
     ready: false, unavailable: false
   };
 
@@ -5200,6 +5286,20 @@
             list.sort(function (a, b) { return a.at - b.at; });
             cb(list);
           }, function () { cb([]); });
+      };
+
+      // One flat object of named on/off switches, so a new feature never
+      // needs a new database rule — just a new key inside the one node an
+      // admin can already write. onFeatures always calls back with an
+      // object (never null), so a call site can read features.race without
+      // a guard for "the node doesn't exist yet."
+      var featuresRef = dbMod.ref(db, "features");
+      AdminRoom.setFeature = function (name, on) {
+        return dbMod.update(featuresRef, on ? (function () { var p = {}; p[name] = true; return p; })()
+          : (function () { var p = {}; p[name] = null; return p; })());
+      };
+      AdminRoom.onFeatures = function (cb) {
+        return dbMod.onValue(featuresRef, function (s) { cb(s.val() || {}); }, function () { cb({}); });
       };
 
       AdminRoom.sendChat = function (name, text) {
