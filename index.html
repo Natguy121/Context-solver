@@ -1458,19 +1458,11 @@
 
     <div id="admin-race" hidden>
       <span class="key" data-i18n="race-mode">race mode (beta)</span>
-      <div id="race-setup">
-        <p class="gloss" data-i18n="race-blurb">Ends an online round for everyone the moment anybody finds the word, instead
-          of each of you finishing on your own. Test it yourself first — nobody else sees it until an admin turns it on.</p>
-        <div class="row">
-          <button type="button" class="ghost" id="race-test-btn"></button>
-          <button type="button" id="race-publish-btn" hidden data-i18n="race-publish">Turn on for everyone</button>
-        </div>
-      </div>
-      <div id="race-live" hidden>
-        <p class="gloss" data-i18n="race-live-blurb">Race mode is on for everyone right now.</p>
-        <div class="row">
-          <button type="button" class="ghost" id="race-off-btn" data-i18n="race-off">Turn off for everyone</button>
-        </div>
+      <p class="gloss" data-i18n="race-blurb">Ends an online round for everyone the moment anybody finds the word, instead
+        of each of you finishing on your own. Test it yourself first — nobody else sees it until an admin turns it on.</p>
+      <div class="row">
+        <button type="button" class="ghost" id="race-test-btn"></button>
+        <button type="button" id="race-publish-btn" hidden data-i18n="race-publish">Turn on for everyone</button>
       </div>
     </div>
 
@@ -1853,10 +1845,7 @@
       "chacun finisse de son côté. Testez-le d'abord vous-même — personne d'autre ne le voit avant que vous " +
       "ne l'activiez.",
     "race-publish": "Activer pour tout le monde",
-    "race-live-blurb": "Le mode course est activé pour tout le monde en ce moment.",
-    "race-off": "Désactiver pour tout le monde",
     "Test race mode": "Tester le mode course", "Stop testing": "Arrêter le test",
-    "Race mode is off for everyone.": "Le mode course est désactivé pour tout le monde.",
     "⚡ Race mode is on — the round ends for everyone the instant anyone finds the word.":
       "⚡ Le mode course est activé — la partie se termine pour tout le monde dès que quelqu'un trouve le mot.",
     "add-item-key": "ajouter un article", "add-item": "Ajouter l'article", "reset-default": "Réinitialiser",
@@ -3401,19 +3390,8 @@
   function renderRacePanel() {
     var box = $("admin-race");
     var role = myRole();
-    if (!role) { box.hidden = true; return; }
-    if (features.race) {
-      // Once it's live for everyone, only an admin can take it back down —
-      // an assistant has nothing to do here, same as before publish they
-      // had no publish button.
-      box.hidden = role !== "admin";
-      $("race-setup").hidden = true;
-      $("race-live").hidden = false;
-      return;
-    }
+    if (!role || features.race) { box.hidden = true; return; }
     box.hidden = false;
-    $("race-setup").hidden = false;
-    $("race-live").hidden = true;
     $("race-test-btn").textContent = t(raceTestLocal ? "Stop testing" : "Test race mode");
     $("race-publish-btn").hidden = role !== "admin";
   }
@@ -3454,16 +3432,6 @@
       renderRaceStatusNote();
       renderRacePanel();
       adminSay("Race mode is on for everyone.");
-    }).catch(adminDbNote);
-  });
-
-  $("race-off-btn").addEventListener("click", function () {
-    if (!window.AdminRoom) { adminDbNote(); return; }
-    window.AdminRoom.setFeature("race", false).then(function () {
-      features.race = false;
-      renderRaceStatusNote();
-      renderRacePanel();
-      adminSay("Race mode is off for everyone.");
     }).catch(adminDbNote);
   });
 
