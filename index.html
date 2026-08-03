@@ -2077,6 +2077,8 @@
     if (typeof renderSpectateProgress === "function") renderSpectateProgress();
     if (typeof refreshPlay === "function" && play && play.secret) refreshPlay();
     if (typeof paintCoach === "function" && tour && tour.on) paintCoach();
+    if (typeof renderRaceStatusNote === "function") renderRaceStatusNote();
+    if (typeof showCode === "function" && shownCode) showCode(shownCode);
   }
 
   $("lang-btn").addEventListener("click", function () {
@@ -3873,7 +3875,9 @@
     log.appendChild(empty);
   }
 
+  var shownCode = null;
   function showCode(code) {
+    shownCode = code;
     $("code-out").textContent = "";
 
     var card = document.createElement("div");
