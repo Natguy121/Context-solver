@@ -3039,13 +3039,9 @@
           '<button type="button" class="ghost grow give-hints">Give hints</button>' +
           '<button type="button" class="ghost grow take-hints">Take hints</button>' +
         '</div>' +
-        (adminUids[u.uid] ?
-          '<button type="button" class="ghost make-admin">Remove as admin</button>' :
-          '<div class="row">' +
-          '<button type="button" class="ghost grow make-assistant">' +
-          (assistantUids[u.uid] ? "Remove as assistant" : "Make assistant") + '</button>' +
-          '<button type="button" class="ghost grow make-admin">Make admin</button>' +
-          '</div>') +
+        (adminUids[u.uid] ? "" :
+          '<button type="button" class="ghost make-assistant">' +
+          (assistantUids[u.uid] ? "Remove as assistant" : "Make assistant") + '</button>') +
         '</li>';
     }).join("") || '<li class="chat-empty">Nobody has made an account yet.</li>';
   }
@@ -3070,15 +3066,6 @@
       window.AccountRoom.setAssistant(uid, making).then(function () {
         adminSay(making ? user.name + " is an assistant now."
                         : "Removed " + user.name + " as assistant.");
-      }).catch(adminDbNote);
-      return;
-    }
-
-    if (e.target.classList.contains("make-admin")) {
-      var makingAdmin = !adminUids[uid];
-      window.AccountRoom.setAdmin(uid, makingAdmin).then(function () {
-        adminSay(makingAdmin ? user.name + " is an admin now."
-                              : "Removed " + user.name + " as admin.");
       }).catch(adminDbNote);
       return;
     }
@@ -4923,8 +4910,7 @@
          "features": { ".read": true,
                      ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
 
-         "admins":     { ".read": true,
-                     ".write": "auth != null && (!data.exists() || root.child('admins').child(auth.uid).exists())" },
+         "admins":     { ".read": true, ".write": "auth != null && !data.exists()" },
          "assistants": { ".read": true,
                      ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
 
@@ -4980,10 +4966,8 @@
          admin can touch your row.
        - "admins" is writable exactly once, while it is still empty, by
          whoever is signed in at the time. That is the bootstrap: the
-         first person to press Claim admin becomes the admin. From then
-         on, only an existing admin can add or remove another one (the
-         "Make admin" / "Remove as admin" buttons in Everyone) — nobody
-         else can write to that node at all.
+         first person to press Claim admin becomes the admin, and after
+         that the node can only be changed from the Firebase console.
        - A gift is a note left in the recipient's inbox, which only they
          can read and clear. Nobody reaches into anyone's balance.
        - Any signed-in account can send a feature/bug request, and post
@@ -5029,7 +5013,7 @@
     lookupUsername: offline, claimUsername: offline,
     onProfile: noop, updateUser: offline, onAllUsers: noop,
     sendGift: offline, onGifts: noop, clearGift: offline,
-    onAdmins: noop, onAssistants: noop, claimAdmin: offline, setAssistant: offline, setAdmin: offline,
+    onAdmins: noop, onAssistants: noop, claimAdmin: offline, setAssistant: offline,
     findOpenGame: offline, openGame: offline, closeGame: offline, onOpenGames: noop,
     sendGlobalChat: offline, onGlobalChat: noop, voteGlobal: offline, deleteGlobalChat: offline,
     ready: false, unavailable: false
@@ -5301,9 +5285,6 @@
       };
       AccountRoom.setAssistant = function (uid, on) {
         return dbMod.set(dbMod.ref(db, "assistants/" + uid), on ? true : null);
-      };
-      AccountRoom.setAdmin = function (uid, on) {
-        return dbMod.set(dbMod.ref(db, "admins/" + uid), on ? true : null);
       };
 
       var GAME_FRESH_MS = 4 * 60 * 1000;
