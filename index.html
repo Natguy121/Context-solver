@@ -1336,6 +1336,28 @@
     <ul class="shop-list" id="shop-list-live"></ul>
     <p class="gloss" id="shop-notice" hidden></p>
 
+    <div id="shop-rename-box" hidden>
+      <div class="field">
+        <label class="key" for="shop-rename-input" data-i18n="new-username">new username</label>
+        <input id="shop-rename-input" maxlength="20" autocapitalize="words" autocorrect="off" spellcheck="false" />
+      </div>
+      <div class="row">
+        <button type="button" class="ghost grow" id="shop-rename-cancel" data-i18n="cancel">Cancel</button>
+        <button type="button" class="grow" id="shop-rename-confirm"></button>
+      </div>
+    </div>
+
+    <div id="shop-repass-box" hidden>
+      <div class="field">
+        <label class="key" for="shop-repass-input" data-i18n="new-password">new password</label>
+        <input id="shop-repass-input" type="password" autocomplete="new-password" data-i18n-ph="ph-six-chars" placeholder="at least six characters" />
+      </div>
+      <div class="row">
+        <button type="button" class="ghost grow" id="shop-repass-cancel" data-i18n="cancel">Cancel</button>
+        <button type="button" class="grow" id="shop-repass-confirm"></button>
+      </div>
+    </div>
+
     <div class="field">
       <span class="key" data-i18n="send-gift">send one as a gift</span>
       <p class="gloss" id="gift-note" data-i18n="gift-note">You pay the coins; the hints land in their account.</p>
@@ -1835,6 +1857,19 @@
     "compare-blurb": "Placez n'importe quel nombre de mots face à un mot principal, pour voir laquelle de deux propositions vaut le coup.",
     "main-word": "mot principal", "words-against": "mots à comparer", "rank-them": "Les classer",
     "shop-blurb": "Dépensez vos pièces pour augmenter vos indices et vos réglages de jeu.",
+    "new-username": "nouveau nom d'utilisateur", "new-password": "nouveau mot de passe", "cancel": "Annuler",
+    "Confirm": "Confirmer",
+    "Type a new username first.": "Tapez d'abord un nouveau nom d'utilisateur.",
+    "Sign in first — a username only means something on an account.":
+      "Connectez-vous d'abord — un nom d'utilisateur n'a de sens que pour un compte.",
+    "Sign in first — there's no password to change until you do.":
+      "Connectez-vous d'abord — il n'y a pas de mot de passe à changer avant ça.",
+    "Password changed.": "Mot de passe changé.",
+    "Couldn't reach the shared database, so that didn't go through. Try again in a moment.":
+      "Impossible de joindre la base de données partagée, donc ça n'est pas passé. Réessayez dans un instant.",
+    "That's a big enough change that you'll need to sign in again first — sign out, sign back in, then try once more.":
+      "C'est un changement assez important pour devoir vous reconnecter d'abord — déconnectez-vous, " +
+      "reconnectez-vous, puis réessayez.",
     "send-gift": "en envoyer un en cadeau", "gift-note": "Vous payez les pièces ; les indices arrivent sur son compte.",
     "send-gift-btn": "Envoyer le cadeau",
     "chat-blurb": "Tout le monde connecté peut écrire ici et voter oui ou non sur ce que disent les autres.",
@@ -1927,6 +1962,7 @@
     "ph-your-guess": "votre proposition", "ph-say-something": "dites quelque chose",
     "ph-player": "Joueur", "ph-word": "mot", "ph-rank": "rang", "ph-yourname": "votrenom",
     "ph-their-username": "son nom d'utilisateur", "ph-what-added": "Qu'est-ce qui devrait être ajouté ?",
+    "ph-six-chars": "au moins six caractères",
 
     "{total} words · ranks computed here, offline": "{total} mots · rangs calculés ici, hors ligne",
     "Hint": "Indice", "Sign in": "Se connecter",
@@ -2079,6 +2115,7 @@
     if (typeof paintCoach === "function" && tour && tour.on) paintCoach();
     if (typeof renderRaceStatusNote === "function") renderRaceStatusNote();
     if (typeof showCode === "function" && shownCode) showCode(shownCode);
+    if (typeof refreshShopBoxLabels === "function") refreshShopBoxLabels();
   }
 
   $("lang-btn").addEventListener("click", function () {
@@ -2258,7 +2295,28 @@
     price: 5, hints: 0, effect: "flash"
   };
 
-  function shopCatalog() { return shopItems.concat([FLASH_ITEM]); }
+  // Same fixed, never-admin-editable slot as the flash item, but these two
+  // don't fit the buy-and-done flow: buying one has to collect a new value
+  // first, so the actual coin spend happens on confirm, not on the click
+  // that opens the box (see buyItem()). Only meaningful signed in — an
+  // offline visitor has no username or password to change — so they're
+  // left out of the catalog entirely until an account exists.
+  var RENAME_ITEM = {
+    id: "change-username", name: "Change username",
+    note: "Pick a new name — it's what shows up everywhere in the game from then on.",
+    price: 5, hints: 0, effect: "rename"
+  };
+  var REPASS_ITEM = {
+    id: "change-password", name: "Change password",
+    note: "Set a new password for signing in.",
+    price: 3, hints: 0, effect: "repass"
+  };
+
+  function shopCatalog() {
+    var extra = [FLASH_ITEM];
+    if (account) extra.push(RENAME_ITEM, REPASS_ITEM);
+    return shopItems.concat(extra);
+  }
 
   // Set while signed in: { key, name, coins, hints }. The balance here mirrors
   // the account's row in the database, kept current by a live subscription, so
@@ -2371,6 +2429,11 @@
       shopSay("Not enough coins yet — one comes with every word you find.");
       return;
     }
+    // These two only take the coins once the new value is actually
+    // confirmed and applied — see shop-rename-confirm / shop-repass-confirm
+    // — so a cancelled or failed change never costs anything.
+    if (item.effect === "rename") { openRenameBox(); return; }
+    if (item.effect === "repass") { openRepassBox(); return; }
     store(PURSE_KEY, purse() - item.price);
     if (item.effect === "flash") {
       setOwnsFlash();
@@ -2381,6 +2444,71 @@
     store(HINT_KEY, hints() + item.hints);
     shopSay("Bought " + tally(item.hints, "hint", "hints") + ". " + tally(purse(), "coin", "coins") + " left.");
   }
+
+  function closeShopBoxes() {
+    $("shop-rename-box").hidden = true;
+    $("shop-repass-box").hidden = true;
+  }
+
+  function refreshShopBoxLabels() {
+    if (!$("shop-rename-box").hidden) {
+      $("shop-rename-confirm").textContent = t("Confirm") + " — " + tally(RENAME_ITEM.price, "coin", "coins");
+    }
+    if (!$("shop-repass-box").hidden) {
+      $("shop-repass-confirm").textContent = t("Confirm") + " — " + tally(REPASS_ITEM.price, "coin", "coins");
+    }
+  }
+
+  function openRenameBox() {
+    closeShopBoxes();
+    $("shop-rename-input").value = "";
+    $("shop-rename-confirm").textContent = t("Confirm") + " — " + tally(RENAME_ITEM.price, "coin", "coins");
+    $("shop-rename-box").hidden = false;
+    $("shop-rename-input").focus();
+  }
+
+  function openRepassBox() {
+    closeShopBoxes();
+    $("shop-repass-input").value = "";
+    $("shop-repass-confirm").textContent = t("Confirm") + " — " + tally(REPASS_ITEM.price, "coin", "coins");
+    $("shop-repass-box").hidden = false;
+    $("shop-repass-input").focus();
+  }
+
+  $("shop-rename-cancel").addEventListener("click", closeShopBoxes);
+  $("shop-repass-cancel").addEventListener("click", closeShopBoxes);
+
+  $("shop-rename-confirm").addEventListener("click", function () {
+    var display = $("shop-rename-input").value.trim().slice(0, 20);
+    if (!display) { shopSay("Type a new username first."); return; }
+    if (!account || !window.AccountRoom) { shopSay("Sign in first — a username only means something on an account."); return; }
+    if (purse() < RENAME_ITEM.price) { shopSay("Not enough coins yet — one comes with every word you find."); return; }
+    window.AccountRoom.updateUser(account.uid, { name: display }).then(function () {
+      account.name = display;
+      store(PURSE_KEY, purse() - RENAME_ITEM.price);
+      closeShopBoxes();
+      renderAccountPanel();
+      shopSay("Done — you're " + display + " now.");
+    }).catch(function () {
+      shopSay("Couldn't reach the shared database, so that didn't go through. Try again in a moment.");
+    });
+  });
+
+  $("shop-repass-confirm").addEventListener("click", function () {
+    var pass = $("shop-repass-input").value;
+    if (pass.length < 6) { shopSay("Firebase asks for at least six characters in a password."); return; }
+    if (!account || !window.Auth || !window.Auth.changePassword) {
+      shopSay("Sign in first — there's no password to change until you do.");
+      return;
+    }
+    if (purse() < REPASS_ITEM.price) { shopSay("Not enough coins yet — one comes with every word you find."); return; }
+    window.Auth.changePassword(pass).then(function () {
+      store(PURSE_KEY, purse() - REPASS_ITEM.price);
+      $("shop-repass-input").value = "";
+      closeShopBoxes();
+      shopSay("Password changed.");
+    }).catch(function (e) { shopSay(authTrouble(e)); });
+  });
 
   function paintPurse() {
     var coins = purse(), left = hints();
@@ -2557,6 +2685,10 @@
         code.indexOf("user-not-found") > -1) return "That username and password don't match an account.";
     if (code.indexOf("weak-password") > -1) return "That password is too easy to guess — try a longer one.";
     if (code.indexOf("too-many-requests") > -1) return "Too many tries. Wait a minute, then go again.";
+    if (code.indexOf("requires-recent-login") > -1) {
+      return "That's a big enough change that you'll need to sign in again first — sign out, " +
+             "sign back in, then try once more.";
+    }
     if (code.indexOf("operation-not-allowed") > -1) {
       return "Email/Password sign-in isn't switched on for this Firebase project yet — " +
              "turn it on under Authentication -> Sign-in method.";
@@ -5004,7 +5136,7 @@
   };
 
   var Auth = {
-    signUp: offline, signIn: offline, signOut: offline,
+    signUp: offline, signIn: offline, signOut: offline, changePassword: offline,
     onChange: noop, uid: function () { return null; },
     ready: false, unavailable: false
   };
@@ -5227,6 +5359,9 @@
           .then(function (cred) { return cred.user.uid; });
       };
       Auth.signOut = function () { return authMod.signOut(auth); };
+      Auth.changePassword = function (newPassword) {
+        return authMod.updatePassword(auth.currentUser, newPassword);
+      };
       Auth.onChange = function (cb) { return authMod.onAuthStateChanged(auth, cb); };
       Auth.uid = function () { return auth.currentUser ? auth.currentUser.uid : null; };
       Auth.ready = true;
