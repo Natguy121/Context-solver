@@ -1464,6 +1464,21 @@
       <button type="button" class="ghost" id="everyone-btn" data-i18n="everyone">Everyone</button>
       <div id="everyone-box" hidden>
         <ul class="shop-list" id="everyone-list"></ul>
+
+        <div id="admin-transfer">
+          <span class="key" data-i18n="transfer-balance">transfer balance</span>
+          <p class="gloss" data-i18n="transfer-blurb">For someone locked out of an old account: move its coins and
+            hints onto their new one, then it's safe to leave the old account behind.</p>
+          <div class="field">
+            <label class="key" for="transfer-from" data-i18n="transfer-from">from (old, locked-out username)</label>
+            <input id="transfer-from" autocapitalize="none" autocorrect="off" spellcheck="false" />
+          </div>
+          <div class="field">
+            <label class="key" for="transfer-to" data-i18n="transfer-to">to (new username)</label>
+            <input id="transfer-to" autocapitalize="none" autocorrect="off" spellcheck="false" />
+          </div>
+          <button type="button" id="transfer-go" data-i18n="transfer-go">Transfer balance</button>
+        </div>
       </div>
     </div>
 
@@ -1927,6 +1942,16 @@
     "add-item-key": "ajouter un article", "add-item": "Ajouter l'article", "reset-default": "Réinitialiser",
     "send-request": "envoyer une demande", "feature": "fonctionnalité", "bug": "bug",
     "everyone": "Tout le monde", "requests-bugs": "demandes et bugs", "admin-chat": "discussion admin",
+    "transfer-balance": "transférer un solde",
+    "transfer-blurb": "Pour quelqu'un bloqué hors d'un ancien compte : déplacez ses pièces et indices vers son " +
+      "nouveau compte, puis l'ancien compte peut être laissé de côté sans risque.",
+    "transfer-from": "depuis (ancien nom d'utilisateur, bloqué)", "transfer-to": "vers (nouveau nom d'utilisateur)",
+    "transfer-go": "Transférer le solde",
+    "Type both usernames first.": "Tapez d'abord les deux noms d'utilisateur.",
+    "Those are the same username.": "C'est le même nom d'utilisateur.",
+    "Looking both accounts up…": "Recherche des deux comptes…",
+    "Couldn't find one of those usernames — check the spelling.":
+      "Un de ces noms d'utilisateur est introuvable — vérifiez l'orthographe.",
     "spectate-room": "Observer une partie", "spectate-go": "Observer", "spectating": "Observation de",
     "show-myself": "Me montrer", "stop-spectating": "Arrêter d'observer",
     "invisible": "invisible", "visible to players": "visible pour les joueurs",
@@ -3282,6 +3307,52 @@
     window.AccountRoom.updateUser(uid, patch).then(function () {
       adminSay("Updated " + user.name + ".");
     }).catch(adminDbNote);
+  });
+
+  // For someone locked out of an old account: fold its balance into their
+  // new one by username, the same lookup the gift box already uses, then
+  // zero the old account out so nothing is double-counted if it's ever
+  // signed into again.
+  $("transfer-go").addEventListener("click", function () {
+    var fromName = cleanName($("transfer-from").value);
+    var toName = cleanName($("transfer-to").value);
+    if (!fromName || !toName) { adminSay("Type both usernames first."); return; }
+    if (fromName === toName) { adminSay("Those are the same username."); return; }
+    if (!window.AccountRoom) { adminDbNote(); return; }
+
+    adminSay("Looking both accounts up…");
+    Promise.all([
+      window.AccountRoom.lookupUsername(fromName),
+      window.AccountRoom.lookupUsername(toName)
+    ]).then(function (uids) {
+      var fromUid = uids[0], toUid = uids[1];
+      if (!fromUid || !toUid) throw new Error("nouser");
+      return Promise.all([
+        window.AccountRoom.getUser(fromUid),
+        window.AccountRoom.getUser(toUid)
+      ]).then(function (recs) {
+        var fromRec = recs[0] || {}, toRec = recs[1] || {};
+        var movedCoins = fromRec.coins || 0, movedHints = fromRec.hints || 0;
+        return Promise.all([
+          window.AccountRoom.updateUser(toUid, {
+            coins: (toRec.coins || 0) + movedCoins,
+            hints: (toRec.hints || 0) + movedHints,
+            flash: !!toRec.flash || !!fromRec.flash
+          }),
+          window.AccountRoom.updateUser(fromUid, { coins: 0, hints: 0, flash: false })
+        ]).then(function () {
+          $("transfer-from").value = "";
+          $("transfer-to").value = "";
+          adminSay("Moved " + tally(movedCoins, "coin", "coins") + " and " + tally(movedHints, "hint", "hints") +
+                   " from " + fromName + " to " + toName + ".");
+          if (!$("everyone-box").hidden) renderEveryone();
+        });
+      });
+    }).catch(function (e) {
+      adminSay(e && e.message === "nouser"
+        ? "Couldn't find one of those usernames — check the spelling."
+        : "Couldn't reach the shared database, so that didn't go through. Try again in a moment.");
+    });
   });
 
   /* ---------- spectate: watch a room's roster without joining it ----------
@@ -5227,7 +5298,7 @@
 
   var AccountRoom = {
     lookupUsername: offline, claimUsername: offline,
-    onProfile: noop, updateUser: offline, onAllUsers: noop,
+    onProfile: noop, updateUser: offline, onAllUsers: noop, getUser: offline,
     sendGift: offline, onGifts: noop, clearGift: offline,
     onAdmins: noop, onAssistants: noop, claimAdmin: offline, setAssistant: offline,
     findOpenGame: offline, openGame: offline, closeGame: offline, onOpenGames: noop,
@@ -5458,6 +5529,12 @@
       };
       AccountRoom.onProfile = function (uid, cb) {
         return dbMod.onValue(dbMod.ref(db, "users/" + uid), function (s) { cb(s.val()); });
+      };
+      // A one-time read rather than a subscription — the transfer tool
+      // only ever needs a snapshot of a balance at the moment it's moving
+      // it, not a live feed of it.
+      AccountRoom.getUser = function (uid) {
+        return dbMod.get(dbMod.ref(db, "users/" + uid)).then(function (s) { return s.val(); });
       };
       AccountRoom.updateUser = function (uid, patch) {
         return dbMod.update(dbMod.ref(db, "users/" + uid), patch);
