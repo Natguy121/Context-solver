@@ -1056,6 +1056,8 @@
   }
   .colophon p { margin: 0; }
   .colophon b { font-weight: 600; color: var(--ink); }
+  .colophon summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  .colophon summary:hover { text-decoration: underline; }
 
   /* ---------- win flash: a bought cosmetic, not a gameplay signal ----------
      Two bright pulses about a second apart, well under the ~3/second rate
@@ -1130,7 +1132,7 @@
     <p class="gloss" id="tour-cta">
       <span data-i18n="new-here">New here?</span> <a href="#" id="start-tour" data-i18n="take-tour">Take the tour</a><span data-i18n="tour-after"> — it deals you a real round and talks you through it.</span>
     </p>
-    <p class="gloss">
+    <p class="gloss" id="save-cta">
       <a href="#" id="save-copy" data-i18n="save-page">Save this page</a><span data-i18n="save-after"> to play with no connection, no account, on any device.</span>
     </p>
   </header>
@@ -1572,10 +1574,11 @@
     <button type="button" class="linkish" id="admin-close" data-i18n="close">Close</button>
   </section>
 
-  <div class="colophon">
+  <details class="colophon">
+    <summary data-i18n="rank-how-toggle">Curious how the ranks are made?</summary>
     <p><b data-i18n="rank-how-title">How the ranks are made.</b> <span data-i18n="rank-how-body">Every word here carries a hundred numbers, blended from two models: GloVe, which read six billion words of Wikipedia and newswire and learned what keeps company with what, and counter-fitted vectors, tuned so that words meaning the same thing sit together while merely-related ones drift apart. Two words are scored by the angle between them, then all fifty thousand are sorted against the target. Rank 1 is the word itself.</span></p>
     <p data-i18n="rank-how-offline">The whole model runs in this page. Nothing is sent anywhere, and it works with no connection.</p>
-  </div>
+  </details>
 </div>
 
 <script>
@@ -2055,6 +2058,7 @@
     "save-after": " pour jouer sans connexion, sans compte, sur n'importe quel appareil.",
 
     /* ---- how the ranks are made ---- */
+    "rank-how-toggle": "Curieux de savoir comment les rangs sont faits ?",
     "rank-how-title": "Comment les rangs sont calculés.",
     "rank-how-body": "Chaque mot ici porte cent nombres, issus de deux modèles combinés : GloVe, qui a lu six " +
       "milliards de mots de Wikipédia et de dépêches et appris quels mots se côtoient, et des vecteurs " +
@@ -4129,6 +4133,13 @@
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
+  // Onboarding text ("New here?", "Save this page") has nothing to do
+  // once a round is already under way — it just competes with the guess
+  // box for attention. Tucked away while playing, back the moment you
+  // return to the setup screen.
+  function hideIntro() { $("tour-cta").hidden = true; $("save-cta").hidden = true; }
+  function showIntro() { $("tour-cta").hidden = false; $("save-cta").hidden = false; }
+
   function beginGame(secret, code) {
     clearTimeout(typingSyncTimer);
     if (window.LiveRoom) window.LiveRoom.leave();
@@ -4165,6 +4176,7 @@
 
     simsFor(secret);
     startClock();
+    hideIntro();
     $("play-setup").hidden = true;
     $("play-live").hidden = false;
     $("play-controls").hidden = false;
@@ -4511,6 +4523,7 @@
     again.addEventListener("click", function () {
       $("play-live").hidden = true;
       $("play-setup").hidden = false;
+      showIntro();
       document.querySelector(".wrap").classList.remove("wide-play");
       $("code-out").textContent = "";
       $("code-in").value = "";
@@ -4623,6 +4636,7 @@
     again.addEventListener("click", function () {
       $("play-live").hidden = true;
       $("play-setup").hidden = false;
+      showIntro();
       document.querySelector(".wrap").classList.remove("wide-play");
       $("code-out").textContent = "";
       $("code-in").value = "";
