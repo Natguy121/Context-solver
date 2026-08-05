@@ -427,6 +427,17 @@
   }
   .admin-btn:hover { color: var(--ink); }
   .admin-btn.is-on { color: var(--accent); }
+  .admin-btn.has-alerts { position: relative; }
+  .admin-btn.has-alerts::after {
+    content: "";
+    position: absolute;
+    top: -0.3em;
+    right: -0.6em;
+    width: 0.5em;
+    height: 0.5em;
+    border-radius: 50%;
+    background: var(--danger, #d3453a);
+  }
 
   /* The four accent-keyed blocks — admin, account, announcements, coach —
      all say "this is set apart from the page" the same way, so they share
@@ -1151,6 +1162,20 @@
         <button type="button" class="grow" id="account-signin" data-i18n="sign-in">Sign in</button>
         <button type="button" class="ghost grow" id="account-create" data-i18n="create-account">Create account</button>
       </div>
+      <button type="button" class="linkish" id="forgot-pass-link" data-i18n="forgot-password">Forgot your password?</button>
+
+      <div id="forgot-pass-box" hidden>
+        <p class="gloss" data-i18n="forgot-pass-blurb">Nobody can look up or recover a password — not even an admin.
+          This just lets an admin know you're locked out, so they can reach out and help sort it out.</p>
+        <div class="field">
+          <label class="key" for="forgot-pass-username" data-i18n="username">username</label>
+          <input id="forgot-pass-username" maxlength="20" autocapitalize="none" autocorrect="off" spellcheck="false" />
+        </div>
+        <div class="row">
+          <button type="button" class="ghost grow" id="forgot-pass-cancel" data-i18n="cancel">Cancel</button>
+          <button type="button" class="grow" id="forgot-pass-send" data-i18n="send">Send</button>
+        </div>
+      </div>
     </div>
 
     <div id="account-signed-in" hidden>
@@ -1839,6 +1864,12 @@
     "account-blurb": "Un compte garde vos pièces et indices sur tous vos appareils, et permet aux autres joueurs de vous envoyer des cadeaux.",
     "account-no-info": "Inventez simplement un nom d'utilisateur et un mot de passe — pas besoin de votre vrai nom, " +
       "d'e-mail, ni d'aucune information personnelle.",
+    "forgot-password": "Mot de passe oublié ?",
+    "forgot-pass-blurb": "Personne ne peut retrouver ou récupérer un mot de passe — même pas un admin. Ceci prévient " +
+      "simplement un admin que vous êtes bloqué, pour qu'il puisse vous aider à régler ça.",
+    "Type the username you're locked out of first.": "Tapez d'abord le nom d'utilisateur dont vous êtes bloqué.",
+    "Can't reach the accounts service from here right now.": "Impossible de joindre le service de comptes pour le moment.",
+    "Sent — an admin will reach out to sort it out.": "Envoyé — un admin vous contactera pour régler ça.",
     "username": "nom d'utilisateur", "password": "mot de passe", "create-account": "Créer un compte",
     "account-id": "Identifiant de compte :", "claim-admin": "Devenir admin", "sign-out": "Se déconnecter",
     "tab-play": "jouer", "tab-solve": "solveur", "tab-compare": "comparer", "tab-shop": "boutique", "tab-chat": "discussion",
@@ -2763,6 +2794,34 @@
     if (e.key === "Enter") $("account-signin").click();
   });
 
+  // Nothing here can look a password up, recover it, or reset it without
+  // the account's own sign-in — this just relays "so-and-so is locked
+  // out" into the same request queue feature/bug reports already use, so
+  // an admin notices and can reach the person some other way (private
+  // chat, in person, whatever). Open to anyone signed out, since being
+  // signed out is exactly the situation this is for.
+  $("forgot-pass-link").addEventListener("click", function () {
+    $("forgot-pass-username").value = cleanName($("account-name").value);
+    $("forgot-pass-box").hidden = false;
+    $("forgot-pass-username").focus();
+  });
+
+  $("forgot-pass-cancel").addEventListener("click", function () {
+    $("forgot-pass-box").hidden = true;
+  });
+
+  $("forgot-pass-send").addEventListener("click", function () {
+    var uname = cleanName($("forgot-pass-username").value);
+    if (!uname) { accountSay("Type the username you're locked out of first."); return; }
+    if (!window.AdminRoom) { accountSay("Can't reach the accounts service from here right now."); return; }
+    window.AdminRoom.submitRequest("account", "Locked out — forgot the password.", uname).then(function () {
+      $("forgot-pass-box").hidden = true;
+      accountSay("Sent — an admin will reach out to sort it out.");
+    }).catch(function () {
+      accountSay("Couldn't reach the shared database, so that didn't go through. Try again in a moment.");
+    });
+  });
+
   $("claim-admin").addEventListener("click", function () {
     if (!account) return;
     accountSay("Claiming…");
@@ -3054,11 +3113,17 @@
     }).join("") || '<li class="chat-empty">No items yet.</li>';
   }
 
+  function requestLabel(type) {
+    if (type === "bug") return "Bug";
+    if (type === "account") return "Password help";
+    return "Feature";
+  }
+
   function renderAdminRequestList() {
     var ul = $("admin-request-list");
     ul.innerHTML = lastRequests.map(function (r) {
       return '<li data-id="' + r.id + '"><div><span class="shop-name">' +
-        (r.type === "bug" ? "Bug" : "Feature") + " — " + escapeHtml(r.by || "assistant") +
+        requestLabel(r.type) + " — " + escapeHtml(r.by || "assistant") +
         (r.done ? " (done)" : "") + '</span><span class="shop-note">' + escapeHtml(r.text) + '</span></div>' +
         '<div class="row"><button type="button" class="ghost admin-req-done">' +
         (r.done ? "Reopen" : "Mark done") + '</button>' +
@@ -3638,7 +3703,17 @@
     window.AdminRoom.onRequests(function (list) {
       lastRequests = list;
       if (adminRole() === "admin" && !$("admin-panel").hidden) renderAdminRequestList();
+      renderRequestAlert();
     });
+  }
+
+  // A dot on the admin button itself, so a password-help request doesn't
+  // sit unseen until the admin happens to open the panel and the requests
+  // list within it — full admin only, since only they can see that list.
+  function renderRequestAlert() {
+    var pending = adminRole() === "admin" &&
+      lastRequests.some(function (r) { return r.type === "account" && !r.done; });
+    $("admin-btn").classList.toggle("has-alerts", pending);
   }
 
   window.addEventListener("adminroom-ready", function () {
@@ -5075,7 +5150,7 @@
 
          "requests": {
            ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())",
-           ".write": "auth != null"
+           ".write": "auth != null || newData.child('type').val() === 'account'"
          },
          "adminchat": {
            ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())",
@@ -5108,7 +5183,10 @@
          can read and clear. Nobody reaches into anyone's balance.
        - Any signed-in account can send a feature/bug request, and post
          or vote in global chat, but only an admin or assistant can read
-         the request queue. A global chat message can't be edited once
+         the request queue. "Forgot your password?" writes into that same
+         queue and is the one thing in this whole page a signed-out
+         visitor can write at all — nothing else opens up for them. A
+         global chat message can't be edited once
          posted; a vote is writable only by the uid it belongs to.
        - What is still NOT enforced is a player's own balance. Their
          browser writes their own coins, so a determined person can give
