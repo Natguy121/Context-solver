@@ -8,200 +8,118 @@
 
 **Project:** Contexto
 **Generated:** 2026-08-05 10:52:32
+**Updated:** 2026-08-05 (replaced with the style actually in the repo — see note below)
 **Category:** Casual Puzzle Game
+
+> The ui-ux-pro-max skill's original suggestion here was Claymorphism (soft,
+> bubbly, 16–24px corners) with a green/amber palette and Google-hosted
+> Baloo 2 / Comic Neue fonts. Neither was applied: the repo already has an
+> explicit, deliberately chosen style ("Bolder & sharper" — sharp corners,
+> deep shadows, electric violet), and a web-font import would break this
+> page's core "works with no connection" requirement. This file documents
+> the style actually shipping in `contexto.html`/`index.html` instead.
 
 ---
 
 ## Global Rules
 
-### Color Palette
+### Color Palette (light theme)
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#15803D` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#059669` | `--color-secondary` |
-| Accent/CTA | `#D97706` | `--color-accent` |
-| Background | `#FFFFFF` | `--color-background` |
-| Foreground | `#0F172A` | `--color-foreground` |
-| Muted | `#F0F7F3` | `--color-muted` |
-| Border | `#E2EFE7` | `--color-border` |
-| Destructive | `#DC2626` | `--color-destructive` |
-| Ring | `#15803D` | `--color-ring` |
+| Ground (page background) | `#F1F0F6` | `--ground` |
+| Surface (cards, inputs) | `#FFFFFF` | `--surface` |
+| Sunken | `#E7E5EF` | `--sunken` |
+| Ink (body text) | `#191725` | `--ink` |
+| Muted (secondary text) | `#6A6680` | `--muted` |
+| Rule (borders/dividers) | `#DEDBE8` | `--rule` |
+| Accent / Focus | `#4B1FCB` | `--accent`, `--focus` |
+| Danger | `#C0392B` | `--danger` |
 
-**Color Notes:** Word green + letter amber
+Accent is an electric violet (chosen specifically to read as a real color
+choice, not a greyed-down tint — contrast against ground is 7.86:1).
+`--accent-wash`, `--accent-edge`, `--ring`, `--glow` are all derived from
+`--accent`/`--focus` via `color-mix()`, not separately hand-picked hexes.
+
+### Color Palette (dark theme)
+
+| Role | Hex | CSS Variable |
+|------|-----|--------------|
+| Ground | `#131220` | `--ground` |
+| Surface | `#1C1A2B` | `--surface` |
+| Sunken | `#262338` | `--sunken` |
+| Ink | `#ECEAF4` | `--ink` |
+| Muted | `#9793AC` | `--muted` |
+| Rule | `#2E2B43` | `--rule` |
+| Accent / Focus | `#B18AFF` | `--accent`, `--focus` |
+| Danger | `#E8705C` | `--danger` |
+
+Dark-theme shadows lean on a hairline top highlight rather than cast
+shadow (shadows read as murk on dark backgrounds).
+
+Applied automatically via `@media (prefers-color-scheme: dark)`, or
+forced either way with `data-theme="light"` / `data-theme="dark"` on
+`<html>` (the in-page toggle sets this).
 
 ### Typography
 
-- **Heading Font:** Baloo 2
-- **Body Font:** Comic Neue
-- **Mood:** kids, education, playful, friendly, colorful, learning
-- **Google Fonts:** [Baloo 2 + Comic Neue](https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&display=swap)
+- **Font stack:** system fonts only — no web-font import, by design (see
+  note above).
+- **Serif** (headings, wordmark): `ui-serif, "Iowan Old Style", Charter, Georgia, Cambria, serif`
+- **Sans** (body, UI chrome): `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`
+- **Mono** (numbers, codes, ranks): `ui-monospace, Menlo, "SF Mono", "Cascadia Mono", monospace`
+- **Type scale:** `--step-0` 0.9375rem … `--step-4` fluid `clamp(2.125rem, 1.6rem + 2.6vw, 3rem)`, plus `--micro` 0.6875rem for eyebrow/label text.
 
-**CSS Import:**
-```css
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&display=swap');
-```
+### Radius
 
-### Spacing Variables
+Sharp, near-square corners are deliberate — part of the "Bolder & sharper"
+tone chosen for this page, not an unfinished rounding value.
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-xs` | `4px` / `0.25rem` | Tight gaps |
-| `--space-sm` | `8px` / `0.5rem` | Icon gaps, inline spacing |
-| `--space-md` | `16px` / `1rem` | Standard padding |
-| `--space-lg` | `24px` / `1.5rem` | Section padding |
-| `--space-xl` | `32px` / `2rem` | Large gaps |
-| `--space-2xl` | `48px` / `3rem` | Section margins |
-| `--space-3xl` | `64px` / `4rem` | Hero padding |
+| Token | Value |
+|-------|-------|
+| `--radius` | `1px` |
+| `--radius-lg` | `2px` |
 
-### Shadow Depths
+### Shadows
 
-| Level | Value | Usage |
-|-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | Subtle lift |
-| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.1)` | Cards, buttons |
-| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modals, dropdowns |
-| `--shadow-xl` | `0 20px 25px rgba(0,0,0,0.15)` | Hero images, featured cards |
+Deeper and darker than a typical paper-lift shadow on purpose — the page
+is meant to feel like it has weight.
 
----
+| Token | Light theme | Dark theme |
+|-------|-------------|------------|
+| `--lift-1` | `0 1px 2px rgba(17,15,28,.14)` | `0 1px 2px rgba(0,0,0,.3)` |
+| `--lift-2` | `0 2px 3px rgba(17,15,28,.16), 0 8px 20px rgba(17,15,28,.18)` | `0 1px 2px rgba(0,0,0,.34), 0 4px 12px rgba(0,0,0,.3)` |
+| `--lift-3` | `0 3px 6px rgba(17,15,28,.20), 0 20px 40px rgba(17,15,28,.26)` | `0 2px 4px rgba(0,0,0,.38), 0 12px 28px rgba(0,0,0,.36)` |
 
-## Component Specs
+### Difficulty-driven accent (play screen only)
 
-### Buttons
-
-```css
-/* Primary Button */
-.btn-primary {
-  background: #D97706;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-/* Secondary Button */
-.btn-secondary {
-  background: transparent;
-  color: #15803D;
-  border: 2px solid #15803D;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-```
-
-### Cards
-
-```css
-.card {
-  background: #FFFFFF;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-```
-
-### Inputs
-
-```css
-.input {
-  padding: 12px 16px;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: border-color 200ms ease;
-}
-
-.input:focus {
-  border-color: #15803D;
-  outline: none;
-  box-shadow: 0 0 0 3px #15803D20;
-}
-```
-
-### Modals
-
-```css
-.modal-overlay {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
-
-.modal {
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: var(--shadow-xl);
-  max-width: 500px;
-  width: 90%;
-}
-```
+`data-play-level` on `<html>` (set when a round starts) escalates the
+accent color with the chosen difficulty — cool/calm for easy, hot for
+nightmare — scoped to `#play-live` so it never bleeds into the setup
+picker's own level colors.
 
 ---
 
-## Style Guidelines
+## Anti-Patterns (Do NOT Use in this repo)
 
-**Style:** Claymorphism
+- ❌ Any web font / external font import — breaks offline play
+- ❌ Rounded corners beyond `--radius-lg` (2px) — fights the deliberate sharp tone
+- ❌ Resizing `.roster-item button` to a generic touch-target minimum — its
+  compact size is intentional (see comment above that rule in the CSS);
+  it's also an admin-only control, not a control aimed at the game's
+  younger players
+- ❌ Muted/washed-out color choices — the accent violet was specifically
+  saturated up from an earlier muted version for this reason
+- ❌ Invisible focus states — already handled correctly (`:focus-visible`
+  gets a replacement ring/outline everywhere `outline: none` is set, never
+  just removed)
 
-**Keywords:** Soft 3D, chunky, playful, toy-like, bubbly, thick borders (3-4px), double shadows, rounded (16-24px)
+## Still Worth Checking Against the Original Recommendation
 
-**Best For:** Educational apps, children's apps, SaaS platforms, creative tools, fun-focused, onboarding, casual games
+These general-purpose checks from the skill's audit are style-agnostic and
+still apply here:
 
-**Key Effects:** Inner+outer shadows (subtle, no hard lines), soft press (200ms ease-out), fluffy elements, smooth transitions
-
-### Page Pattern
-
-**Pattern Name:** Feature-Rich Showcase + Social Proof
-
-- **CTA Placement:** Above fold
-- **Section Order:** Hero > Features > CTA
-
----
-
-## Anti-Patterns (Do NOT Use)
-
-- ❌ Muted colors
-- ❌ Low energy
-
-### Additional Forbidden Patterns
-
-- ❌ **Emojis as icons** — Use SVG icons (Heroicons, Lucide, Simple Icons)
-- ❌ **Missing cursor:pointer** — All clickable elements must have cursor:pointer
-- ❌ **Layout-shifting hovers** — Avoid scale transforms that shift layout
-- ❌ **Low contrast text** — Maintain 4.5:1 minimum contrast ratio
-- ❌ **Instant state changes** — Always use transitions (150-300ms)
-- ❌ **Invisible focus states** — Focus states must be visible for a11y
-
----
-
-## Pre-Delivery Checklist
-
-Before delivering any UI code, verify:
-
-- [ ] No emojis used as icons (use SVG instead)
-- [ ] All icons from consistent icon set (Heroicons/Lucide)
-- [ ] `cursor-pointer` on all clickable elements
-- [ ] Hover states with smooth transitions (150-300ms)
-- [ ] Light mode: text contrast 4.5:1 minimum
-- [ ] Focus states visible for keyboard navigation
+- [ ] Light mode: text contrast 4.5:1 minimum (spot-checked already: `--ink` on `--ground`/`--surface` and `--muted` on `--surface` both clear this)
 - [ ] `prefers-reduced-motion` respected
-- [ ] Responsive: 375px, 768px, 1024px, 1440px
-- [ ] No content hidden behind fixed navbars
 - [ ] No horizontal scroll on mobile
+- [ ] Primary interactive elements (guess input, Guess/Hint buttons, difficulty/player pickers) keep ≥44px touch targets — confirmed via `min-height: 3rem` on `.field input`/primary buttons
