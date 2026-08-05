@@ -1271,7 +1271,7 @@
         <div class="field">
           <label class="key" for="code-in" data-i18n="open-code">or open a friend's code</label>
           <div class="row">
-            <input class="grow code-input" id="code-in" placeholder="K7P2" maxlength="5"
+            <input class="grow code-input" id="code-in" placeholder="K7P2QX" maxlength="7"
                    autocapitalize="characters" autocorrect="off" spellcheck="false" />
             <button type="button" class="ghost" id="use-code" data-i18n="open">Open</button>
           </div>
@@ -1497,7 +1497,7 @@
       <button type="button" class="ghost" id="spectate-btn" data-i18n="spectate-room">Spectate a room</button>
       <div id="spectate-box" hidden>
         <div class="row">
-          <input class="grow code-input" id="spectate-code" placeholder="K7P2" maxlength="5"
+          <input class="grow code-input" id="spectate-code" placeholder="K7P2QX" maxlength="7"
                  autocapitalize="characters" autocorrect="off" spellcheck="false" />
           <button type="button" class="ghost" id="spectate-go" data-i18n="spectate-go">Spectate</button>
         </div>
@@ -2026,7 +2026,7 @@
     "Live sync isn't set up for this copy of the game — you can still play, just without seeing others.": "La synchronisation en direct n'est pas configurée pour cette copie du jeu — vous pouvez toujours jouer, mais sans voir les autres.",
     "Connecting…": "Connexion…",
     "One plain word, letters only.": "Un seul mot, lettres uniquement.",
-    "That code doesn't work — check the four characters and try again.": "Ce code ne fonctionne pas — vérifiez les quatre caractères et réessayez.",
+    "That code doesn't work — check the six characters and try again.": "Ce code ne fonctionne pas — vérifiez les six caractères et réessayez.",
     "Make a guess first — a hint is worked out from what you've already tried.": "Faites d'abord une proposition — un indice se base sur ce que vous avez déjà essayé.",
     "Type a plain word first.": "Entrez d'abord un mot simple.",
     "Rank is a whole number, 1 or higher.": "Le rang est un nombre entier, 1 ou plus.",
@@ -3591,7 +3591,7 @@
 
   $("spectate-go").addEventListener("click", function () {
     var raw = $("spectate-code").value;
-    if (readCode(raw) === null) { spectateSay("That code doesn't work — check the four characters and try again."); return; }
+    if (readCode(raw) === null) { spectateSay("That code doesn't work — check the six characters and try again."); return; }
     startSpectating(String(raw).toUpperCase().replace(/[^0-9A-Z]/g, ""));
   });
 
@@ -4073,17 +4073,29 @@
     return (sum % 36).toString(36).toUpperCase();
   }
 
+  // Two random characters, not derived from the word at all — without
+  // them, hosting the same secret word twice (or two different people's
+  // games both randomly landing on the same word) would always produce
+  // the exact same code, and the second game would walk straight into
+  // the first one's room instead of getting a fresh one of its own.
+  function randomSalt() {
+    var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", salt = "";
+    for (var i = 0; i < 2; i++) salt += chars.charAt(Math.floor(Math.random() * chars.length));
+    return salt;
+  }
+
   function makeCode(index) {
     var body = ((index * CODE_A + CODE_B) % CODE_M).toString(36).toUpperCase();
     while (body.length < 3) body = "0" + body;
-    return body + checkChar(body);
+    var salt = randomSalt();
+    return body + salt + checkChar(body + salt);
   }
 
   function readCode(raw) {
     var code = String(raw || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
-    if (code.length !== 4) return null;
-    var body = code.slice(0, 3);
-    if (checkChar(body) !== code.slice(3)) return null;
+    if (code.length !== 6) return null;
+    var body = code.slice(0, 3), salt = code.slice(3, 5);
+    if (checkChar(body + salt) !== code.slice(5)) return null;
     var n = parseInt(body, 36);
     if (!(n >= 0 && n < CODE_M)) return null;
     var index = (((n - CODE_B) % CODE_M + CODE_M) % CODE_M) * CODE_INV % CODE_M;
@@ -4718,7 +4730,7 @@
   $("use-code").addEventListener("click", function () {
     var index = readCode($("code-in").value);
     if (index === null) {
-      say($("code-notice"), "That code doesn't work — check the four characters and try again.");
+      say($("code-notice"), "That code doesn't work — check the six characters and try again.");
       return;
     }
     say($("code-notice"), "");
@@ -5475,11 +5487,25 @@
       /* ---------- the live room ---------- */
       function leave() {
         if (!current) return;
+        var code = current.code;
+        var presenceRef = current.presenceRef;
         current.unsubPlayers();
         current.unsubChat();
         current.unsubGuesses();
-        dbMod.remove(current.presenceRef).catch(function () {});
         current = null;
+        // Best-effort cleanup: once the room's own players list comes back
+        // empty, there's nothing left to keep its chat and guess history
+        // around for, so the whole room gets cleared out rather than
+        // sitting in the database forever. This only fires for a graceful
+        // leave (quitting, switching modes, hiding a word) — a tab closed
+        // outright still only drops that one presence row via
+        // onDisconnect below, since there's no server-side hook here to
+        // notice afterward that the room emptied out.
+        dbMod.remove(presenceRef).then(function () {
+          return dbMod.get(dbMod.ref(db, "rooms/" + code + "/players"));
+        }).then(function (snap) {
+          if (!snap.exists()) return dbMod.remove(dbMod.ref(db, "rooms/" + code));
+        }).catch(function () {});
       }
 
       function join(code, name, callbacks) {
