@@ -1352,10 +1352,6 @@
         <label class="key" for="shop-repass-input" data-i18n="new-password">new password</label>
         <input id="shop-repass-input" type="password" autocomplete="new-password" data-i18n-ph="ph-six-chars" placeholder="at least six characters" />
       </div>
-      <div class="field">
-        <label class="key" for="shop-repass-code" data-i18n="confirmation-code">confirmation code</label>
-        <input id="shop-repass-code" inputmode="numeric" autocomplete="off" data-i18n-ph="ph-six-digit" placeholder="six-digit code" />
-      </div>
       <div class="row">
         <button type="button" class="ghost grow" id="shop-repass-cancel" data-i18n="cancel">Cancel</button>
         <button type="button" class="grow" id="shop-repass-confirm"></button>
@@ -1862,8 +1858,6 @@
     "main-word": "mot principal", "words-against": "mots à comparer", "rank-them": "Les classer",
     "shop-blurb": "Dépensez vos pièces pour augmenter vos indices et vos réglages de jeu.",
     "new-username": "nouveau nom d'utilisateur", "new-password": "nouveau mot de passe", "cancel": "Annuler",
-    "confirmation-code": "code de confirmation",
-    "That confirmation code isn't right.": "Ce code de confirmation n'est pas le bon.",
     "Confirm": "Confirmer",
     "Type a new username first.": "Tapez d'abord un nouveau nom d'utilisateur.",
     "Sign in first — a username only means something on an account.":
@@ -1968,7 +1962,7 @@
     "ph-your-guess": "votre proposition", "ph-say-something": "dites quelque chose",
     "ph-player": "Joueur", "ph-word": "mot", "ph-rank": "rang", "ph-yourname": "votrenom",
     "ph-their-username": "son nom d'utilisateur", "ph-what-added": "Qu'est-ce qui devrait être ajouté ?",
-    "ph-six-chars": "au moins six caractères", "ph-six-digit": "code à six chiffres",
+    "ph-six-chars": "au moins six caractères",
 
     "{total} words · ranks computed here, offline": "{total} mots · rangs calculés ici, hors ligne",
     "Hint": "Indice", "Sign in": "Se connecter",
@@ -2473,16 +2467,9 @@
     $("shop-rename-input").focus();
   }
 
-  // A fixed code rather than anything account-specific — this page has no
-  // server to keep a real secret on, so anyone reading the source can see
-  // it. All it buys is a speed bump against changing a password by
-  // accident or on a whim, not real protection against someone determined.
-  var REPASS_CODE = "679033";
-
   function openRepassBox() {
     closeShopBoxes();
     $("shop-repass-input").value = "";
-    $("shop-repass-code").value = "";
     $("shop-repass-confirm").textContent = t("Confirm") + " — " + tally(REPASS_ITEM.price, "coin", "coins");
     $("shop-repass-box").hidden = false;
     $("shop-repass-input").focus();
@@ -2510,10 +2497,6 @@
   $("shop-repass-confirm").addEventListener("click", function () {
     var pass = $("shop-repass-input").value;
     if (pass.length < 6) { shopSay("Firebase asks for at least six characters in a password."); return; }
-    if ($("shop-repass-code").value.trim() !== REPASS_CODE) {
-      shopSay("That confirmation code isn't right.");
-      return;
-    }
     if (!account || !window.Auth || !window.Auth.changePassword) {
       shopSay("Sign in first — there's no password to change until you do.");
       return;
