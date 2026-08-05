@@ -4755,6 +4755,16 @@
     var fresh = $("play-ladder").querySelector(".reading");
     if (fresh && rank === 1) fresh.classList.add("fresh");
 
+    // The ladder is sorted by rank, not by guess order, so a new guess can
+    // land anywhere in it — scroll straight to wherever that turned out to
+    // be, rather than leaving it to sit off-screen with only the .landed
+    // glow (already applied by refreshPlay/reading()) to show for it.
+    var landedRow = $("play-ladder").querySelector(".reading.landed");
+    if (landedRow) {
+      var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      landedRow.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+    }
+
     if (rank === 1) finish(true, who);
     else { tourSaw("guess"); $("play-input").focus(); }
   }
