@@ -1184,7 +1184,7 @@
           open, or come back to it later; it remembers where you left off.</p>
         <ul class="chat-log" id="forgot-pass-chat-log"></ul>
         <div class="row">
-          <input class="grow" id="forgot-pass-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" />
+          <input class="grow" id="forgot-pass-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" aria-label="Message to the admin" />
           <button type="button" class="ghost" id="forgot-pass-chat-send" data-i18n="send">Send</button>
         </div>
         <button type="button" class="linkish" id="forgot-pass-chat-done" data-i18n="done">Done</button>
@@ -1198,7 +1198,7 @@
       <button type="button" class="linkish" id="account-signout" data-i18n="sign-out">Sign out</button>
     </div>
 
-    <p class="gloss" id="account-notice" hidden></p>
+    <p class="gloss" id="account-notice" aria-live="polite" hidden></p>
   </section>
 
   <nav class="tabs" role="tablist">
@@ -1279,7 +1279,7 @@
           </div>
         </div>
 
-        <p class="notice" id="code-notice" hidden></p>
+        <p class="notice" id="code-notice" aria-live="polite" hidden></p>
         <p class="gloss" data-i18n="code-room-note">Everyone who opens the same code joins the same live room — you'll see who else is playing and can chat, but each of you guesses on your own. Needs a connection; offline mode doesn't.</p>
       </div>
     </div>
@@ -1304,12 +1304,12 @@
         </aside>
 
         <div class="row" id="play-controls">
-          <input class="grow" id="play-input" data-i18n-ph="ph-your-guess" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" />
+          <input class="grow" id="play-input" data-i18n-ph="ph-your-guess" placeholder="your guess" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Your guess" />
           <button id="play-go" data-i18n="guess">Guess</button>
           <button type="button" class="ghost" id="play-hint" data-i18n="hint">Hint</button>
         </div>
 
-        <p class="notice" id="play-notice" hidden></p>
+        <p class="notice" id="play-notice" aria-live="polite" hidden></p>
         <ul class="readings" id="play-ladder"></ul>
         <button class="linkish" id="play-quit" data-i18n="give-up">give up</button>
       </div>
@@ -1317,13 +1317,13 @@
       <aside class="roster" id="roster" hidden>
         <div class="eyebrow" data-i18n="whos-here">who's in this game</div>
         <ul class="roster-list" id="roster-list"></ul>
-        <p class="notice" id="live-notice" hidden></p>
+        <p class="notice" id="live-notice" aria-live="polite" hidden></p>
 
         <div id="chat-box" hidden>
           <div class="eyebrow chat-eyebrow" data-i18n="chat">chat</div>
           <ul class="chat-log" id="chat-log"></ul>
           <div class="row">
-            <input class="grow" id="chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" />
+            <input class="grow" id="chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" aria-label="Chat message" />
             <button type="button" class="ghost" id="chat-send" data-i18n="send">Send</button>
           </div>
         </div>
@@ -1336,12 +1336,12 @@
     <p class="gloss" data-i18n="solve-blurb">Playing the real Contexto elsewhere? Type the ranks it gave you. Each one narrows which word fits.</p>
 
     <div class="row">
-      <input class="grow" id="obs-word" data-i18n-ph="ph-word" placeholder="word" autocapitalize="none" autocorrect="off" spellcheck="false" />
-      <input class="fixed num" id="obs-rank" data-i18n-ph="ph-rank" placeholder="rank" inputmode="numeric" />
+      <input class="grow" id="obs-word" data-i18n-ph="ph-word" placeholder="word" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Word" />
+      <input class="fixed num" id="obs-rank" data-i18n-ph="ph-rank" placeholder="rank" inputmode="numeric" aria-label="Rank" />
       <button id="obs-add" data-i18n="add">Add</button>
     </div>
 
-    <p class="notice" id="solve-notice" hidden></p>
+    <p class="notice" id="solve-notice" aria-live="polite" hidden></p>
 
     <ul class="readings" id="obs-list"></ul>
     <p class="empty" id="obs-empty" data-i18n="obs-empty">No ranks yet. Start with a broad word — water, money, city — and enter whatever number comes back.</p>
@@ -1366,7 +1366,7 @@
     </div>
 
     <button class="wide" id="cmp-go" data-i18n="rank-them">Rank them</button>
-    <p class="notice" id="cmp-notice" hidden></p>
+    <p class="notice" id="cmp-notice" aria-live="polite" hidden></p>
     <div id="cmp-out"></div>
   </section>
 
@@ -1374,7 +1374,7 @@
   <section class="panel" id="panel-shop" role="tabpanel" aria-labelledby="tab-shop" hidden>
     <p class="gloss" data-i18n="shop-blurb">Spend coins to boost your hints and game settings.</p>
     <ul class="shop-list" id="shop-list-live"></ul>
-    <p class="gloss" id="shop-notice" hidden></p>
+    <p class="gloss" id="shop-notice" aria-live="polite" hidden></p>
 
     <div id="shop-rename-box" hidden>
       <div class="field">
@@ -1401,12 +1401,12 @@
     <div class="field">
       <span class="key" data-i18n="send-gift">send one as a gift</span>
       <p class="gloss" id="gift-note" data-i18n="gift-note">You pay the coins; the hints land in their account.</p>
-      <input id="gift-to" data-i18n-ph="ph-their-username" placeholder="their username" autocapitalize="none" autocorrect="off" spellcheck="false" />
+      <input id="gift-to" data-i18n-ph="ph-their-username" placeholder="their username" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Their username" />
       <div class="row">
         <select id="gift-item" class="grow"></select>
         <button type="button" class="ghost" id="gift-send" data-i18n="send-gift-btn">Send gift</button>
       </div>
-      <p class="gloss" id="gift-notice" hidden></p>
+      <p class="gloss" id="gift-notice" aria-live="polite" hidden></p>
     </div>
   </section>
 
@@ -1415,17 +1415,17 @@
     <p class="gloss" data-i18n="chat-blurb">Everyone signed in can post here and vote yes or no on what others say.</p>
     <ul class="chat-log" id="global-chat-log"><li class="chat-empty" data-i18n="no-messages">No messages yet.</li></ul>
     <div class="row">
-      <input class="grow" id="global-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="200" autocomplete="off" />
+      <input class="grow" id="global-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="200" autocomplete="off" aria-label="Chat message" />
       <button type="button" class="ghost" id="global-chat-send" data-i18n="send">Send</button>
     </div>
-    <p class="gloss" id="global-chat-notice" hidden></p>
+    <p class="gloss" id="global-chat-notice" aria-live="polite" hidden></p>
 
     <div class="field">
       <button type="button" class="wide ghost" id="suggest-feature-btn" data-i18n="suggest-feature">Suggest a feature</button>
       <div id="suggest-feature-box" hidden>
         <textarea id="suggest-feature-text" rows="3" data-i18n-ph="ph-what-added" placeholder="What should be added?"></textarea>
         <button type="button" id="suggest-feature-send" data-i18n="send-admins">Send to the admins</button>
-        <p class="gloss" id="suggest-feature-notice" hidden></p>
+        <p class="gloss" id="suggest-feature-notice" aria-live="polite" hidden></p>
       </div>
     </div>
   </section>
@@ -1450,11 +1450,11 @@
       </div>
       <div class="field">
         <span class="key" data-i18n="add-item-key">add an item</span>
-        <input id="admin-new-name" placeholder="item name" autocapitalize="none" autocorrect="off" />
-        <input id="admin-new-note" placeholder="short description" autocapitalize="none" autocorrect="off" />
+        <input id="admin-new-name" placeholder="item name" autocapitalize="none" autocorrect="off" aria-label="Item name" />
+        <input id="admin-new-note" placeholder="short description" autocapitalize="none" autocorrect="off" aria-label="Item description" />
         <div class="row">
-          <input class="num fixed" id="admin-new-price" type="number" min="1" placeholder="coins" />
-          <input class="num fixed" id="admin-new-hints" type="number" min="1" placeholder="hints" />
+          <input class="num fixed" id="admin-new-price" type="number" min="1" placeholder="coins" aria-label="Price in coins" />
+          <input class="num fixed" id="admin-new-hints" type="number" min="1" placeholder="hints" aria-label="Hints included" />
           <button type="button" class="grow" id="admin-add-item" data-i18n="add-item">Add item</button>
         </div>
       </div>
@@ -1500,7 +1500,7 @@
       <div id="spectate-box" hidden>
         <div class="row">
           <input class="grow code-input" id="spectate-code" placeholder="K7P2QX" maxlength="7"
-                 autocapitalize="characters" autocorrect="off" spellcheck="false" />
+                 autocapitalize="characters" autocorrect="off" spellcheck="false" aria-label="Room code" />
           <button type="button" class="ghost" id="spectate-go" data-i18n="spectate-go">Spectate</button>
         </div>
         <ul class="shop-list" id="spectate-open-list"></ul>
@@ -1527,12 +1527,12 @@
             <div class="eyebrow chat-eyebrow" data-i18n="chat">chat</div>
             <ul class="chat-log" id="spectate-chat-log"></ul>
             <div class="row">
-              <input class="grow" id="spectate-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" />
+              <input class="grow" id="spectate-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" aria-label="Chat message" />
               <button type="button" class="ghost" id="spectate-chat-send" data-i18n="send">Send</button>
             </div>
           </div>
         </div>
-        <p class="gloss" id="spectate-notice" hidden></p>
+        <p class="gloss" id="spectate-notice" aria-live="polite" hidden></p>
       </div>
     </div>
 
@@ -1554,7 +1554,7 @@
         <p class="gloss" id="admin-request-chat-who"></p>
         <ul class="chat-log" id="admin-request-chat-log"></ul>
         <div class="row">
-          <input class="grow" id="admin-request-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" />
+          <input class="grow" id="admin-request-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" aria-label="Reply message" />
           <button type="button" class="ghost" id="admin-request-chat-send" data-i18n="send">Send</button>
         </div>
         <button type="button" class="linkish" id="admin-request-chat-close" data-i18n="close">Close</button>
@@ -1565,12 +1565,12 @@
       <span class="key" data-i18n="admin-chat">admin chat</span>
       <ul class="chat-log" id="admin-chat-log"><li class="chat-empty" data-i18n="no-messages">No messages yet.</li></ul>
       <div class="row">
-        <input class="grow" id="admin-chat-input" placeholder="message the other admin…" maxlength="280" autocomplete="off" />
+        <input class="grow" id="admin-chat-input" placeholder="message the other admin…" maxlength="280" autocomplete="off" aria-label="Message the other admin" />
         <button type="button" class="fixed" id="admin-chat-send" data-i18n="send">Send</button>
       </div>
     </div>
 
-    <p class="gloss" id="admin-notice" hidden></p>
+    <p class="gloss" id="admin-notice" aria-live="polite" hidden></p>
     <button type="button" class="linkish" id="admin-close" data-i18n="close">Close</button>
   </section>
 
@@ -3204,11 +3204,11 @@
     var ul = $("admin-item-list");
     ul.innerHTML = shopItems.map(function (item, idx) {
       return '<li class="admin-item-row" data-idx="' + idx + '">' +
-        '<input class="admin-name" value="' + escapeHtml(item.name) + '" placeholder="name" />' +
-        '<input class="admin-note" value="' + escapeHtml(item.note || "") + '" placeholder="description" />' +
+        '<input class="admin-name" value="' + escapeHtml(item.name) + '" placeholder="name" aria-label="Item name" />' +
+        '<input class="admin-note" value="' + escapeHtml(item.note || "") + '" placeholder="description" aria-label="Item description" />' +
         '<div class="row">' +
-          '<input class="num fixed admin-price" type="number" min="1" value="' + item.price + '" />' +
-          '<input class="num fixed admin-hints" type="number" min="1" value="' + item.hints + '" />' +
+          '<input class="num fixed admin-price" type="number" min="1" value="' + item.price + '" aria-label="Price in coins" />' +
+          '<input class="num fixed admin-hints" type="number" min="1" value="' + item.hints + '" aria-label="Hints included" />' +
           '<button type="button" class="ghost grow admin-save-item">Save</button>' +
           '<button type="button" class="ghost admin-del-item">Delete</button>' +
         '</div></li>';
@@ -3336,7 +3336,7 @@
         '<span class="who"><span>' + escapeHtml(u.name) + escapeHtml(badge) + '</span>' +
         '<b>' + tally(u.coins, "coin", "coins") + " · " + tally(u.hints, "hint", "hints") + '</b></span>' +
         '<div class="row">' +
-          '<input class="num fixed give-amount" type="number" min="1" value="1" />' +
+          '<input class="num fixed give-amount" type="number" min="1" value="1" aria-label="Amount" />' +
           '<button type="button" class="ghost grow give-coins">Give coins</button>' +
           '<button type="button" class="ghost grow take-coins">Take coins</button>' +
         '</div>' +

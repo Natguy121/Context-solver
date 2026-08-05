@@ -114,12 +114,13 @@ picker's own level colors.
   gets a replacement ring/outline everywhere `outline: none` is set, never
   just removed)
 
-## Still Worth Checking Against the Original Recommendation
+## Style-Agnostic Checks From the Skill's Audit
 
-These general-purpose checks from the skill's audit are style-agnostic and
-still apply here:
+Applied where they didn't conflict with anything above:
 
-- [ ] Light mode: text contrast 4.5:1 minimum (spot-checked already: `--ink` on `--ground`/`--surface` and `--muted` on `--surface` both clear this)
-- [ ] `prefers-reduced-motion` respected
-- [ ] No horizontal scroll on mobile
-- [ ] Primary interactive elements (guess input, Guess/Hint buttons, difficulty/player pickers) keep ≥44px touch targets — confirmed via `min-height: 3rem` on `.field input`/primary buttons
+- [x] Light mode: text contrast 4.5:1 minimum — `--ink` on `--ground`/`--surface` and `--muted` on `--surface` both clear this
+- [x] `prefers-reduced-motion` respected — seven separate `@media` blocks handle it, both gating (`no-preference`) and fallback (`reduce`)
+- [x] No horizontal scroll on mobile — confirmed via `css_audit.js`
+- [x] Primary interactive elements (guess input, Guess/Hint buttons, difficulty/player pickers) keep ≥44px touch targets — `min-height: 3rem` on `.field input`/primary buttons
+- [x] Every `<input>` has an accessible name — either a `<label for>` or, for the 20 compact/chat/dynamic-row inputs that only had a placeholder before, an `aria-label`. Zero visual change; screen readers previously had nothing to announce for these.
+- [x] Status/error messages are announced to assistive tech — all 12 `*-notice` elements (account, code, play, live, solve, compare, shop, gift, global chat, feature request, spectate, admin) now carry `aria-live="polite"`, so things like "That code doesn't work" or "Copied!" get spoken, not just shown visually.
