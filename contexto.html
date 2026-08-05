@@ -1176,6 +1176,17 @@
           <button type="button" class="grow" id="forgot-pass-send" data-i18n="send">Send</button>
         </div>
       </div>
+
+      <div id="forgot-pass-chat" hidden>
+        <p class="gloss" data-i18n="forgot-pass-chat-blurb">Sent — an admin will reply right here. Keep this page
+          open, or come back to it later; it remembers where you left off.</p>
+        <ul class="chat-log" id="forgot-pass-chat-log"></ul>
+        <div class="row">
+          <input class="grow" id="forgot-pass-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" />
+          <button type="button" class="ghost" id="forgot-pass-chat-send" data-i18n="send">Send</button>
+        </div>
+        <button type="button" class="linkish" id="forgot-pass-chat-done" data-i18n="done">Done</button>
+      </div>
     </div>
 
     <div id="account-signed-in" hidden>
@@ -1536,6 +1547,16 @@
     <div id="admin-requests" hidden>
       <span class="key" data-i18n="requests-bugs">requests &amp; bugs</span>
       <ul class="shop-list" id="admin-request-list"></ul>
+
+      <div id="admin-request-chat" hidden>
+        <p class="gloss" id="admin-request-chat-who"></p>
+        <ul class="chat-log" id="admin-request-chat-log"></ul>
+        <div class="row">
+          <input class="grow" id="admin-request-chat-input" data-i18n-ph="ph-say-something" placeholder="say something" maxlength="140" autocomplete="off" />
+          <button type="button" class="ghost" id="admin-request-chat-send" data-i18n="send">Send</button>
+        </div>
+        <button type="button" class="linkish" id="admin-request-chat-close" data-i18n="close">Close</button>
+      </div>
     </div>
 
     <div class="field">
@@ -1885,6 +1906,9 @@
     "Type the username you're locked out of first.": "Tapez d'abord le nom d'utilisateur dont vous êtes bloqué.",
     "Can't reach the accounts service from here right now.": "Impossible de joindre le service de comptes pour le moment.",
     "Sent — an admin will reach out to sort it out.": "Envoyé — un admin vous contactera pour régler ça.",
+    "forgot-pass-chat-blurb": "Envoyé — un admin répondra ici même. Gardez cette page ouverte, ou revenez-y plus " +
+      "tard ; elle se souvient où vous en étiez.",
+    "done": "Terminé", "Nothing yet — an admin will reply here.": "Rien pour l'instant — un admin répondra ici.",
     "username": "nom d'utilisateur", "password": "mot de passe", "create-account": "Créer un compte",
     "account-id": "Identifiant de compte :", "claim-admin": "Devenir admin", "sign-out": "Se déconnecter",
     "tab-play": "jouer", "tab-solve": "solveur", "tab-compare": "comparer", "tab-shop": "boutique", "tab-chat": "discussion",
@@ -2810,6 +2834,10 @@
     window.Auth.signIn(f.name, f.pass).then(function () {
       $("account-pass").value = "";
       accountSay("");
+      // A successful sign-in means whatever this browser was locked out
+      // of, it isn't anymore — clear any leftover forgot-password thread
+      // so it doesn't linger in a stale "waiting for reply" state.
+      if (typeof closeForgotChat === "function") closeForgotChat();
       $("tab-play").click();
       nudgeTour();
     }).catch(function (e) { accountSay(authTrouble(e)); });
@@ -2822,9 +2850,41 @@
   // Nothing here can look a password up, recover it, or reset it without
   // the account's own sign-in — this just relays "so-and-so is locked
   // out" into the same request queue feature/bug reports already use, so
-  // an admin notices and can reach the person some other way (private
-  // chat, in person, whatever). Open to anyone signed out, since being
-  // signed out is exactly the situation this is for.
+  // an admin notices, plus a small private chat scoped to that one
+  // request so the two of them can actually talk without either one
+  // needing an account. Open to anyone signed out, since being signed
+  // out is exactly the situation this is for. The request id is kept in
+  // localStorage so reloading the page (same browser) reopens the same
+  // thread instead of starting a new request.
+  var FORGOT_ID_KEY = "contexto-forgot-req-id";
+  var forgotChatUnsub = null;
+
+  function openForgotChat(reqId) {
+    if (forgotChatUnsub) { forgotChatUnsub(); forgotChatUnsub = null; }
+    $("forgot-pass-box").hidden = true;
+    $("forgot-pass-chat").hidden = false;
+    resetChatLog("forgot-pass-chat-log", "Nothing yet — an admin will reply here.");
+    if (window.AdminRoom && window.AdminRoom.onRequestChat) {
+      forgotChatUnsub = window.AdminRoom.onRequestChat(reqId, function (msg) {
+        if (!msg) return;
+        appendChatLine("forgot-pass-chat-log", msg, msg.name === "You");
+      });
+    }
+  }
+
+  function closeForgotChat() {
+    if (forgotChatUnsub) { forgotChatUnsub(); forgotChatUnsub = null; }
+    try { localStorage.removeItem(FORGOT_ID_KEY); } catch (e) {}
+    $("forgot-pass-chat").hidden = true;
+    $("forgot-pass-box").hidden = true;
+  }
+
+  function resumeForgotChat() {
+    var reqId;
+    try { reqId = localStorage.getItem(FORGOT_ID_KEY); } catch (e) { reqId = null; }
+    if (reqId) openForgotChat(reqId);
+  }
+
   $("forgot-pass-link").addEventListener("click", function () {
     $("forgot-pass-username").value = cleanName($("account-name").value);
     $("forgot-pass-box").hidden = false;
@@ -2839,13 +2899,26 @@
     var uname = cleanName($("forgot-pass-username").value);
     if (!uname) { accountSay("Type the username you're locked out of first."); return; }
     if (!window.AdminRoom) { accountSay("Can't reach the accounts service from here right now."); return; }
-    window.AdminRoom.submitRequest("account", "Locked out — forgot the password.", uname).then(function () {
-      $("forgot-pass-box").hidden = true;
-      accountSay("Sent — an admin will reach out to sort it out.");
+    window.AdminRoom.submitRequest("account", "Locked out — forgot the password.", uname).then(function (reqId) {
+      try { localStorage.setItem(FORGOT_ID_KEY, reqId); } catch (e) {}
+      openForgotChat(reqId);
     }).catch(function () {
       accountSay("Couldn't reach the shared database, so that didn't go through. Try again in a moment.");
     });
   });
+
+  function sendForgotChat() {
+    var input = $("forgot-pass-chat-input");
+    var text = input.value.trim();
+    var reqId;
+    try { reqId = localStorage.getItem(FORGOT_ID_KEY); } catch (e) { reqId = null; }
+    if (!text || !reqId || !window.AdminRoom) return;
+    input.value = "";
+    window.AdminRoom.sendRequestChat(reqId, "You", text);
+  }
+  $("forgot-pass-chat-send").addEventListener("click", sendForgotChat);
+  $("forgot-pass-chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendForgotChat(); });
+  $("forgot-pass-chat-done").addEventListener("click", closeForgotChat);
 
   $("claim-admin").addEventListener("click", function () {
     if (!account) return;
@@ -3150,7 +3223,9 @@
       return '<li data-id="' + r.id + '"><div><span class="shop-name">' +
         requestLabel(r.type) + " — " + escapeHtml(r.by || "assistant") +
         (r.done ? " (done)" : "") + '</span><span class="shop-note">' + escapeHtml(r.text) + '</span></div>' +
-        '<div class="row"><button type="button" class="ghost admin-req-done">' +
+        '<div class="row">' +
+        (r.type === "account" ? '<button type="button" class="ghost admin-req-reply">Reply</button>' : "") +
+        '<button type="button" class="ghost admin-req-done">' +
         (r.done ? "Reopen" : "Mark done") + '</button>' +
         '<button type="button" class="ghost admin-req-del">Delete</button></div></li>';
     }).join("") || '<li class="chat-empty">Nothing yet.</li>';
@@ -3574,8 +3649,45 @@
       window.AdminRoom.markRequest(id, !r.done).catch(adminDbNote);
     } else if (e.target.classList.contains("admin-req-del")) {
       window.AdminRoom.deleteRequest(id).catch(adminDbNote);
+    } else if (e.target.classList.contains("admin-req-reply") && r) {
+      openReqChat(r);
     }
   });
+
+  // The admin's half of the same per-request thread the locked-out
+  // visitor sees — scoped to one request id, so replying here never
+  // touches (or requires) either side having an account.
+  var openReqChatId = null;
+  var adminReqChatUnsub = null;
+
+  function openReqChat(r) {
+    if (adminReqChatUnsub) { adminReqChatUnsub(); adminReqChatUnsub = null; }
+    openReqChatId = r.id;
+    $("admin-request-chat-who").textContent = "Chatting with " + (r.by || "them");
+    resetChatLog("admin-request-chat-log", "Nothing yet.");
+    $("admin-request-chat").hidden = false;
+    adminReqChatUnsub = window.AdminRoom.onRequestChat(r.id, function (msg) {
+      if (!msg) return;
+      appendChatLine("admin-request-chat-log", msg, msg.name === "Admin");
+    });
+  }
+
+  function closeReqChat() {
+    if (adminReqChatUnsub) { adminReqChatUnsub(); adminReqChatUnsub = null; }
+    openReqChatId = null;
+    $("admin-request-chat").hidden = true;
+  }
+
+  function sendReqChat() {
+    var input = $("admin-request-chat-input");
+    var text = input.value.trim();
+    if (!text || !openReqChatId || !window.AdminRoom) return;
+    input.value = "";
+    window.AdminRoom.sendRequestChat(openReqChatId, "Admin", text);
+  }
+  $("admin-request-chat-send").addEventListener("click", sendReqChat);
+  $("admin-request-chat-input").addEventListener("keydown", function (e) { if (e.key === "Enter") sendReqChat(); });
+  $("admin-request-chat-close").addEventListener("click", closeReqChat);
 
   function appendAdminChatLine(msg) {
     var log = $("admin-chat-log");
@@ -3790,6 +3902,7 @@
   window.addEventListener("adminroom-ready", function () {
     subscribeShopSync();
     subscribeAdminChannels();
+    resumeForgotChat();
   });
 
   // Who holds which role is read straight off the database, by everyone, so
@@ -5222,7 +5335,8 @@
          "requests": {
            ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())",
            "$reqId": {
-             ".write": "auth != null || newData.child('type').val() === 'account'"
+             ".write": "auth != null || newData.child('type').val() === 'account'",
+             "chat": { ".read": true, ".write": true }
            }
          },
          "adminchat": {
@@ -5258,8 +5372,13 @@
          or vote in global chat, but only an admin or assistant can read
          the request queue. "Forgot your password?" writes into that same
          queue and is the one thing in this whole page a signed-out
-         visitor can write at all — nothing else opens up for them. A
-         global chat message can't be edited once
+         visitor can write at all — nothing else opens up for them. Each
+         request's own "chat" is open read/write to anyone who knows its
+         id, the same way a room code is — that id is an unguessable
+         Firebase push key, never listed anywhere a stranger could find
+         it, so in practice only the admin (who can see it in the request
+         queue) and whoever is holding onto it in their own browser ever
+         use it. A global chat message can't be edited once
          posted; a vote is writable only by the uid it belongs to.
        - What is still NOT enforced is a player's own balance. Their
          browser writes their own coins, so a determined person can give
@@ -5309,6 +5428,7 @@
   var AdminRoom = {
     sendChat: offline, onChat: noop,
     submitRequest: offline, onRequests: noop, markRequest: offline, deleteRequest: offline,
+    sendRequestChat: offline, onRequestChat: noop,
     setShopItems: offline, onShopItems: noop,
     postAnnouncement: offline, onAnnouncements: noop, deleteAnnouncement: offline,
     setFeature: offline, onFeatures: noop,
@@ -5696,7 +5816,11 @@
       };
 
       AdminRoom.submitRequest = function (type, text, by) {
-        return dbMod.push(requestsRef, { type: type, text: text, by: by, done: false, at: dbMod.serverTimestamp() });
+        // push() resolves to a Reference, not the id itself — pulling .key
+        // out here means every caller gets a plain string back, not a
+        // detail of how the real SDK happens to shape a push() result.
+        return dbMod.push(requestsRef, { type: type, text: text, by: by, done: false, at: dbMod.serverTimestamp() })
+          .then(function (ref) { return ref.key; });
       };
       AdminRoom.onRequests = function (cb) {
         return dbMod.onValue(requestsRef, function (s) {
@@ -5714,6 +5838,18 @@
       };
       AdminRoom.deleteRequest = function (id) {
         return dbMod.remove(dbMod.ref(db, "requests/" + id));
+      };
+      // A private thread scoped to one request id — open on both ends (see
+      // the rules doc above FIREBASE_CONFIG) rather than admin-only, since
+      // the person on the other side of a forgot-password request has no
+      // account to authenticate with at all.
+      AdminRoom.sendRequestChat = function (reqId, name, text) {
+        return dbMod.push(dbMod.ref(db, "requests/" + reqId + "/chat"),
+          { name: name, text: text, at: dbMod.serverTimestamp() });
+      };
+      AdminRoom.onRequestChat = function (reqId, cb) {
+        var chatQuery = dbMod.query(dbMod.ref(db, "requests/" + reqId + "/chat"), dbMod.limitToLast(50));
+        return dbMod.onChildAdded(chatQuery, function (snap) { cb(snap.val()); });
       };
       AdminRoom.ready = true;
       window.dispatchEvent(new Event("adminroom-ready"));
