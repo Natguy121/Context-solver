@@ -4209,14 +4209,23 @@
           appendChatLine("chat-log", msg, msg.name === play.myName);
         },
         onGuesses: function (list) {
-          play.liveRows = list;
-          // Race mode: the shared feed is already sorted by time, so the
-          // first rank-1 row in it is whoever found the word first. If
-          // that's someone else, the round ends here too, not just for
-          // them — that's the whole difference race mode makes. If it's
-          // my own guess, my own guess() already called finish() before
-          // this round-trip landed, so play.done is already true and this
-          // is a no-op.
+          // Race mode still needs the full, unfiltered feed to know who
+          // found the word first — that detection has to see every
+          // player's guesses. What actually reaches the screen is a
+          // different matter: a race is only a race if you can't see your
+          // opponent's progress, so the visible ladder only ever shows
+          // your own guesses while it's on, same as if you were playing
+          // solo against a hidden second player.
+          play.liveRows = raceModeActive()
+            ? list.filter(function (g) { return g.by === play.myName; })
+            : list;
+          // The shared feed is already sorted by time, so the first
+          // rank-1 row in it is whoever found the word first. If that's
+          // someone else, the round ends here too, not just for them —
+          // that's the whole difference race mode makes. If it's my own
+          // guess, my own guess() already called finish() before this
+          // round-trip landed, so play.done is already true and this is
+          // a no-op.
           if (raceModeActive() && !play.done) {
             var winner = list.filter(function (g) { return g.rank === 1; })[0];
             if (winner && winner.by !== play.myName) { finish(false, null, false, winner.by); return; }
