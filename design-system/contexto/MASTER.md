@@ -8,16 +8,20 @@
 
 **Project:** Contexto
 **Generated:** 2026-08-05 10:52:32
-**Updated:** 2026-08-05 (replaced with the style actually in the repo — see note below)
+**Updated:** 2026-08-05 (style pass: warm/friendly — see note below)
 **Category:** Casual Puzzle Game
 
-> The ui-ux-pro-max skill's original suggestion here was Claymorphism (soft,
-> bubbly, 16–24px corners) with a green/amber palette and Google-hosted
-> Baloo 2 / Comic Neue fonts. Neither was applied: the repo already has an
-> explicit, deliberately chosen style ("Bolder & sharper" — sharp corners,
-> deep shadows, electric violet), and a web-font import would break this
-> page's core "works with no connection" requirement. This file documents
-> the style actually shipping in `contexto.html`/`index.html` instead.
+> History: the page originally shipped a deliberate "Bolder & sharper"
+> style (sharp corners, deep shadows, electric violet) chosen explicitly
+> earlier in this project. Later feedback was that this read as too harsh
+> and risked people bouncing, so it was walked back further than a plain
+> revert — toward warm, rounded, and friendly, closer to (but not
+> identical to) the ui-ux-pro-max skill's original Claymorphism
+> suggestion. Still not applied: the skill's Google-hosted Baloo 2 /
+> Comic Neue font pairing, since a web-font import would break this
+> page's "works with no connection" requirement — the font stack stays
+> system-fonts-only. This file documents the style actually shipping in
+> `contexto.html`/`index.html`.
 
 ---
 
@@ -33,13 +37,15 @@
 | Ink (body text) | `#191725` | `--ink` |
 | Muted (secondary text) | `#6A6680` | `--muted` |
 | Rule (borders/dividers) | `#DEDBE8` | `--rule` |
-| Accent / Focus | `#4B1FCB` | `--accent`, `--focus` |
+| Accent / Focus | `#A8360C` | `--accent`, `--focus` |
 | Danger | `#C0392B` | `--danger` |
 
-Accent is an electric violet (chosen specifically to read as a real color
-choice, not a greyed-down tint — contrast against ground is 7.86:1).
-`--accent-wash`, `--accent-edge`, `--ring`, `--glow` are all derived from
-`--accent`/`--focus` via `color-mix()`, not separately hand-picked hexes.
+Accent is a warm burnt orange (contrast against ground: 5.80:1 — clears
+WCAG AA; it's used as text color in several places, e.g. links, so this
+matters, not just as a button background). `--accent-wash`, `--accent-edge`,
+`--ring`, `--glow` are all derived from `--accent`/`--focus` via
+`color-mix()`, not separately hand-picked hexes, so they follow
+automatically.
 
 ### Color Palette (dark theme)
 
@@ -51,8 +57,11 @@ choice, not a greyed-down tint — contrast against ground is 7.86:1).
 | Ink | `#ECEAF4` | `--ink` |
 | Muted | `#9793AC` | `--muted` |
 | Rule | `#2E2B43` | `--rule` |
-| Accent / Focus | `#B18AFF` | `--accent`, `--focus` |
+| Accent / Focus | `#FFA268` | `--accent`, `--focus` |
 | Danger | `#E8705C` | `--danger` |
+
+Dark-theme accent is a warm peachy orange, matching the light theme's hue
+(contrast against dark ground: 9.36:1).
 
 Dark-theme shadows lean on a hairline top highlight rather than cast
 shadow (shadows read as murk on dark backgrounds).
@@ -72,24 +81,29 @@ forced either way with `data-theme="light"` / `data-theme="dark"` on
 
 ### Radius
 
-Sharp, near-square corners are deliberate — part of the "Bolder & sharper"
-tone chosen for this page, not an unfinished rounding value.
+Rounded and friendly on purpose — walked back from an earlier sharp,
+near-square style that read as too harsh.
 
 | Token | Value |
 |-------|-------|
-| `--radius` | `1px` |
-| `--radius-lg` | `2px` |
+| `--radius` | `14px` |
+| `--radius-lg` | `20px` |
 
 ### Shadows
 
-Deeper and darker than a typical paper-lift shadow on purpose — the page
-is meant to feel like it has weight.
+Light and diffuse — floats rather than presses down. Walked back from an
+earlier, deliberately heavy-weight shadow style for the same reason as
+the radius change.
 
 | Token | Light theme | Dark theme |
 |-------|-------------|------------|
-| `--lift-1` | `0 1px 2px rgba(17,15,28,.14)` | `0 1px 2px rgba(0,0,0,.3)` |
-| `--lift-2` | `0 2px 3px rgba(17,15,28,.16), 0 8px 20px rgba(17,15,28,.18)` | `0 1px 2px rgba(0,0,0,.34), 0 4px 12px rgba(0,0,0,.3)` |
-| `--lift-3` | `0 3px 6px rgba(17,15,28,.20), 0 20px 40px rgba(17,15,28,.26)` | `0 2px 4px rgba(0,0,0,.38), 0 12px 28px rgba(0,0,0,.36)` |
+| `--lift-1` | `0 1px 3px rgba(17,15,28,.08)` | `0 1px 2px rgba(0,0,0,.3)` |
+| `--lift-2` | `0 2px 4px rgba(17,15,28,.06), 0 4px 10px rgba(17,15,28,.10)` | `0 1px 2px rgba(0,0,0,.34), 0 4px 12px rgba(0,0,0,.3)` |
+| `--lift-3` | `0 4px 8px rgba(17,15,28,.08), 0 10px 24px rgba(17,15,28,.14)` | `0 2px 4px rgba(0,0,0,.38), 0 12px 28px rgba(0,0,0,.36)` |
+
+Dark-theme shadows were left as-is — already restrained (a hairline top
+highlight does most of the depth work there, since cast shadow reads as
+murk on dark ground), so they weren't part of the "too heavy" problem.
 
 ### Difficulty-driven accent (play screen only)
 
@@ -98,18 +112,32 @@ accent color with the chosen difficulty — cool/calm for easy, hot for
 nightmare — scoped to `#play-live` so it never bleeds into the setup
 picker's own level colors.
 
+| Level | Color | Hue |
+|-------|-------|-----|
+| Easy | `#2E63C7` (blue) | 219° |
+| Normal | mirrors `--accent` (burnt orange) | 16° |
+| Hard | `#A67C0A` (golden amber) | 44° |
+| Nightmare | `#C81E3A` (red) | 350° |
+
+Hard was changed from its old value (`#B5670E`, hue 32°) because normal
+now mirrors the new burnt-orange accent (hue 16°) — the two were only 16°
+apart and read as nearly the same color. Golden amber keeps all four
+levels visually distinct at a glance.
+
 ---
 
 ## Anti-Patterns (Do NOT Use in this repo)
 
 - ❌ Any web font / external font import — breaks offline play
-- ❌ Rounded corners beyond `--radius-lg` (2px) — fights the deliberate sharp tone
+- ❌ Sharp/near-square corners, or shadows heavier than the values above —
+  that was the previous style, deliberately walked back for reading too
+  harsh
 - ❌ Resizing `.roster-item button` to a generic touch-target minimum — its
   compact size is intentional (see comment above that rule in the CSS);
   it's also an admin-only control, not a control aimed at the game's
   younger players
-- ❌ Muted/washed-out color choices — the accent violet was specifically
-  saturated up from an earlier muted version for this reason
+- ❌ Muted/washed-out color choices — the accent orange is fully saturated
+  on purpose, same reasoning that applied to the violet it replaced
 - ❌ Invisible focus states — already handled correctly (`:focus-visible`
   gets a replacement ring/outline everywhere `outline: none` is set, never
   just removed)

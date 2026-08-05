@@ -12,11 +12,12 @@
     --ink: #191725;
     --muted: #6A6680;
     --rule: #DEDBE8;
-    /* Was #4E3FA8 — a muted, greyed-down violet. Same hue, pushed to a
-       saturated electric violet so it actually reads as a colour choice
-       rather than a slightly-tinted ink. Contrast against ground: 7.86:1. */
-    --accent: #4B1FCB;
-    --focus: #4B1FCB;
+    /* Was #4B1FCB — a sharp electric violet, chosen for a bolder/harsher
+       tone. Swapped for a warm burnt orange: friendlier, less severe, still
+       fully saturated so it reads as a real colour choice rather than a
+       muted afterthought. Contrast against ground: 5.80:1. */
+    --accent: #A8360C;
+    --focus: #A8360C;
 
     /* Derived tints, so accent-keyed surfaces don't need a second hand-picked
        hex per theme. Kept as separate tokens rather than inline color-mix()
@@ -40,24 +41,28 @@
     --step-4: clamp(2.125rem, 1.6rem + 2.6vw, 3rem);
     --micro: 0.6875rem;
 
-    /* Deeper and darker than a paper-lift shadow on purpose — this page
-       wants to feel like it has weight, not like it's printed flat. */
-    --lift-1: 0 1px 2px rgba(17, 15, 28, 0.14);
-    --lift-2: 0 2px 3px rgba(17, 15, 28, 0.16), 0 8px 20px rgba(17, 15, 28, 0.18);
-    --lift-3: 0 3px 6px rgba(17, 15, 28, 0.20), 0 20px 40px rgba(17, 15, 28, 0.26);
+    /* Lighter and more diffuse than the deep, heavy-weight shadows this
+       page used before — floats rather than presses down, part of the
+       same warmer, friendlier pass as the accent colour and corners. */
+    --lift-1: 0 1px 3px rgba(17, 15, 28, 0.08);
+    --lift-2: 0 2px 4px rgba(17, 15, 28, 0.06), 0 4px 10px rgba(17, 15, 28, 0.10);
+    --lift-3: 0 4px 8px rgba(17, 15, 28, 0.08), 0 10px 24px rgba(17, 15, 28, 0.14);
 
-    /* Sharp, near-square corners read as harder-edged than the soft 3-5px
-       the page used before — a deliberate part of the tougher, more serious
-       tone, not a rounding-value afterthought. */
-    --radius: 1px;
-    --radius-lg: 2px;
+    /* Rounded, friendly corners — the page used to run near-square (1px)
+       for a harder, more serious tone; this walks that back further than
+       just reverting, toward an approachable kid-app feel. */
+    --radius: 14px;
+    --radius-lg: 20px;
 
     /* Escalates with the difficulty picked on the setup screen: cool and
        calm for easy, hot for nightmare. Held here (not per-theme) so a
-       level's colour identity doesn't shift between light and dark. */
+       level's colour identity doesn't shift between light and dark.
+       Hard is a golden amber rather than the old burnt-orange-adjacent
+       hue, now that normal (which just mirrors --accent) is itself a
+       burnt orange — keeps all four levels visually distinct. */
     --lvl-easy: #2E63C7;
     --lvl-normal: var(--accent);
-    --lvl-hard: #B5670E;
+    --lvl-hard: #A67C0A;
     --lvl-nightmare: #C81E3A;
     --lvl-nightmare-glow: color-mix(in srgb, var(--lvl-nightmare) 38%, transparent);
 
@@ -82,10 +87,12 @@
       --ink: #ECEAF4;
       --muted: #9793AC;
       --rule: #2E2B43;
-      /* Was #A99CF0 — a pastel lavender that barely read as colour on dark
-         ground. Same hue, saturated up so it still glows rather than fades. */
-      --accent: #B18AFF;
-      --focus: #B18AFF;
+      /* Was #B18AFF — a pastel lavender matching the light theme's old
+         violet. Swapped for a warm peachy orange to match the new light-
+         theme accent's hue, saturated up so it still glows on dark ground
+         rather than fading. Contrast against dark ground: 9.36:1. */
+      --accent: #FFA268;
+      --focus: #FFA268;
       --accent-wash: color-mix(in srgb, var(--accent) 12%, var(--surface));
       --accent-edge: color-mix(in srgb, var(--accent) 38%, var(--rule));
       --glow: color-mix(in srgb, var(--accent) 30%, transparent);
@@ -106,8 +113,8 @@
     --ink: #ECEAF4;
     --muted: #9793AC;
     --rule: #2E2B43;
-    --accent: #B18AFF;
-    --focus: #B18AFF;
+    --accent: #FFA268;
+    --focus: #FFA268;
     --accent-wash: color-mix(in srgb, var(--accent) 12%, var(--surface));
     --accent-edge: color-mix(in srgb, var(--accent) 38%, var(--rule));
     --glow: color-mix(in srgb, var(--accent) 30%, transparent);
