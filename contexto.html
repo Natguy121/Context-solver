@@ -217,6 +217,34 @@
     #tour-cta.nudge { background: var(--accent-wash); }
   }
 
+  /* A marquee-style flashing lights effect on the tour link itself, running
+     continuously until the tour has actually been taken (or skipped) once —
+     see the "contexto-tour-done" flag. Cycles between the two warm accent
+     colors already in the palette, rather than introducing new ones. */
+  @media (prefers-reduced-motion: no-preference) {
+    #start-tour.flash-lights { animation: tour-lights 1.1s ease-in-out infinite; }
+  }
+  @keyframes tour-lights {
+    0%, 100% { color: var(--accent); text-shadow: 0 0 0 transparent; }
+    50% { color: var(--lvl-hard); text-shadow: 0 0 6px var(--glow); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #start-tour.flash-lights { color: var(--lvl-hard); }
+  }
+
+  /* Same flashing treatment on the tour's own "Got it" button, so someone
+     mid-tour has a clear, moving target telling them to keep going. */
+  @media (prefers-reduced-motion: no-preference) {
+    #coach-next { animation: coach-next-lights 1.1s ease-in-out infinite; }
+  }
+  @keyframes coach-next-lights {
+    0%, 100% { background: var(--surface); border-color: var(--rule); color: var(--ink); }
+    50% { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #coach-next { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  }
+
   /* ---------- tabs ----------
      Five uppercase mono labels overrun a narrow phone, so the strip scrolls
      sideways instead of wrapping into a second row that would shift the whole
@@ -1142,6 +1170,9 @@
     <p class="gloss" id="save-cta">
       <a href="#" id="save-copy" data-i18n="save-page">Save this page</a><span data-i18n="save-after"> to play with no connection, no account, on any device.</span>
     </p>
+    <p class="gloss" id="tour-signin-cta" hidden>
+      <a href="#" id="tour-signin-link" data-i18n="tour-signin">Sign in to keep your progress</a>
+    </p>
   </header>
 
   <!-- Read by every visitor, no login needed. Only the admin can post to it
@@ -2063,6 +2094,7 @@
     "new-here": "Nouveau ici ?",
     "tour-after": " — elle vous distribue une vraie partie et vous explique tout.",
     "save-after": " pour jouer sans connexion, sans compte, sur n'importe quel appareil.",
+    "tour-signin": "Connectez-vous pour garder votre progression",
 
     /* ---- how the ranks are made ---- */
     "rank-how-toggle": "Curieux de savoir comment les rangs sont faits ?",
@@ -2614,6 +2646,10 @@
     $("play-hint").textContent = left > 0 ? t("Hint") + " · " + left : t("Hint");
     $("account-btn").textContent = account ? account.name : t("Sign in");
     $("account-btn").classList.toggle("is-on", !!account);
+    // Only ever hides it here — showing it is showIntro()'s job, which
+    // knows whether the setup screen (as opposed to an active round) is
+    // actually what's on screen right now.
+    if (account) $("tour-signin-cta").hidden = true;
     renderShopList();
     renderGiftItems();
   }
@@ -2814,6 +2850,10 @@
   }
 
   $("account-btn").addEventListener("click", openAccountPanel);
+  $("tour-signin-link").addEventListener("click", function (e) {
+    e.preventDefault();
+    openAccountPanel();
+  });
 
   $("account-signout").addEventListener("click", function () {
     window.Auth.signOut().catch(function () {});
@@ -4144,8 +4184,26 @@
   // once a round is already under way — it just competes with the guess
   // box for attention. Tucked away while playing, back the moment you
   // return to the setup screen.
-  function hideIntro() { $("tour-cta").hidden = true; $("save-cta").hidden = true; }
-  function showIntro() { $("tour-cta").hidden = false; $("save-cta").hidden = false; }
+  var TOUR_DONE_KEY = "contexto-tour-done";
+  function tourDone() {
+    try { return localStorage.getItem(TOUR_DONE_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  function hideIntro() {
+    $("tour-cta").hidden = true;
+    $("save-cta").hidden = true;
+    $("tour-signin-cta").hidden = true;
+  }
+  function showIntro() {
+    $("tour-cta").hidden = false;
+    $("save-cta").hidden = false;
+    // Only the people who've actually been through the tour once (and
+    // still aren't signed in) get nudged to sign in — not every visitor
+    // who happens to land back on the setup screen.
+    $("tour-signin-cta").hidden = !(tourDone() && !account);
+  }
+
+  if (!tourDone()) $("start-tour").classList.add("flash-lights");
 
   function beginGame(secret, code) {
     clearTimeout(typingSyncTimer);
@@ -4887,6 +4945,9 @@
     if (!tour.on) return;
     tour.on = false;
     $("coach").hidden = true;
+    try { localStorage.setItem(TOUR_DONE_KEY, "1"); } catch (e) {}
+    $("start-tour").classList.remove("flash-lights");
+    if (!account) $("tour-signin-cta").hidden = false;
     if (!play.done) startClock();
     $("play-input").focus();
   }
