@@ -5150,7 +5150,9 @@
 
          "requests": {
            ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())",
-           ".write": "auth != null || newData.child('type').val() === 'account'"
+           "$reqId": {
+             ".write": "auth != null || newData.child('type').val() === 'account'"
+           }
          },
          "adminchat": {
            ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('assistants').child(auth.uid).exists())",
