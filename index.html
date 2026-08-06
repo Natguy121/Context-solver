@@ -478,6 +478,18 @@
     background: var(--danger, #d3453a);
   }
 
+  /* The install button only exists once the browser decides the page is
+     installable, so its arrival is a genuine "something new just showed
+     up" moment — sliding in from the right (where it sits in the masthead)
+     says so, instead of it just silently un-hiding mid-layout. */
+  @media (prefers-reduced-motion: no-preference) {
+    #install-app-btn.slide-in { animation: install-btn-in 0.5s var(--ease) both; }
+  }
+  @keyframes install-btn-in {
+    0% { transform: translateX(2.5rem); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+
   /* The four accent-keyed blocks — admin, account, announcements, coach —
      all say "this is set apart from the page" the same way, so they share
      one definition instead of four near-copies that drift. */
@@ -1151,6 +1163,14 @@
 
 <div id="win-flash" class="win-flash" hidden aria-hidden="true">
   <div class="win-flash-word"></div>
+</div>
+
+<!-- Same strobe-and-reveal language as the win flash, reused for an
+     "arcade cabinet powering on" moment when the installed app is
+     actually launched (standalone display-mode) — not shown for an
+     ordinary browser tab, only the installed-app open. -->
+<div id="app-open-flash" class="win-flash" hidden aria-hidden="true">
+  <div class="win-flash-word">Contexto</div>
 </div>
 
 <div class="wrap">
@@ -4229,8 +4249,26 @@
     e.preventDefault();
     if (runningStandalone) return;
     deferredInstallPrompt = e;
-    $("install-app-btn").hidden = false;
+    var btn = $("install-app-btn");
+    btn.hidden = false;
+    btn.classList.remove("slide-in");
+    void btn.offsetWidth; // restart the animation if this ever fires more than once
+    btn.classList.add("slide-in");
   });
+
+  // The installed app's own "arcade cabinet powering on" moment — the same
+  // bright strobe-and-reveal the win flash uses, played once when this
+  // session is actually the installed app opening (not just any browser
+  // tab that happens to match the standalone media query briefly).
+  if (runningStandalone) {
+    var openFlash = $("app-open-flash");
+    openFlash.hidden = false;
+    openFlash.classList.add("playing");
+    setTimeout(function () {
+      openFlash.hidden = true;
+      openFlash.classList.remove("playing");
+    }, 1850);
+  }
 
   $("install-app-btn").addEventListener("click", function () {
     if (!deferredInstallPrompt) return;
