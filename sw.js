@@ -6,7 +6,7 @@
 //
 // Bump CACHE_NAME whenever contexto.html/index.html changes in a way that
 // matters offline — old caches are dropped automatically on activate.
-const CACHE_NAME = "contexto-v2";
+const CACHE_NAME = "contexto-v3";
 const CORE_ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (event) => {
