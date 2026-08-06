@@ -8,7 +8,7 @@
 
 **Project:** Contexto
 **Generated:** 2026-08-05 10:52:32
-**Updated:** 2026-08-05 (style pass: warm/friendly — see note below)
+**Updated:** 2026-08-06 (flash-word pixel font — see Typography below)
 **Category:** Casual Puzzle Game
 
 > History: the page originally shipped a deliberate "Bolder & sharper"
@@ -72,12 +72,35 @@ forced either way with `data-theme="light"` / `data-theme="dark"` on
 
 ### Typography
 
-- **Font stack:** system fonts only — no web-font import, by design (see
-  note above).
+- **Font stack:** system fonts only for everyday UI — no linked/imported
+  web font, by design (see note above). One narrow, deliberate exception
+  for a single celebratory element — see "Flash-word display face" below.
 - **Serif** (headings, wordmark): `ui-serif, "Iowan Old Style", Charter, Georgia, Cambria, serif`
 - **Sans** (body, UI chrome): `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`
 - **Mono** (numbers, codes, ranks): `ui-monospace, Menlo, "SF Mono", "Cascadia Mono", monospace`
 - **Type scale:** `--step-0` 0.9375rem … `--step-4` fluid `clamp(2.125rem, 1.6rem + 2.6vw, 3rem)`, plus `--micro` 0.6875rem for eyebrow/label text.
+
+### Flash-word display face (exception to the system-font rule)
+
+`.win-flash-word` — the word shown by both the win flash and the
+installed-app open flash — uses "Press Start 2P", a genuine pixel-grid
+TrueType font, not a CSS approximation. This doesn't reopen the
+system-fonts-only rule for the rest of the page:
+
+- Embedded as a base64 `data:` URI inside the `<style>` block, not linked
+  via `@import`/`<link>` — zero runtime network requests, so it doesn't
+  touch the offline-play requirement that ruled out the skill's original
+  Google-Fonts pairing.
+- Licensed under the SIL Open Font License 1.1, which permits exactly
+  this kind of embedding.
+- Scoped to one class used in exactly two places (win flash, app-open
+  flash) — not part of the type scale above, not used anywhere else.
+- `font-weight: normal` there specifically — Press Start 2P ships one
+  weight only; forcing `700` would fake a bold and blur the pixel edges.
+- Sized down from the previous serif treatment — `clamp(1.25rem, 6.5vw,
+  3.25rem)` vs. the old `clamp(2.5rem, 12vw, 6rem)` — because pixel-grid
+  glyphs are much wider per character than the serif they replaced;
+  `line-height: 1.6` gives wrapped long dictionary words room to breathe.
 
 ### Radius
 
@@ -128,7 +151,11 @@ levels visually distinct at a glance.
 
 ## Anti-Patterns (Do NOT Use in this repo)
 
-- ❌ Any web font / external font import — breaks offline play
+- ❌ Any linked/imported web font (Google Fonts `<link>`/`@import`, etc.)
+  — breaks offline play. The one pixel font used for the flash word is
+  embedded as a base64 data URI instead (see "Flash-word display face"
+  above), which has zero runtime network dependency and isn't part of
+  the everyday type stack — don't treat it as license to link more fonts
 - ❌ Sharp/near-square corners, or shadows heavier than the values above —
   that was the previous style, deliberately walked back for reading too
   harsh
