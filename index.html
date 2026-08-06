@@ -11,10 +11,7 @@
     color-scheme: light;
 
     --ground: #F1F0F6;
-    /* Warm cream rather than pure white — Claymorphism surfaces read as
-       "clay", not paper, and a true #FFFFFF card against a warm accent
-       looked cold and clinical by comparison. */
-    --surface: #FFFBF7;
+    --surface: #FFFFFF;
     --sunken: #E7E5EF;
     --ink: #191725;
     --muted: #6A6680;
@@ -33,10 +30,6 @@
     --accent-edge: color-mix(in srgb, var(--accent) 32%, var(--rule));
     --ring: color-mix(in srgb, var(--focus) 22%, transparent);
     --glow: color-mix(in srgb, var(--accent) 32%, transparent);
-    /* A shade darker than the fill it borders — the "edge of the clay"
-       that gives a filled button definition against its own background,
-       rather than just a flat color-mixed border. */
-    --accent-deep: color-mix(in srgb, var(--accent) 78%, black);
     --danger: #C0392B;
 
     --serif: ui-serif, "Iowan Old Style", Charter, Georgia, Cambria, serif;
@@ -61,15 +54,9 @@
 
     /* Rounded, friendly corners — the page used to run near-square (1px)
        for a harder, more serious tone; this walks that back further than
-       just reverting, toward an approachable kid-app feel. Sits inside
-       the skill's own recommended 16-24px range for this style. */
-    --radius: 18px;
-    --radius-lg: 24px;
-    /* Thick borders and a bouncy overshoot easing are the two other big
-       Claymorphism markers besides rounding and shadow — see button/input
-       rules below for where these actually get used. */
-    --border-width: 3px;
-    --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+       just reverting, toward an approachable kid-app feel. */
+    --radius: 14px;
+    --radius-lg: 20px;
 
     /* Escalates with the difficulty picked on the setup screen: cool and
        calm for easy, hot for nightmare. Held here (not per-theme) so a
@@ -327,15 +314,13 @@
     font-size: var(--step-1);
     color: var(--ink);
     background: var(--surface);
-    border: var(--border-width) solid var(--rule);
+    border: 1px solid var(--rule);
     border-radius: var(--radius);
     padding: 0.75rem 0.875rem;
     min-height: 3rem;
     width: 100%;
     outline: none;
-    /* Where a button reads as raised clay, a field reads as pressed in —
-       a soft inset rather than the button's soft-highlight-plus-lift. */
-    box-shadow: inset 0 2px 4px rgba(17, 15, 28, 0.06);
+    box-shadow: var(--lift-1);
     transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
   }
 
@@ -349,7 +334,7 @@
      handles emphasis, and it survives on both themes. */
   input:focus-visible, textarea:focus-visible, select:focus-visible {
     border-color: var(--focus);
-    box-shadow: inset 0 2px 4px rgba(17, 15, 28, 0.06), 0 0 0 3px var(--ring);
+    box-shadow: 0 0 0 3px var(--ring);
   }
 
   button:focus-visible, .tab:focus-visible, [tabindex]:focus-visible {
@@ -382,34 +367,25 @@
     min-height: 3rem;
     padding: 0 1.25rem;
     border-radius: var(--radius);
-    border: var(--border-width) solid var(--accent-deep);
+    border: 1px solid var(--accent);
     background: var(--accent);
     color: var(--ground);
     cursor: pointer;
-    /* The clay "puffy" read: a soft highlight along the top inner edge, a
-       soft shade along the bottom inner edge, plus the ordinary outer lift
-       doing the actual separation from the page behind it. */
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -2px 3px rgba(0, 0, 0, 0.12), var(--lift-1);
+    box-shadow: var(--lift-1);
     transition: background-color var(--fast) var(--ease), border-color var(--fast) var(--ease),
-                color var(--fast) var(--ease), box-shadow var(--slow) var(--bounce),
-                transform var(--slow) var(--bounce), opacity var(--fast) var(--ease);
+                color var(--fast) var(--ease), box-shadow var(--fast) var(--ease),
+                transform var(--fast) var(--ease), opacity var(--fast) var(--ease);
   }
 
   /* A press should feel like the button takes the weight: lift on hover,
-     settle flush (then dip slightly inward) on the way down — the bounce
-     easing on transform/box-shadow is what gives that a springy, clay-like
-     feel rather than a flat mechanical snap. The filled accent buttons get
-     a tinted glow layered under the lift instead of a neutral shadow, so
-     the colour itself feels like the source of it. */
+     settle flush on the way down. 1px is enough to read as physical. The
+     filled accent buttons get a tinted glow layered under the lift instead
+     of a neutral shadow, so the colour itself feels like the source of it. */
   button:hover:not(:disabled) {
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -2px 3px rgba(0, 0, 0, 0.1),
-                var(--lift-2), 0 6px 16px -4px var(--glow);
-    transform: translateY(-2px);
+    box-shadow: var(--lift-2), 0 6px 16px -4px var(--glow);
+    transform: translateY(-1px);
   }
-  button:active:not(:disabled) {
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.18);
-    transform: translateY(1px) scale(0.98);
-  }
+  button:active:not(:disabled) { box-shadow: var(--lift-1); transform: translateY(0); }
 
   button.ghost {
     background: transparent;
@@ -422,7 +398,6 @@
     background: var(--accent-wash);
     box-shadow: var(--lift-1);
   }
-  button.ghost:active:not(:disabled) { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08); }
 
   /* Destructive actions — kicking a player, deleting a message, a shop
      item, a request — turn danger-red on hover instead of the ordinary
