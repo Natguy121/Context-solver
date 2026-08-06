@@ -8,20 +8,28 @@
 
 **Project:** Contexto
 **Generated:** 2026-08-05 10:52:32
-**Updated:** 2026-08-05 (style pass: warm/friendly — see note below)
+**Updated:** 2026-08-06 (full Claymorphism component pass — see note below)
 **Category:** Casual Puzzle Game
 
 > History: the page originally shipped a deliberate "Bolder & sharper"
-> style (sharp corners, deep shadows, electric violet) chosen explicitly
-> earlier in this project. Later feedback was that this read as too harsh
-> and risked people bouncing, so it was walked back further than a plain
-> revert — toward warm, rounded, and friendly, closer to (but not
-> identical to) the ui-ux-pro-max skill's original Claymorphism
-> suggestion. Still not applied: the skill's Google-hosted Baloo 2 /
-> Comic Neue font pairing, since a web-font import would break this
-> page's "works with no connection" requirement — the font stack stays
-> system-fonts-only. This file documents the style actually shipping in
-> `contexto.html`/`index.html`.
+> style (sharp corners, deep shadows, electric violet). Feedback that
+> this read as too harsh led to a warmer pass (rounder corners, lighter
+> shadows, a burnt-orange accent) — a partial move toward the skill's
+> Claymorphism suggestion. A later request to go "completely new...
+> using the skill" finished the job: thick 3px borders in a darker shade
+> of each element's own fill, inset+outset "puffy" double shadows on
+> buttons, a matching inset "pressed-in" look on inputs, a bouncy
+> overshoot easing (`cubic-bezier(0.34, 1.56, 0.64, 1)`) on press/hover,
+> and a warm cream surface colour instead of pure white — all straight
+> from the skill's own Claymorphism CSS variable recommendations
+> (`border-radius: 16-24px`, `border: 3-4px solid`, double shadows,
+> soft-bounce easing). Still not applied: the skill's Google-hosted
+> Baloo 2 / Comic Neue font pairing, and its literal pastel palette —
+> a web-font import would break this page's "works with no connection"
+> requirement, and the accent stays fully saturated (not pastel) since
+> it doubles as text colour in several places and pastels don't clear
+> 4.5:1 contrast there. This file documents the style actually shipping
+> in `contexto.html`/`index.html`.
 
 ---
 
@@ -32,7 +40,7 @@
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
 | Ground (page background) | `#F1F0F6` | `--ground` |
-| Surface (cards, inputs) | `#FFFFFF` | `--surface` |
+| Surface (cards, inputs) | `#FFFBF7` (warm cream, not pure white) | `--surface` |
 | Sunken | `#E7E5EF` | `--sunken` |
 | Ink (body text) | `#191725` | `--ink` |
 | Muted (secondary text) | `#6A6680` | `--muted` |
@@ -82,12 +90,25 @@ forced either way with `data-theme="light"` / `data-theme="dark"` on
 ### Radius
 
 Rounded and friendly on purpose — walked back from an earlier sharp,
-near-square style that read as too harsh.
+near-square style that read as too harsh. Sits inside the skill's own
+recommended 16-24px range for Claymorphism.
 
 | Token | Value |
 |-------|-------|
-| `--radius` | `14px` |
-| `--radius-lg` | `20px` |
+| `--radius` | `18px` |
+| `--radius-lg` | `24px` |
+
+### Borders, clay shadows, and press feel
+
+| Token | Value |
+|-------|-------|
+| `--border-width` | `3px` |
+| `--accent-deep` | `color-mix(in srgb, var(--accent) 78%, black)` — a filled button's border is this, not the fill color itself, so the edge reads as a distinct "rim" of the clay shape |
+| `--bounce` | `cubic-bezier(0.34, 1.56, 0.64, 1)` — a springy overshoot, used for hover/press transitions instead of `--ease` |
+
+- **Buttons** (raised clay): `inset 0 1px 0 rgba(255,255,255,.3)` (top highlight) + `inset 0 -2px 3px rgba(0,0,0,.12)` (bottom shade) + `var(--lift-1)` at rest; deepens on hover (`translateY(-2px)`), inverts to a single inward shadow + `translateY(1px) scale(0.98)` on `:active` — a soft press-and-settle, not a flat snap.
+- **Inputs** (pressed into clay): `inset 0 2px 4px rgba(17,15,28,.06)` at rest, same inset plus the existing focus ring on `:focus-visible`.
+- **Flat controls stay flat**: `.tab`, `.admin-btn`, `.purse`, `.linkish` deliberately get none of this — they're meant to read as minimal/text-like, not as clay buttons, and `css_audit.js` asserts their box-shadow stays `none`. Don't "fix" that.
 
 ### Shadows
 
