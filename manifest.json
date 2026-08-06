@@ -2,6 +2,7 @@
   "name": "Contexto",
   "short_name": "Contexto",
   "description": "A word is hidden. Every guess comes back with its distance from it.",
+  "id": "./index.html",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
