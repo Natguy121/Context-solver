@@ -8,7 +8,7 @@
 
 **Project:** Contexto
 **Generated:** 2026-08-05 10:52:32
-**Updated:** 2026-08-06 (flash-word pixel font — see Typography below)
+**Updated:** 2026-08-06 (app icon face + install banner — see below)
 **Category:** Casual Puzzle Game
 
 > History: the page originally shipped a deliberate "Bolder & sharper"
@@ -101,6 +101,41 @@ system-fonts-only rule for the rest of the page:
   3.25rem)` vs. the old `clamp(2.5rem, 12vw, 6rem)` — because pixel-grid
   glyphs are much wider per character than the serif they replaced;
   `line-height: 1.6` gives wrapped long dictionary words room to breathe.
+
+### App icon (installed-app identity, not in-page UI)
+
+`icons/icon-192-v2.png` / `icon-512-v2.png` / `icon-maskable-512-v2.png` —
+a white "C" on `#F06734` (a lighter, same-hue/saturation version of
+`--accent`'s `#A8360C`, chosen so the icon reads clearly at small OS
+sizes without going muted). Rendered at build time with Pillow, not
+generated from live CSS.
+
+- **Font:** Liberation Sans Bold, not Baloo2. Baloo2 (used for an
+  earlier pass) turned out to have an uppercase "C" and lowercase "c"
+  that are the exact same shape, just scaled — confirmed by rendering
+  both side by side. For a single isolated letter with no baseline or
+  neighboring lowercase to compare against, that scale difference is
+  invisible, so the icon just read as an oversized lowercase c.
+  Liberation Sans's capital C has a full symmetric counter with
+  flat-cut terminals — genuinely distinct from its own lowercase c —
+  while staying a plain smooth sans (no serif points), so it doesn't
+  reopen the "smooth not sharp" anti-pattern below.
+- **This is a separate identity from the in-page `--accent` color and
+  type stack above** — the icon's own orange and font choice don't
+  imply the page's button/link color or typography should change to
+  match; they're deliberately different (the icon needs to read at
+  16-48px in an OS launcher, the page doesn't).
+- Rendered at 4x and downscaled with Lanczos for clean anti-aliased
+  edges, same technique regardless of which font is loaded.
+
+### Install banner
+
+A floating card (`#install-banner`, fixed top-right, slides in from
+the right) replaces what was originally a small masthead button —
+shown whenever the browser fires `beforeinstallprompt`, self-dismisses
+after 20s if ignored, or closes on the ×. No account/sign-in check
+gates it anywhere; it fires purely off the browser's own installability
+signal, identical for a signed-in or anonymous visitor.
 
 ### Radius
 
