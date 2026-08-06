@@ -1,6 +1,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contexto — offline</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#A8360C">
 
 <style>
   :root {
@@ -1157,6 +1161,7 @@
         <div class="eyebrow" id="dictline">dictionary loading</div>
       </div>
       <div class="masthead-right">
+        <button type="button" class="admin-btn" id="install-app-btn" hidden data-i18n="install-app">Install app</button>
         <button type="button" class="admin-btn" id="lang-btn" title="Français" aria-pressed="false">FR</button>
         <button type="button" class="purse" id="purse" aria-expanded="false">0 coins</button>
         <button type="button" class="admin-btn" id="account-btn" data-i18n="sign-in">Sign in</button>
@@ -1935,7 +1940,7 @@
   var LANG = localStorage.getItem("contexto_lang") || "en";
 
   var FR = {
-    "sign-in": "Se connecter", "title": "Contexto", "standfirst": "Un mot est caché. Chaque proposition indique sa distance.",
+    "sign-in": "Se connecter", "install-app": "Installer l'appli", "title": "Contexto", "standfirst": "Un mot est caché. Chaque proposition indique sa distance.",
     "take-tour": "Tutoriel", "save-page": "Enregistrer cette page",
     "updates": "actualités", "account": "compte",
     "account-blurb": "Un compte garde vos pièces et indices sur tous vos appareils, et permet aux autres joueurs de vous envoyer des cadeaux.",
@@ -4204,6 +4209,40 @@
   }
 
   if (!tourDone()) $("start-tour").classList.add("flash-lights");
+
+  /* ---------- installable as an app ----------
+     The browser decides whether this page qualifies (valid manifest,
+     served over HTTPS, a registered service worker) and only fires
+     beforeinstallprompt if so — the button stays hidden until then, so
+     it never shows up promising something the browser won't actually do.
+     Already-installed (standalone) sessions never see it either way. */
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
+
+  var deferredInstallPrompt = null;
+  var runningStandalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    if (runningStandalone) return;
+    deferredInstallPrompt = e;
+    $("install-app-btn").hidden = false;
+  });
+
+  $("install-app-btn").addEventListener("click", function () {
+    if (!deferredInstallPrompt) return;
+    $("install-app-btn").hidden = true;
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.finally(function () { deferredInstallPrompt = null; });
+  });
+
+  window.addEventListener("appinstalled", function () {
+    $("install-app-btn").hidden = true;
+    deferredInstallPrompt = null;
+  });
 
   function beginGame(secret, code) {
     clearTimeout(typingSyncTimer);
