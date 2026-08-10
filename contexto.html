@@ -2953,23 +2953,25 @@
     if (!Ctx) return null;
     actx = new Ctx();
     masterGain = actx.createGain();
-    masterGain.gain.value = 1;
-    // A limiter on the master bus, not a taste effect — it's what lets the
-    // gains below run this hot (several chord/bass/shaker voices can land
-    // at once) without the overlaps clipping into harshness.
+    masterGain.gain.value = 1.6;
+    // A tight limiter on the master bus, not a taste effect — it's what
+    // lets the gains below run right up near the ceiling (several chord/
+    // bass/shaker voices can land at once, on top of a boosted master)
+    // without clipping into harshness. Low threshold + high ratio + fast
+    // attack so it's actually catching peaks, not just sitting there.
     var limiter = actx.createDynamicsCompressor();
-    limiter.threshold.value = -16;
-    limiter.knee.value = 18;
-    limiter.ratio.value = 5;
-    limiter.attack.value = 0.003;
-    limiter.release.value = 0.22;
+    limiter.threshold.value = -24;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.001;
+    limiter.release.value = 0.15;
     masterGain.connect(limiter);
     limiter.connect(actx.destination);
     sfxGain = actx.createGain();
-    sfxGain.gain.value = 0.55;
+    sfxGain.gain.value = 1;
     sfxGain.connect(masterGain);
     musicGain = actx.createGain();
-    musicGain.gain.value = 0.24;
+    musicGain.gain.value = 0.5;
     musicGain.connect(masterGain);
     return actx;
   }
@@ -3000,18 +3002,18 @@
   function sfx(name) {
     if (!soundOn) return;
     if (name === "click") {
-      sfxTone(540, { dur: 0.045, type: "sine", peak: 0.28 });
+      sfxTone(540, { dur: 0.045, type: "sine", peak: 0.5 });
     } else if (name === "guess") {
-      sfxTone(720, { dur: 0.07, type: "sine", peak: 0.42 });
+      sfxTone(720, { dur: 0.07, type: "sine", peak: 0.85 });
     } else if (name === "error") {
-      sfxTone(180, { dur: 0.16, type: "triangle", peak: 0.32, slideTo: 140 });
+      sfxTone(180, { dur: 0.16, type: "triangle", peak: 0.6, slideTo: 140 });
     } else if (name === "hint") {
-      sfxTone(880, { dur: 0.14, type: "sine", peak: 0.38 });
-      setTimeout(function () { sfxTone(1318.5, { dur: 0.18, type: "sine", peak: 0.34 }); }, 90);
+      sfxTone(880, { dur: 0.14, type: "sine", peak: 0.75 });
+      setTimeout(function () { sfxTone(1318.5, { dur: 0.18, type: "sine", peak: 0.7 }); }, 90);
     } else if (name === "win") {
       // A soft major-7th arpeggio (C5 E5 G5 B5) — warm, not a harsh jingle.
       [523.25, 659.25, 783.99, 987.77].forEach(function (freq, i) {
-        setTimeout(function () { sfxTone(freq, { dur: 0.5, type: "sine", peak: 0.32 }); }, i * 90);
+        setTimeout(function () { sfxTone(freq, { dur: 0.5, type: "sine", peak: 0.7 }); }, i * 90);
       });
     }
   }
