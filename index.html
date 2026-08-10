@@ -2934,12 +2934,15 @@
     return shopItems.reduce(function (a, b) { return b.price < a.price ? b : a; });
   }
 
-  /* ---------- ambient sound: soft SFX + a generative smooth-jazz-style
+  /* ---------- ambient sound: soft SFX + a generative disco/funk-style
      background loop, both synthesized live with the Web Audio API rather
      than shipped as audio files — this is a single HTML page, and a real
-     recording would either bloat it hugely or need a network fetch.
-     Browsers refuse to play audio before a genuine user gesture, so
-     nothing sounds until the first tap/click/key anywhere on the page. */
+     recording would either bloat it hugely or need a network fetch (and
+     any actual song would need real rights to use, which this doesn't
+     have — so this loop is an original chord progression and rhythm, not
+     a reproduction of anything). Browsers refuse to play audio before a
+     genuine user gesture, so nothing sounds until the first tap/click/key
+     anywhere on the page. */
   var SOUND_KEY = "contexto_sound";
   var soundOn = (function () {
     try { return localStorage.getItem(SOUND_KEY) !== "0"; } catch (e) { return true; }
@@ -3018,22 +3021,31 @@
     }
   }
 
-  // A brisk, upbeat little groove: the same I-vi-IV-V vamp (Cmaj7 - Am7 -
-  // Fmaj7 - G7) as a chord pad, but now with a walking root/fifth bass
-  // pulse on every beat and a soft shaker on the off-beats underneath it —
-  // rhythm, not just brighter harmony, is what actually reads as "upbeat"
-  // rather than just a slow ambient wash.
-  var JAZZ_CHORDS = [
-    [48, 52, 55, 59], // Cmaj7
-    [45, 48, 52, 55], // Am7
-    [53, 57, 60, 64], // Fmaj7
-    [55, 59, 62, 65]  // G7
+  // An original disco/funk groove — its own chord progression and its own
+  // syncopated bass pattern, not a copy of any particular recording: a
+  // four-on-the-floor kick, a backbeat clap, an off-beat hi-hat, short
+  // punchy chord stabs instead of a sustained pad, and a syncopated bass
+  // line that skips the "and" of beat 1 and the downbeat of beat 3 for a
+  // bit of push, the way a lot of funk bass parts do generically.
+  var FUNK_CHORDS = [
+    [52, 55, 59, 62], // Em7
+    [45, 49, 52, 55], // A7
+    [50, 54, 57, 61], // Dmaj7
+    [43, 47, 50, 54]  // Gmaj7
   ];
-  var TEMPO_BPM = 132;
+  var TEMPO_BPM = 116;
   var BEAT_SECONDS = 60 / TEMPO_BPM;
-  var BEATS_PER_CHORD = 4;
+  var STEP_SECONDS = BEAT_SECONDS / 2; // eighth notes
+  var STEPS_PER_CHORD = 8; // one bar per chord
   var MUSIC_SCHEDULE_AHEAD = 0.15;
   var MUSIC_LOOKAHEAD_MS = 25;
+  var KICK_STEPS = { 0: true, 2: true, 4: true, 6: true };
+  var SNARE_STEPS = { 2: true, 6: true };
+  // { step, tone } — tone indexes into a chord's [root, third, fifth, seventh].
+  var BASS_HITS = [
+    { step: 0, tone: 0 }, { step: 2, tone: 0 }, { step: 3, tone: 2 },
+    { step: 5, tone: 0 }, { step: 7, tone: 2 }
+  ];
 
   function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 
@@ -3047,31 +3059,29 @@
     return noiseBuffer;
   }
 
-  function playChordPad(chord, startAt, dur) {
-    var pans = [-0.35, -0.12, 0.12, 0.35];
+  // A short, percussive stab rather than a sustained pad — funk comping
+  // punches and decays fast instead of ringing out.
+  function playChordStab(chord, startAt) {
+    var pans = [-0.3, -0.1, 0.1, 0.3];
     chord.forEach(function (midi, i) {
       var filter = actx.createBiquadFilter();
       filter.type = "lowpass";
-      filter.frequency.value = 1600;
+      filter.frequency.value = 2200;
 
       var g = actx.createGain();
       g.gain.setValueAtTime(0.0001, startAt);
-      g.gain.linearRampToValueAtTime(1, startAt + 0.35);
-      g.gain.setValueAtTime(1, startAt + dur - 0.35);
-      g.gain.linearRampToValueAtTime(0.0001, startAt + dur);
+      g.gain.linearRampToValueAtTime(1, startAt + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.32);
 
-      // A second, faintly detuned voice under the main tone is the
-      // cheapest way to fake an electric-piano-ish shimmer without
-      // sampled audio.
       var osc1 = actx.createOscillator();
-      osc1.type = "sine";
+      osc1.type = "sawtooth";
       osc1.frequency.value = midiToFreq(midi);
       var osc2 = actx.createOscillator();
       osc2.type = "triangle";
       osc2.frequency.value = midiToFreq(midi);
-      osc2.detune.value = 6;
+      osc2.detune.value = 5;
       var g2 = actx.createGain();
-      g2.gain.value = 0.35;
+      g2.gain.value = 0.4;
 
       osc1.connect(g);
       osc2.connect(g2);
@@ -3087,8 +3097,8 @@
         filter.connect(musicGain);
       }
 
-      osc1.start(startAt); osc1.stop(startAt + dur + 0.1);
-      osc2.start(startAt); osc2.stop(startAt + dur + 0.1);
+      osc1.start(startAt); osc1.stop(startAt + 0.36);
+      osc2.start(startAt); osc2.stop(startAt + 0.36);
     });
   }
 
@@ -3098,8 +3108,8 @@
     filter.frequency.value = 900;
     var g = actx.createGain();
     g.gain.setValueAtTime(0.0001, startAt);
-    g.gain.exponentialRampToValueAtTime(1, startAt + 0.015);
-    g.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.3);
+    g.gain.exponentialRampToValueAtTime(1, startAt + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.24);
     var osc = actx.createOscillator();
     osc.type = "sine";
     osc.frequency.value = midiToFreq(midi);
@@ -3107,7 +3117,7 @@
     filter.connect(g);
     g.connect(musicGain);
     osc.start(startAt);
-    osc.stop(startAt + 0.34);
+    osc.stop(startAt + 0.28);
   }
 
   function playShaker(startAt) {
@@ -3115,36 +3125,73 @@
     src.buffer = getNoiseBuffer();
     var filter = actx.createBiquadFilter();
     filter.type = "bandpass";
-    filter.frequency.value = 6500;
+    filter.frequency.value = 8000;
     filter.Q.value = 0.7;
     var g = actx.createGain();
     g.gain.setValueAtTime(0.0001, startAt);
-    g.gain.exponentialRampToValueAtTime(1, startAt + 0.004);
-    g.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.055);
+    g.gain.exponentialRampToValueAtTime(1, startAt + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.045);
     src.connect(filter);
     filter.connect(g);
     g.connect(musicGain);
     src.start(startAt);
-    src.stop(startAt + 0.08);
+    src.stop(startAt + 0.06);
   }
 
-  var musicNextTime = 0, musicBeat = 0, musicSchedTimer = null;
+  function playKick(startAt) {
+    var osc = actx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(150, startAt);
+    osc.frequency.exponentialRampToValueAtTime(45, startAt + 0.09);
+    var g = actx.createGain();
+    g.gain.setValueAtTime(1, startAt);
+    g.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.22);
+    osc.connect(g);
+    g.connect(musicGain);
+    osc.start(startAt);
+    osc.stop(startAt + 0.24);
+  }
 
-  // A standard lookahead scheduler: rather than one setTimeout per chord
-  // (which drifts and can't place a bass/shaker pulse in between), this
-  // wakes up often and schedules every beat that falls within the next
-  // instant, using the audio clock (not the timer) for actual placement.
+  function playSnareClap(startAt) {
+    var src = actx.createBufferSource();
+    src.buffer = getNoiseBuffer();
+    var filter = actx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 1800;
+    filter.Q.value = 0.8;
+    var g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, startAt);
+    g.gain.exponentialRampToValueAtTime(1, startAt + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.13);
+    src.connect(filter);
+    filter.connect(g);
+    g.connect(musicGain);
+    src.start(startAt);
+    src.stop(startAt + 0.16);
+  }
+
+  var musicNextTime = 0, musicStepIdx = 0, musicSchedTimer = null;
+
+  // A standard lookahead scheduler: rather than one setTimeout per bar
+  // (which drifts and can't place kick/snare/hat/bass hits in between),
+  // this wakes up often and schedules every eighth-note step that falls
+  // within the next instant, using the audio clock for actual placement.
   function scheduleMusicAhead() {
     if (!soundOn || !actx) return;
     while (musicNextTime < actx.currentTime + MUSIC_SCHEDULE_AHEAD) {
-      var chordIdx = Math.floor(musicBeat / BEATS_PER_CHORD) % JAZZ_CHORDS.length;
-      var chord = JAZZ_CHORDS[chordIdx];
-      var beatInChord = musicBeat % BEATS_PER_CHORD;
-      if (beatInChord === 0) playChordPad(chord, musicNextTime, BEATS_PER_CHORD * BEAT_SECONDS);
-      playBassPulse((beatInChord % 2 === 0 ? chord[0] : chord[2]) - 12, musicNextTime);
-      playShaker(musicNextTime + BEAT_SECONDS / 2);
-      musicNextTime += BEAT_SECONDS;
-      musicBeat++;
+      var chordIdx = Math.floor(musicStepIdx / STEPS_PER_CHORD) % FUNK_CHORDS.length;
+      var chord = FUNK_CHORDS[chordIdx];
+      var step = musicStepIdx % STEPS_PER_CHORD;
+
+      if (step === 0) playChordStab(chord, musicNextTime);
+      if (KICK_STEPS[step]) playKick(musicNextTime);
+      if (SNARE_STEPS[step]) playSnareClap(musicNextTime);
+      if (step % 2 === 1) playShaker(musicNextTime);
+      var bassHit = BASS_HITS.filter(function (b) { return b.step === step; })[0];
+      if (bassHit) playBassPulse(chord[bassHit.tone] - 12, musicNextTime);
+
+      musicNextTime += STEP_SECONDS;
+      musicStepIdx++;
     }
     musicSchedTimer = setTimeout(scheduleMusicAhead, MUSIC_LOOKAHEAD_MS);
   }
@@ -3153,7 +3200,7 @@
     if (musicSchedTimer || !soundOn) return;
     var ctx = ensureAudio();
     if (!ctx) return;
-    musicBeat = 0;
+    musicStepIdx = 0;
     musicNextTime = ctx.currentTime + 0.05;
     scheduleMusicAhead();
   }
