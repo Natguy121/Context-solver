@@ -495,6 +495,7 @@
     flex: none;
   }
   .admin-btn:hover { color: var(--ink); }
+  #sound-btn { font-size: 0.95rem; line-height: 1; }
   .admin-btn.is-on { color: var(--accent); }
   .admin-btn.has-alerts { position: relative; }
   .admin-btn.has-alerts::after {
@@ -1476,6 +1477,7 @@
         <div class="eyebrow" id="dictline">dictionary loading</div>
       </div>
       <div class="masthead-right">
+        <button type="button" class="admin-btn" id="sound-btn" title="Mute sound" aria-label="Mute sound" aria-pressed="true">🔊</button>
         <button type="button" class="admin-btn" id="lang-btn" title="Français" aria-pressed="false">FR</button>
         <button type="button" class="purse" id="purse" aria-expanded="false">0 coins</button>
         <button type="button" class="admin-btn" id="account-btn" data-i18n="sign-in">Sign in</button>
@@ -2419,6 +2421,9 @@
     "That invite's code doesn't work any more.": "Le code de cette invitation ne fonctionne plus.",
     "Couldn't do that. Try again in a moment.": "Impossible pour le moment. Réessayez dans un instant.",
 
+    /* ---- ambient sound toggle ---- */
+    "Mute sound": "Couper le son", "Unmute sound": "Réactiver le son",
+
     /* ---- admin: delete account ---- */
     "Delete account": "Supprimer le compte", "Click again to delete": "Cliquez à nouveau pour supprimer",
     "Deleted {who}'s account.": "Compte de {who} supprimé.",
@@ -2651,6 +2656,7 @@
     if (typeof renderRaceStatusNote === "function") renderRaceStatusNote();
     if (typeof showCode === "function" && shownCode) showCode(shownCode);
     if (typeof refreshShopBoxLabels === "function") refreshShopBoxLabels();
+    if (typeof paintSoundBtn === "function") paintSoundBtn();
   }
 
   $("lang-btn").addEventListener("click", function () {
@@ -2927,6 +2933,191 @@
     if (!shopItems.length) return DEFAULT_SHOP_ITEMS[0];
     return shopItems.reduce(function (a, b) { return b.price < a.price ? b : a; });
   }
+
+  /* ---------- ambient sound: soft SFX + a generative smooth-jazz-style
+     background loop, both synthesized live with the Web Audio API rather
+     than shipped as audio files — this is a single HTML page, and a real
+     recording would either bloat it hugely or need a network fetch.
+     Browsers refuse to play audio before a genuine user gesture, so
+     nothing sounds until the first tap/click/key anywhere on the page. */
+  var SOUND_KEY = "contexto_sound";
+  var soundOn = (function () {
+    try { return localStorage.getItem(SOUND_KEY) !== "0"; } catch (e) { return true; }
+  })();
+
+  var actx = null, masterGain = null, sfxGain = null, musicGain = null;
+  var musicTimer = null, musicStep = 0;
+
+  function ensureAudio() {
+    if (actx) { if (actx.state === "suspended") actx.resume(); return actx; }
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    actx = new Ctx();
+    masterGain = actx.createGain();
+    masterGain.gain.value = 1;
+    masterGain.connect(actx.destination);
+    // SFX read clearly; the music bed stays low enough to sit behind them,
+    // the way a lounge speaker would rather than a foreground track.
+    sfxGain = actx.createGain();
+    sfxGain.gain.value = 0.25;
+    sfxGain.connect(masterGain);
+    musicGain = actx.createGain();
+    musicGain.gain.value = 0.08;
+    musicGain.connect(masterGain);
+    return actx;
+  }
+
+  function sfxTone(freq, opts) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    opts = opts || {};
+    var dur = opts.dur || 0.12;
+    var now = ctx.currentTime;
+    var osc = ctx.createOscillator();
+    osc.type = opts.type || "sine";
+    osc.frequency.setValueAtTime(freq, now);
+    if (opts.slideTo) osc.frequency.exponentialRampToValueAtTime(opts.slideTo, now + dur);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(opts.peak == null ? 0.5 : opts.peak, now + Math.min(0.02, dur * 0.3));
+    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.connect(g);
+    g.connect(sfxGain);
+    osc.start(now);
+    osc.stop(now + dur + 0.02);
+  }
+
+  // Short, gentle cues only for moments worth marking — a guess landing, a
+  // hint actually granted, a win. Nothing fires on every keystroke or tab
+  // switch, and a wrong/repeated guess gets a soft low note, not a buzzer.
+  function sfx(name) {
+    if (!soundOn) return;
+    if (name === "guess") {
+      sfxTone(720, { dur: 0.07, type: "sine", peak: 0.22 });
+    } else if (name === "error") {
+      sfxTone(180, { dur: 0.16, type: "triangle", peak: 0.16, slideTo: 140 });
+    } else if (name === "hint") {
+      sfxTone(880, { dur: 0.14, type: "sine", peak: 0.2 });
+      setTimeout(function () { sfxTone(1318.5, { dur: 0.18, type: "sine", peak: 0.18 }); }, 90);
+    } else if (name === "win") {
+      // A soft major-7th arpeggio (C5 E5 G5 B5) — warm, not a harsh jingle.
+      [523.25, 659.25, 783.99, 987.77].forEach(function (freq, i) {
+        setTimeout(function () { sfxTone(freq, { dur: 0.5, type: "sine", peak: 0.16 }); }, i * 90);
+      });
+    }
+  }
+
+  // A slow, looping ii-V-I-vi vamp (Dm7 - G7 - Cmaj7 - Am7) — the same
+  // change smooth-jazz lounge sets lean on — voiced low and close, with a
+  // long crossfade between chords so nothing ever cuts in or out abruptly.
+  var JAZZ_CHORDS = [
+    [50, 53, 57, 60], // Dm7
+    [55, 59, 62, 65], // G7
+    [48, 52, 55, 59], // Cmaj7
+    [45, 48, 52, 55]  // Am7
+  ];
+  var CHORD_SECONDS = 4.2;
+
+  function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+  function playChordVoice(freq, startAt, dur, pan) {
+    var filter = actx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 1500;
+
+    var g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, startAt);
+    g.gain.linearRampToValueAtTime(1, startAt + 1.3);
+    g.gain.setValueAtTime(1, startAt + dur - 1.3);
+    g.gain.linearRampToValueAtTime(0.0001, startAt + dur);
+
+    // A second, faintly detuned voice under the main tone is the cheapest
+    // way to fake an electric-piano-ish shimmer without sampled audio.
+    var osc1 = actx.createOscillator();
+    osc1.type = "sine";
+    osc1.frequency.value = freq;
+    var osc2 = actx.createOscillator();
+    osc2.type = "triangle";
+    osc2.frequency.value = freq;
+    osc2.detune.value = 6;
+    var g2 = actx.createGain();
+    g2.gain.value = 0.35;
+
+    osc1.connect(g);
+    osc2.connect(g2);
+    g2.connect(g);
+    g.connect(filter);
+
+    if (actx.createStereoPanner) {
+      var panNode = actx.createStereoPanner();
+      panNode.pan.value = pan;
+      filter.connect(panNode);
+      panNode.connect(musicGain);
+    } else {
+      filter.connect(musicGain);
+    }
+
+    osc1.start(startAt); osc1.stop(startAt + dur + 0.1);
+    osc2.start(startAt); osc2.stop(startAt + dur + 0.1);
+  }
+
+  function scheduleMusicLoop() {
+    if (!soundOn || !actx) return;
+    var chord = JAZZ_CHORDS[musicStep % JAZZ_CHORDS.length];
+    var startAt = actx.currentTime + 0.05;
+    var pans = [-0.35, -0.12, 0.12, 0.35];
+    chord.forEach(function (midi, i) { playChordVoice(midiToFreq(midi), startAt, CHORD_SECONDS, pans[i]); });
+    musicStep++;
+    // Slightly shorter than CHORD_SECONDS so each new chord's attack
+    // overlaps the previous one's release instead of leaving a gap.
+    musicTimer = setTimeout(scheduleMusicLoop, CHORD_SECONDS * 1000 * 0.92);
+  }
+
+  function startMusic() {
+    if (musicTimer || !soundOn) return;
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    musicStep = 0;
+    scheduleMusicLoop();
+  }
+
+  function stopMusic() {
+    clearTimeout(musicTimer);
+    musicTimer = null;
+  }
+
+  function paintSoundBtn() {
+    var btn = $("sound-btn");
+    if (!btn) return;
+    btn.textContent = soundOn ? "🔊" : "🔇";
+    btn.setAttribute("aria-pressed", soundOn ? "true" : "false");
+    var label = soundOn ? t("Mute sound") : t("Unmute sound");
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+  }
+
+  function setSoundOn(on) {
+    soundOn = on;
+    try { localStorage.setItem(SOUND_KEY, on ? "1" : "0"); } catch (e) {}
+    paintSoundBtn();
+    if (on) startMusic(); else stopMusic();
+  }
+
+  $("sound-btn").addEventListener("click", function () { setSoundOn(!soundOn); });
+
+  // The first tap/click/key anywhere starts the music (if it's still on by
+  // then) — the earliest moment autoplay restrictions actually allow it.
+  (function armFirstGestureAudio() {
+    function start() {
+      document.removeEventListener("pointerdown", start, true);
+      document.removeEventListener("keydown", start, true);
+      if (soundOn) startMusic();
+    }
+    document.addEventListener("pointerdown", start, true);
+    document.addEventListener("keydown", start, true);
+  })();
+
+  paintSoundBtn();
 
   function escapeHtml(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -5560,7 +5751,7 @@
     $("coach").hidden = true;
     $("play-clock").hidden = true;
     $("tab-solve").hidden = false;
-    if (won) earnCoin();
+    if (won) { sfx("win"); earnCoin(); }
     if (won && ownsFlash()) playWinFlash(show(play.secret));
     $("play-controls").hidden = true;
     $("play-quit").hidden = true;
@@ -5675,20 +5866,22 @@
     if (play.done) return;
     var w = normalize($("play-input").value);
 
-    if (!w || /[^a-z]/.test(w)) { say($("play-notice"), "One plain word, letters only."); return; }
+    if (!w || /[^a-z]/.test(w)) { sfx("error"); say($("play-notice"), "One plain word, letters only."); return; }
     // Kept so the ladder can show the French word actually typed rather than
     // whichever synonym happens to be this English word's first French form —
     // type "voiture" and it should not come back as "auto".
     var typed = w;
     w = resolve(w);
-    if (!inLexicon(w)) { say($("play-notice"), tf("{word} isn't in this dictionary — try another word.", { word: w })); return; }
+    if (!inLexicon(w)) { sfx("error"); say($("play-notice"), tf("{word} isn't in this dictionary — try another word.", { word: w })); return; }
     var isOnlineGuess = play.mode === "online";
     var tried = isOnlineGuess && play.liveRows ? play.liveRows : play.rows;
     if (tried.some(function (r) { return r.word === w; })) {
+      sfx("error");
       say($("play-notice"), tf(isOnlineGuess ? "Someone's already tried {word}." : "You've already tried {word}.", { word: show(w) }));
       return;
     }
 
+    sfx("guess");
     say($("play-notice"), "");
     var rank = rankOf(play.secret, w);
     var who = play.players[play.turn];
@@ -5825,6 +6018,7 @@
 
     // Only charge for a hint that actually said something.
     if (next) {
+      sfx("hint");
       store(HINT_KEY, hints() - 1);
       lastHint = { after: rows.length, word: next };
     }
