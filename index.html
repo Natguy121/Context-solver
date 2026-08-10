@@ -2992,7 +2992,9 @@
   // switch, and a wrong/repeated guess gets a soft low note, not a buzzer.
   function sfx(name) {
     if (!soundOn) return;
-    if (name === "guess") {
+    if (name === "click") {
+      sfxTone(540, { dur: 0.045, type: "sine", peak: 0.13 });
+    } else if (name === "guess") {
       sfxTone(720, { dur: 0.07, type: "sine", peak: 0.22 });
     } else if (name === "error") {
       sfxTone(180, { dur: 0.16, type: "triangle", peak: 0.16, slideTo: 140 });
@@ -3007,14 +3009,16 @@
     }
   }
 
-  // A slow, looping ii-V-I-vi vamp (Dm7 - G7 - Cmaj7 - Am7) — the same
-  // change smooth-jazz lounge sets lean on — voiced low and close, with a
-  // long crossfade between chords so nothing ever cuts in or out abruptly.
+  // A slow, looping I-vi-IV-V vamp (Cmaj7 - Am7 - Fmaj7 - G7) — the
+  // warm, upbeat "50s progression" smooth-jazz lounge sets lean on,
+  // opening and closing on major-7th chords so it reads as bright and
+  // settled rather than wistful. Voiced low and close, with a long
+  // crossfade between chords so nothing ever cuts in or out abruptly.
   var JAZZ_CHORDS = [
-    [50, 53, 57, 60], // Dm7
-    [55, 59, 62, 65], // G7
     [48, 52, 55, 59], // Cmaj7
-    [45, 48, 52, 55]  // Am7
+    [45, 48, 52, 55], // Am7
+    [53, 57, 60, 64], // Fmaj7
+    [55, 59, 62, 65]  // G7
   ];
   var CHORD_SECONDS = 4.2;
 
@@ -3116,6 +3120,17 @@
     document.addEventListener("pointerdown", start, true);
     document.addEventListener("keydown", start, true);
   })();
+
+  // A light tap on every button press across the app, delegated once here
+  // rather than wired into each button individually. Skips play-go and
+  // play-hint, which already play their own more specific guess/error/hint
+  // sound a moment later — this would just be noise stacked under those.
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest && e.target.closest("button");
+    if (!btn || btn.disabled) return;
+    if (btn.id === "play-go" || btn.id === "play-hint") return;
+    sfx("click");
+  });
 
   paintSoundBtn();
 
