@@ -2946,7 +2946,6 @@
   })();
 
   var actx = null, masterGain = null, sfxGain = null, musicGain = null;
-  var musicTimer = null, musicStep = 0;
 
   function ensureAudio() {
     if (actx) { if (actx.state === "suspended") actx.resume(); return actx; }
@@ -2955,14 +2954,22 @@
     actx = new Ctx();
     masterGain = actx.createGain();
     masterGain.gain.value = 1;
-    masterGain.connect(actx.destination);
-    // SFX read clearly; the music bed stays low enough to sit behind them,
-    // the way a lounge speaker would rather than a foreground track.
+    // A limiter on the master bus, not a taste effect — it's what lets the
+    // gains below run this hot (several chord/bass/shaker voices can land
+    // at once) without the overlaps clipping into harshness.
+    var limiter = actx.createDynamicsCompressor();
+    limiter.threshold.value = -16;
+    limiter.knee.value = 18;
+    limiter.ratio.value = 5;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.22;
+    masterGain.connect(limiter);
+    limiter.connect(actx.destination);
     sfxGain = actx.createGain();
-    sfxGain.gain.value = 0.25;
+    sfxGain.gain.value = 0.55;
     sfxGain.connect(masterGain);
     musicGain = actx.createGain();
-    musicGain.gain.value = 0.08;
+    musicGain.gain.value = 0.24;
     musicGain.connect(masterGain);
     return actx;
   }
@@ -2993,101 +3000,165 @@
   function sfx(name) {
     if (!soundOn) return;
     if (name === "click") {
-      sfxTone(540, { dur: 0.045, type: "sine", peak: 0.13 });
+      sfxTone(540, { dur: 0.045, type: "sine", peak: 0.28 });
     } else if (name === "guess") {
-      sfxTone(720, { dur: 0.07, type: "sine", peak: 0.22 });
+      sfxTone(720, { dur: 0.07, type: "sine", peak: 0.42 });
     } else if (name === "error") {
-      sfxTone(180, { dur: 0.16, type: "triangle", peak: 0.16, slideTo: 140 });
+      sfxTone(180, { dur: 0.16, type: "triangle", peak: 0.32, slideTo: 140 });
     } else if (name === "hint") {
-      sfxTone(880, { dur: 0.14, type: "sine", peak: 0.2 });
-      setTimeout(function () { sfxTone(1318.5, { dur: 0.18, type: "sine", peak: 0.18 }); }, 90);
+      sfxTone(880, { dur: 0.14, type: "sine", peak: 0.38 });
+      setTimeout(function () { sfxTone(1318.5, { dur: 0.18, type: "sine", peak: 0.34 }); }, 90);
     } else if (name === "win") {
       // A soft major-7th arpeggio (C5 E5 G5 B5) — warm, not a harsh jingle.
       [523.25, 659.25, 783.99, 987.77].forEach(function (freq, i) {
-        setTimeout(function () { sfxTone(freq, { dur: 0.5, type: "sine", peak: 0.16 }); }, i * 90);
+        setTimeout(function () { sfxTone(freq, { dur: 0.5, type: "sine", peak: 0.32 }); }, i * 90);
       });
     }
   }
 
-  // A slow, looping I-vi-IV-V vamp (Cmaj7 - Am7 - Fmaj7 - G7) — the
-  // warm, upbeat "50s progression" smooth-jazz lounge sets lean on,
-  // opening and closing on major-7th chords so it reads as bright and
-  // settled rather than wistful. Voiced low and close, with a long
-  // crossfade between chords so nothing ever cuts in or out abruptly.
+  // A brisk, upbeat little groove: the same I-vi-IV-V vamp (Cmaj7 - Am7 -
+  // Fmaj7 - G7) as a chord pad, but now with a walking root/fifth bass
+  // pulse on every beat and a soft shaker on the off-beats underneath it —
+  // rhythm, not just brighter harmony, is what actually reads as "upbeat"
+  // rather than just a slow ambient wash.
   var JAZZ_CHORDS = [
     [48, 52, 55, 59], // Cmaj7
     [45, 48, 52, 55], // Am7
     [53, 57, 60, 64], // Fmaj7
     [55, 59, 62, 65]  // G7
   ];
-  var CHORD_SECONDS = 4.2;
+  var TEMPO_BPM = 132;
+  var BEAT_SECONDS = 60 / TEMPO_BPM;
+  var BEATS_PER_CHORD = 4;
+  var MUSIC_SCHEDULE_AHEAD = 0.15;
+  var MUSIC_LOOKAHEAD_MS = 25;
 
   function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 
-  function playChordVoice(freq, startAt, dur, pan) {
-    var filter = actx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 1500;
-
-    var g = actx.createGain();
-    g.gain.setValueAtTime(0.0001, startAt);
-    g.gain.linearRampToValueAtTime(1, startAt + 1.3);
-    g.gain.setValueAtTime(1, startAt + dur - 1.3);
-    g.gain.linearRampToValueAtTime(0.0001, startAt + dur);
-
-    // A second, faintly detuned voice under the main tone is the cheapest
-    // way to fake an electric-piano-ish shimmer without sampled audio.
-    var osc1 = actx.createOscillator();
-    osc1.type = "sine";
-    osc1.frequency.value = freq;
-    var osc2 = actx.createOscillator();
-    osc2.type = "triangle";
-    osc2.frequency.value = freq;
-    osc2.detune.value = 6;
-    var g2 = actx.createGain();
-    g2.gain.value = 0.35;
-
-    osc1.connect(g);
-    osc2.connect(g2);
-    g2.connect(g);
-    g.connect(filter);
-
-    if (actx.createStereoPanner) {
-      var panNode = actx.createStereoPanner();
-      panNode.pan.value = pan;
-      filter.connect(panNode);
-      panNode.connect(musicGain);
-    } else {
-      filter.connect(musicGain);
-    }
-
-    osc1.start(startAt); osc1.stop(startAt + dur + 0.1);
-    osc2.start(startAt); osc2.stop(startAt + dur + 0.1);
+  var noiseBuffer = null;
+  function getNoiseBuffer() {
+    if (noiseBuffer) return noiseBuffer;
+    var len = Math.floor(actx.sampleRate * 0.2);
+    noiseBuffer = actx.createBuffer(1, len, actx.sampleRate);
+    var data = noiseBuffer.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    return noiseBuffer;
   }
 
-  function scheduleMusicLoop() {
-    if (!soundOn || !actx) return;
-    var chord = JAZZ_CHORDS[musicStep % JAZZ_CHORDS.length];
-    var startAt = actx.currentTime + 0.05;
+  function playChordPad(chord, startAt, dur) {
     var pans = [-0.35, -0.12, 0.12, 0.35];
-    chord.forEach(function (midi, i) { playChordVoice(midiToFreq(midi), startAt, CHORD_SECONDS, pans[i]); });
-    musicStep++;
-    // Slightly shorter than CHORD_SECONDS so each new chord's attack
-    // overlaps the previous one's release instead of leaving a gap.
-    musicTimer = setTimeout(scheduleMusicLoop, CHORD_SECONDS * 1000 * 0.92);
+    chord.forEach(function (midi, i) {
+      var filter = actx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 1600;
+
+      var g = actx.createGain();
+      g.gain.setValueAtTime(0.0001, startAt);
+      g.gain.linearRampToValueAtTime(1, startAt + 0.35);
+      g.gain.setValueAtTime(1, startAt + dur - 0.35);
+      g.gain.linearRampToValueAtTime(0.0001, startAt + dur);
+
+      // A second, faintly detuned voice under the main tone is the
+      // cheapest way to fake an electric-piano-ish shimmer without
+      // sampled audio.
+      var osc1 = actx.createOscillator();
+      osc1.type = "sine";
+      osc1.frequency.value = midiToFreq(midi);
+      var osc2 = actx.createOscillator();
+      osc2.type = "triangle";
+      osc2.frequency.value = midiToFreq(midi);
+      osc2.detune.value = 6;
+      var g2 = actx.createGain();
+      g2.gain.value = 0.35;
+
+      osc1.connect(g);
+      osc2.connect(g2);
+      g2.connect(g);
+      g.connect(filter);
+
+      if (actx.createStereoPanner) {
+        var panNode = actx.createStereoPanner();
+        panNode.pan.value = pans[i];
+        filter.connect(panNode);
+        panNode.connect(musicGain);
+      } else {
+        filter.connect(musicGain);
+      }
+
+      osc1.start(startAt); osc1.stop(startAt + dur + 0.1);
+      osc2.start(startAt); osc2.stop(startAt + dur + 0.1);
+    });
+  }
+
+  function playBassPulse(midi, startAt) {
+    var filter = actx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 900;
+    var g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, startAt);
+    g.gain.exponentialRampToValueAtTime(1, startAt + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.3);
+    var osc = actx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = midiToFreq(midi);
+    osc.connect(filter);
+    filter.connect(g);
+    g.connect(musicGain);
+    osc.start(startAt);
+    osc.stop(startAt + 0.34);
+  }
+
+  function playShaker(startAt) {
+    var src = actx.createBufferSource();
+    src.buffer = getNoiseBuffer();
+    var filter = actx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 6500;
+    filter.Q.value = 0.7;
+    var g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, startAt);
+    g.gain.exponentialRampToValueAtTime(1, startAt + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.055);
+    src.connect(filter);
+    filter.connect(g);
+    g.connect(musicGain);
+    src.start(startAt);
+    src.stop(startAt + 0.08);
+  }
+
+  var musicNextTime = 0, musicBeat = 0, musicSchedTimer = null;
+
+  // A standard lookahead scheduler: rather than one setTimeout per chord
+  // (which drifts and can't place a bass/shaker pulse in between), this
+  // wakes up often and schedules every beat that falls within the next
+  // instant, using the audio clock (not the timer) for actual placement.
+  function scheduleMusicAhead() {
+    if (!soundOn || !actx) return;
+    while (musicNextTime < actx.currentTime + MUSIC_SCHEDULE_AHEAD) {
+      var chordIdx = Math.floor(musicBeat / BEATS_PER_CHORD) % JAZZ_CHORDS.length;
+      var chord = JAZZ_CHORDS[chordIdx];
+      var beatInChord = musicBeat % BEATS_PER_CHORD;
+      if (beatInChord === 0) playChordPad(chord, musicNextTime, BEATS_PER_CHORD * BEAT_SECONDS);
+      playBassPulse((beatInChord % 2 === 0 ? chord[0] : chord[2]) - 12, musicNextTime);
+      playShaker(musicNextTime + BEAT_SECONDS / 2);
+      musicNextTime += BEAT_SECONDS;
+      musicBeat++;
+    }
+    musicSchedTimer = setTimeout(scheduleMusicAhead, MUSIC_LOOKAHEAD_MS);
   }
 
   function startMusic() {
-    if (musicTimer || !soundOn) return;
+    if (musicSchedTimer || !soundOn) return;
     var ctx = ensureAudio();
     if (!ctx) return;
-    musicStep = 0;
-    scheduleMusicLoop();
+    musicBeat = 0;
+    musicNextTime = ctx.currentTime + 0.05;
+    scheduleMusicAhead();
   }
 
   function stopMusic() {
-    clearTimeout(musicTimer);
-    musicTimer = null;
+    clearTimeout(musicSchedTimer);
+    musicSchedTimer = null;
   }
 
   function paintSoundBtn() {
