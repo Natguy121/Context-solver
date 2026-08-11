@@ -1386,13 +1386,13 @@
   /* App-open flash: an "arcade boot screen", not the shared white pulse —
      solid black (the ID selector here outranks .win-flash/.playing's own
      background rules, so this always wins regardless of motion pref),
-     held for a beat, then a grid of black tiles laid over the word
-     dissolves away one tile at a time in JS (Bayer-ordered, see JS), so
-     "Contexto" resolves out of the dark. It holds a moment once fully up,
-     then the whole overlay fades out quickly and the real page — which
-     has had this entire sequence to finish loading — is just there.
-     Scoped to #app-open-flash only — the win-flash's real win moment is
-     untouched. */
+     held for a beat, then "Contexto" slams in one letter at a time (JS
+     picks a fresh random order, timing and tilt each launch, so no two
+     opens play quite the same) rather than fading smoothly into view. It
+     holds a moment once every letter has landed, then the whole overlay
+     fades out quickly and the real page — which has had this entire
+     sequence to finish loading — is just there. Scoped to #app-open-flash
+     only — the win-flash's real win moment is untouched. */
   #app-open-flash { background: #000; }
   /* .fading is added while .playing is still on (see JS) — needs the
      compound selector, not just #app-open-flash.fading, or the plain
@@ -1408,9 +1408,22 @@
   #app-open-flash.playing { animation: none; }
   #app-open-flash.playing .win-flash-word { animation: none; }
   #app-open-flash .win-flash-word { position: relative; z-index: 1; color: #fff; opacity: 1; }
-  .app-open-pixels { position: absolute; inset: 0; z-index: 2; display: grid; pointer-events: none; }
-  .app-open-pixels .px { background: #000; }
-  .app-open-pixels .px.cleared { background: transparent; }
+  /* Each letter starts big, rotated, and invisible, then punches down to
+     its resting size on its own turn — a hard impact, not a smooth fade.
+     The overshoot past scale(1) at 55% is what reads as a "slam" rather
+     than a gentle settle. --slam-rot is set per letter from JS so the
+     tilt it lands from is different every launch. */
+  .app-open-letter {
+    display: inline-block;
+    opacity: 0;
+    transform: scale(2.6) rotate(var(--slam-rot, 0deg));
+  }
+  .app-open-letter.slam { animation: app-open-slam 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  @keyframes app-open-slam {
+    0%   { opacity: 0; transform: scale(2.6) rotate(var(--slam-rot, 0deg)); }
+    55%  { opacity: 1; transform: scale(0.86) rotate(calc(var(--slam-rot, 0deg) * -0.25)); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
 </style>
 
 <div id="win-flash" class="win-flash" hidden aria-hidden="true">
@@ -1422,8 +1435,7 @@
      actually launched (standalone display-mode) — not shown for an
      ordinary browser tab, only the installed-app open. -->
 <div id="app-open-flash" class="win-flash" hidden aria-hidden="true">
-  <div class="win-flash-word">Contexto</div>
-  <div id="app-open-pixels" class="app-open-pixels"></div>
+  <div class="win-flash-word" id="app-open-word">Contexto</div>
 </div>
 
 <!-- Floating install banner: slides in from the right when the browser
@@ -5356,74 +5368,22 @@
   }
 
   // The installed app's own "arcade boot" moment: a full black hold, then
-  // a grid of black tiles laid over the word dissolves to let "Contexto"
-  // resolve out of the dark. After it's held on screen for a beat, the
-  // whole overlay fades out quickly and the real page (which has had this
-  // whole sequence to finish loading) is just there. Played once when
-  // this session is actually the installed app opening (not just any
-  // browser tab that happens to match the standalone media query briefly).
+  // "Contexto" slams into place one letter at a time — punchy impacts, not
+  // a smooth dissolve — in a random order with a random rhythm and a
+  // random tilt on each letter, re-rolled fresh on every launch so the
+  // sequence never plays quite the same way twice. Once every letter has
+  // landed it holds a beat, then the whole overlay fades out quickly and
+  // the real page (which has had this entire sequence to finish loading)
+  // is just there. Played once when this session is actually the
+  // installed app opening (not just any browser tab that happens to
+  // match the standalone media query briefly).
   if (runningStandalone) {
     var openFlash = $("app-open-flash");
-    var PIXEL_COLS = 80, PIXEL_ROWS = 50;
-    var PIXEL_STEP_MS = 50, DARK_HOLD_MS = 2000, WORD_HOLD_MS = 1000, FADE_OUT_MS = 600;
-    // Total dissolve time stays ~2s regardless of grid resolution: at this
-    // density (4,000 tiles) clearing one tile per 50ms tick would take
-    // over three minutes, so each tick clears a batch sized to finish in
-    // roughly the same time a coarser grid would.
-    var DISSOLVE_TOTAL_MS = 2000;
-
-    // Ordered dither, not random noise: an 8x8 Bayer matrix (the same
-    // precomputed threshold table Genesis/Mega Drive-era games leaned on
-    // for dissolve/fade transitions and fake transparency, since real
-    // per-pixel randomness wasn't cheap on that hardware) tiled across the
-    // grid decides clear order, giving the recognizable diagonal
-    // crosshatch wipe instead of scattered static. Reused for both stages.
-    var BAYER8 = [
-       0, 32,  8, 40,  2, 34, 10, 42,
-      48, 16, 56, 24, 50, 18, 58, 26,
-      12, 44,  4, 36, 14, 46,  6, 38,
-      60, 28, 52, 20, 62, 30, 54, 22,
-       3, 35, 11, 43,  1, 33,  9, 41,
-      51, 19, 59, 27, 49, 17, 57, 25,
-      15, 47,  7, 39, 13, 45,  5, 37,
-      63, 31, 55, 23, 61, 29, 53, 21
-    ];
-
-    function buildTileGrid(container) {
-      container.style.gridTemplateColumns = "repeat(" + PIXEL_COLS + ", 1fr)";
-      container.style.gridTemplateRows = "repeat(" + PIXEL_ROWS + ", 1fr)";
-      for (var pi = 0; pi < PIXEL_COLS * PIXEL_ROWS; pi++) {
-        var tile = document.createElement("div");
-        tile.className = "px";
-        container.appendChild(tile);
-      }
-      var tiles = Array.prototype.slice.call(container.children);
-      return tiles.map(function (el, i) {
-        var col = i % PIXEL_COLS, row = Math.floor(i / PIXEL_COLS);
-        var order = BAYER8[(row % 8) * 8 + (col % 8)] * tiles.length + i;
-        return { el: el, order: order };
-      }).sort(function (a, b) {
-        return a.order - b.order;
-      }).map(function (t) {
-        return t.el;
-      });
-    }
-
-    function dissolve(tiles, onDone) {
-      var ticksTotal = Math.max(1, Math.round(DISSOLVE_TOTAL_MS / PIXEL_STEP_MS));
-      var tilesPerTick = Math.max(1, Math.ceil(tiles.length / ticksTotal));
-      var idx = 0;
-      var timer = setInterval(function () {
-        if (idx >= tiles.length) {
-          clearInterval(timer);
-          onDone();
-          return;
-        }
-        for (var batch = 0; batch < tilesPerTick && idx < tiles.length; batch++, idx++) {
-          tiles[idx].classList.add("cleared");
-        }
-      }, PIXEL_STEP_MS);
-    }
+    var DARK_HOLD_MS = 700, WORD_HOLD_MS = 850, FADE_OUT_MS = 600;
+    // Base gap between one letter landing and the next starting, jittered
+    // per-letter below — a metronome-even gap would feel mechanical, not
+    // like a series of separate hits.
+    var SLAM_GAP_MS = 150, SLAM_GAP_JITTER_MS = 90;
 
     function hideOpenFlash() {
       openFlash.hidden = true;
@@ -5436,20 +5396,41 @@
       setTimeout(hideOpenFlash, FADE_OUT_MS);
     }
 
-    var wordTiles = buildTileGrid($("app-open-pixels"));
+    var wordEl = $("app-open-word");
+    var letters = wordEl.textContent.split("");
+    wordEl.innerHTML = letters.map(function (ch) {
+      // A non-breaking space so a literal space still takes up room —
+      // an empty span would collapse and throw off the layout.
+      return '<span class="app-open-letter">' + (ch === " " ? "&nbsp;" : escapeHtml(ch)) + "</span>";
+    }).join("");
+    var letterEls = Array.prototype.slice.call(wordEl.children);
+
+    // Fisher-Yates: the order letters land in, reshuffled every launch.
+    var order = letterEls.map(function (_, i) { return i; });
+    for (var oi = order.length - 1; oi > 0; oi--) {
+      var oj = Math.floor(Math.random() * (oi + 1));
+      var tmp = order[oi]; order[oi] = order[oj]; order[oj] = tmp;
+    }
 
     openFlash.hidden = false;
     openFlash.classList.add("playing");
 
     var openFlashReduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (openFlashReduceMotion) {
-      for (var ri = 0; ri < wordTiles.length; ri++) wordTiles[ri].classList.add("cleared");
+      letterEls.forEach(function (el) { el.style.opacity = "1"; el.style.transform = "none"; });
       setTimeout(hideOpenFlash, 700);
     } else {
       setTimeout(function () {
-        dissolve(wordTiles, function () {
-          setTimeout(fadeAndHide, WORD_HOLD_MS);
+        var delay = 0;
+        order.forEach(function (idx) {
+          setTimeout(function () {
+            var el = letterEls[idx];
+            el.style.setProperty("--slam-rot", (Math.random() * 28 - 14).toFixed(1) + "deg");
+            el.classList.add("slam");
+          }, delay);
+          delay += SLAM_GAP_MS + Math.random() * SLAM_GAP_JITTER_MS;
         });
+        setTimeout(function () { setTimeout(fadeAndHide, WORD_HOLD_MS); }, delay);
       }, DARK_HOLD_MS);
     }
   }
