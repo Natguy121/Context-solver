@@ -2494,6 +2494,10 @@
     "Couldn't send that. Try again in a moment.": "Échec de l'envoi. Réessayez dans un instant.",
     "yes": "oui", "no": "non", "delete": "supprimer", "translated from French": "traduit du français",
     "translated from English": "traduit de l'anglais", "translating…": "traduction…",
+    "Translate": "Traduire", "Try again": "Réessayer",
+    "couldn't translate that just now": "traduction impossible pour le moment",
+    "Sign in to join other players' games. Hosting one you can share instead.":
+      "Connectez-vous pour rejoindre les parties des autres. Une partie à partager est créée à la place.",
 
     /* ---- placeholders (data-i18n-ph) ---- */
     "ph-your-guess": "votre proposition", "ph-say-something": "dites quelque chose",
@@ -3966,10 +3970,11 @@
      write only your own vote, so counts stay one-per-person.
 
      A message written in the language nobody in the room is using gets a
-     second line under it — machine-translated by MyMemory, a free,
-     keyless translation API. There's no offline way to translate text
-     someone just typed, so this one corner of the page needs a
-     connection even when the rest of it doesn't. */
+     "Translate" link under it, which sends that one message to MyMemory,
+     a free, keyless translation API. There's no offline way to translate
+     text someone just typed, so this one corner of the page needs a
+     connection even when the rest of it doesn't — which is exactly why
+     it waits for a tap instead of firing on its own. */
   var globalChatMessages = [];
   var FRENCH_CHARS = /[àâäéèêëîïôöùûüçœ]/i;
   var FRENCH_WORDS = ["le", "la", "les", "un", "une", "des", "est", "et", "je", "tu", "il", "elle",
@@ -3986,10 +3991,17 @@
   }
 
   var translateCache = Object.create(null);
+  // Distinct from `false` (which means "came back, but said nothing worth
+  // showing"): this one means the request itself didn't get through, so
+  // the offer can be put back for another go instead of the tap looking
+  // like it did nothing at all.
+  var TRANSLATE_FAILED = " failed";
 
   function translateText(text, target) {
     var key = target + "|" + text;
-    if (key in translateCache) return Promise.resolve(translateCache[key]);
+    if (key in translateCache && translateCache[key] !== TRANSLATE_FAILED) {
+      return Promise.resolve(translateCache[key]);
+    }
     var source = target === "en" ? "fr" : "en";
     var url = "https://api.mymemory.translated.net/get?q=" + encodeURIComponent(text) +
               "&langpair=" + source + "|" + target;
@@ -3998,26 +4010,34 @@
       var out = data && data.responseData && data.responseData.translatedText;
       translateCache[key] = (out && out.toLowerCase() !== text.toLowerCase()) ? out : false;
       return translateCache[key];
-    }).catch(function () { translateCache[key] = false; return false; });
+    }).catch(function () { translateCache[key] = TRANSLATE_FAILED; return TRANSLATE_FAILED; });
   }
 
   // Shared by global chat and the admin updates feed: works out whether a
-  // message needs translating for the viewer's current language, kicks off
-  // the fetch at most once per text+direction (the cache is keyed on both),
-  // and returns the markup to append after the message itself. onReady is
-  // whichever render function should re-run once the translation lands.
-  function translatedHtml(text, onReady) {
+  // message is in the other language and, if so, offers to translate it.
+  // Nothing is sent anywhere until someone actually taps that offer —
+  // MyMemory's servers see whatever gets translated, and the text travels
+  // in the URL so it lands in their request logs. That's a real cost, and
+  // it should be spent deliberately on one message rather than
+  // automatically on every foreign-language line that scrolls past.
+  function translatedHtml(text) {
     var msgLang = looksFrench(text) ? "fr" : "en";
     var viewerLang = LANG === "fr" ? "fr" : "en";
     if (msgLang === viewerLang) return "";
 
     var cacheKey = viewerLang + "|" + text;
-    var known = cacheKey in translateCache;
+    if (!(cacheKey in translateCache)) {
+      return '<div class="translated"><button type="button" class="linkish translate-btn" data-text="' +
+        escapeHtml(text) + '">' + escapeHtml(t("Translate")) + '</button></div>';
+    }
     var cached = translateCache[cacheKey];
-    if (!known) translateText(text, viewerLang).then(onReady);
-
-    if (!known || cached === null) {
+    if (cached === null) {
       return '<div class="translated">' + escapeHtml(t("translating…")) + '</div>';
+    }
+    if (cached === TRANSLATE_FAILED) {
+      return '<div class="translated">' + escapeHtml(t("couldn't translate that just now")) + ' ' +
+        '<button type="button" class="linkish translate-btn" data-text="' + escapeHtml(text) + '">' +
+        escapeHtml(t("Try again")) + '</button></div>';
     }
     if (cached) {
       var fromLabel = t(msgLang === "fr" ? "translated from French" : "translated from English");
@@ -4026,6 +4046,16 @@
     }
     return "";
   }
+
+  // Only place a message's text ever leaves the page, and only from a tap.
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest && e.target.closest(".translate-btn");
+    if (!btn) return;
+    var text = btn.getAttribute("data-text") || "";
+    var repaint = btn.closest("#announce-log") ? renderAnnounceLog : renderGlobalChat;
+    translateText(text, LANG === "fr" ? "fr" : "en").then(repaint);
+    repaint();
+  });
 
   function globalChatSay(message) {
     var node = $("global-chat-notice");
@@ -4046,7 +4076,7 @@
         if (votes[uid] === "yes") yes++; else if (votes[uid] === "no") no++;
       });
 
-      var translation = translatedHtml(m.text, function () { renderGlobalChat(); });
+      var translation = translatedHtml(m.text);
 
       var canDelete = account && (m.uid === account.uid || myRole() === "admin");
 
@@ -4209,16 +4239,52 @@
   // this page — if one changes, the other needs to as well.
   var FIREBASE_RULES_JSON = JSON.stringify({
     rules: {
-      rooms: { "$code": { ".read": true, ".write": true } },
-      lobby: { ".read": true, ".write": true },
+      rooms: {
+        "$code": {
+          ".read": true,
+          // Only a whole-room *deletion*, and only from a signed-in
+          // account — that's the win cleanup and the stale sweep. Nobody
+          // can overwrite or replace a live room wholesale.
+          ".write": "auth != null && !newData.exists()",
+          players: { "$id": { ".write": true } },
+          // Append-only: a new message can be pushed, but an existing one
+          // can't be edited or deleted, so nobody with the code can
+          // rewrite or wipe a room's history.
+          chat: {
+            "$msg": {
+              ".write": "!data.exists()",
+              text: { ".validate": "newData.isString() && newData.val().length <= 200" },
+              name: { ".validate": "newData.isString() && newData.val().length <= 20" }
+            }
+          },
+          guesses: {
+            "$g": {
+              ".write": "!data.exists()",
+              word: { ".validate": "newData.isString() && newData.val().length <= 40" },
+              rank: { ".validate": "newData.isNumber() && newData.val() >= 1" },
+              name: { ".validate": "newData.isString() && newData.val().length <= 20" }
+            }
+          }
+        }
+      },
+      // Signed-in only, both ways: the lobby is what hands out room codes,
+      // and a code decodes back to the answer, so a public lobby exposed
+      // every live game to anyone who asked the database for it.
+      lobby: { ".read": "auth != null", "$code": { ".write": "auth != null" } },
       shop: { ".read": true, ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
       announcements: { ".read": true, ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
       features: { ".read": true, ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
       admins: { ".read": true, ".write": "auth != null && !data.exists()" },
       assistants: { ".read": true, ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
       usernames: {
-        ".read": true,
-        "$name": { ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || " +
+        // No bulk read: asking for the whole node used to return every
+        // username mapped to its uid in one request. A single name can
+        // still be looked up (sign-up availability, gifts, friend adds),
+        // the same shape rooms uses — admins keep the bulk read because
+        // deleteAccount() scans it for entries pointing at one uid.
+        ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+        "$name": { ".read": true,
+          ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || " +
           "(data.exists() && !newData.exists() && (data.val() === auth.uid || " +
           "root.child('admins').child(auth.uid).exists())))" }
       },
@@ -4824,7 +4890,7 @@
     var log = $("announce-log");
     var canDelete = myRole() === "admin";
     log.innerHTML = announceList.map(function (a) {
-      var translation = translatedHtml(a.text, function () { renderAnnounceLog(); });
+      var translation = translatedHtml(a.text);
       return '<li class="chat-line" data-id="' + escapeHtml(a.id) + '">' + escapeHtml(a.text) + translation +
         (canDelete ? ' <button type="button" class="linkish delete-announce">' + escapeHtml(t("Delete")) + '</button>' : '') +
         '</li>';
@@ -6062,7 +6128,18 @@
     say($("code-notice"), "");
     var level = play.level;
     var AR = window.AccountRoom;
-    if (!AR || !AR.ready) { hostNewGame(level); return; }
+    // Matchmaking reads the lobby, which is signed-in-only now (see the
+    // rules comment in the module script). A signed-out player can still
+    // host and share a code — say that plainly rather than silently
+    // handing them a room of their own every time and letting them think
+    // nobody else is ever playing.
+    if (!AR || !AR.ready || !account) {
+      if (AR && AR.ready && !account) {
+        say($("code-notice"), "Sign in to join other players' games. Hosting one you can share instead.");
+      }
+      hostNewGame(level);
+      return;
+    }
 
     var button = $("join-any");
     button.disabled = true;
@@ -6683,8 +6760,29 @@
 
      {
        "rules": {
-         "rooms":  { "$code": { ".read": true, ".write": true } },
-         "lobby":  { ".read": true, ".write": true },
+         "rooms": {
+           "$code": {
+             ".read": true,
+             ".write": "auth != null && !newData.exists()",
+             "players": { "$id": { ".write": true } },
+             "chat": {
+               "$msg": {
+                 ".write": "!data.exists()",
+                 "text": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                 "name": { ".validate": "newData.isString() && newData.val().length <= 20" }
+               }
+             },
+             "guesses": {
+               "$g": {
+                 ".write": "!data.exists()",
+                 "word": { ".validate": "newData.isString() && newData.val().length <= 40" },
+                 "rank": { ".validate": "newData.isNumber() && newData.val() >= 1" },
+                 "name": { ".validate": "newData.isString() && newData.val().length <= 20" }
+               }
+             }
+           }
+         },
+         "lobby":  { ".read": "auth != null", "$code": { ".write": "auth != null" } },
          "shop":   { ".read": true,
                      ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
          "announcements": { ".read": true,
@@ -6697,8 +6795,9 @@
                      ".write": "auth != null && root.child('admins').child(auth.uid).exists()" },
 
          "usernames": {
-           ".read": true,
-           "$name": { ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || " +
+           ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+           "$name": { ".read": true,
+                      ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || " +
                       "(data.exists() && !newData.exists() && (data.val() === auth.uid || " +
                       "root.child('admins').child(auth.uid).exists())))" }
          },
@@ -6804,11 +6903,30 @@
          queue) and whoever is holding onto it in their own browser ever
          use it. A global chat message can't be edited once
          posted; a vote is writable only by the uid it belongs to.
+       - The lobby is signed-in-only, both to read and to write. It used
+         to be world-readable, which was the worst hole in this whole
+         set: asking the database for /lobby.json returned live room
+         codes, and a code decodes straight back to that room's answer
+         (see readCode), so anyone on the internet could list every open
+         game, walk into its chat, and read the solution. Now a stranger
+         has no way to discover a code; it has to be handed to them.
+       - A room still can't be overwritten wholesale, and its chat and
+         guesses are append-only, so nobody can rewrite or wipe a room's
+         history. Deleting a whole room (the win cleanup and the stale
+         sweep) takes a signed-in account.
+       - Usernames can be looked up one at a time (sign-up availability,
+         gifts, friend adds) but not listed in bulk — that used to hand
+         out every username and uid in one request.
        - What is still NOT enforced is a player's own balance. Their
          browser writes their own coins, so a determined person can give
          themselves coins. Stopping that needs code running somewhere
          they don't control — a Cloud Function — which is a step beyond
          a page that has to work offline.
+       - Also not enforced: who is allowed into a room. The code is the
+         only credential, and there is no membership record to check
+         against, so anyone holding a code can join and chat. Keeping
+         codes off a public list is what makes that acceptable; a real
+         fix would need host approval, which again means a server.
      ================================================================ */
   var FIREBASE_CONFIG = {
     apiKey: "AIzaSyCuBAGbiSak6l9YmehE2F4vlpCn8Rizqi0",
