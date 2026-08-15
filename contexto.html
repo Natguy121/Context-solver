@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contexto — offline</title>
+<title>Nearword — offline</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192-v2.png">
 <link rel="apple-touch-icon" href="icons/icon-192-v2.png">
@@ -1386,7 +1386,7 @@
   /* App-open flash: an "arcade boot screen", not the shared white pulse —
      solid black (the ID selector here outranks .win-flash/.playing's own
      background rules, so this always wins regardless of motion pref),
-     held for a beat, then "Contexto" slams in one letter at a time (JS
+     held for a beat, then "Nearword" slams in one letter at a time (JS
      picks a fresh random order, timing and tilt each launch, so no two
      opens play quite the same) rather than fading smoothly into view. It
      holds a moment once every letter has landed, then the whole overlay
@@ -1435,7 +1435,7 @@
      actually launched (standalone display-mode) — not shown for an
      ordinary browser tab, only the installed-app open. -->
 <div id="app-open-flash" class="win-flash" hidden aria-hidden="true">
-  <div class="win-flash-word" id="app-open-word">Contexto</div>
+  <div class="win-flash-word" id="app-open-word">Nearword</div>
 </div>
 
 <!-- Floating install banner: slides in from the right when the browser
@@ -1495,7 +1495,7 @@
         <button type="button" class="admin-btn" id="account-btn" data-i18n="sign-in">Sign in</button>
       </div>
     </div>
-    <h1 data-i18n="title">Contexto</h1>
+    <h1 data-i18n="title">Nearword</h1>
     <p class="standfirst" data-i18n="standfirst">A word is hidden. Every guess tells you how close you are.</p>
     <p class="gloss" id="tour-cta">
       <span data-i18n="new-here">New here?</span> <a href="#" id="start-tour" data-i18n="take-tour">Tutorial</a><span data-i18n="tour-after"> — one real round, guided.</span>
@@ -2322,7 +2322,7 @@
   var FR = {
     "sign-in": "Se connecter", "install-app": "Installer l'appli",
     "install-cta": "Installer", "room-code": "code de la partie", "copy-code": "Copier le code",
-    "title": "Contexto", "standfirst": "Un mot est caché. Chaque proposition vous dit si vous brûlez.",
+    "title": "Nearword", "standfirst": "Un mot est caché. Chaque proposition vous dit si vous brûlez.",
     "take-tour": "Tutoriel", "save-page": "Enregistrer cette page",
     "updates": "actualités", "account": "compte",
     "account-blurb": "Un compte garde vos pièces et indices sur tous vos appareils, et permet aux autres joueurs de vous envoyer des cadeaux.",
@@ -5434,7 +5434,7 @@
   }
 
   // The installed app's own "arcade boot" moment: a full black hold, then
-  // "Contexto" slams into place one letter at a time — punchy impacts, not
+  // "Nearword" slams into place one letter at a time — punchy impacts, not
   // a smooth dissolve — in a random order with a random rhythm and a
   // random tilt on each letter, re-rolled fresh on every launch so the
   // sequence never plays quite the same way twice. Once every letter has
@@ -5846,7 +5846,7 @@
   }
 
   function resultText() {
-    var title = "Contexto " + (play.code ? play.code : "· " + play.level);
+    var title = "Nearword " + (play.code ? play.code : "· " + play.level);
     var trail = play.rows.map(function (row) { return band(row.rank); }).join("");
     return title + "\nfound in " + play.rows.length + "\n" + trail;
   }
