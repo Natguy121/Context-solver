@@ -249,58 +249,122 @@
     #coach-next { background: var(--accent); border-color: var(--accent); color: var(--surface); }
   }
 
-  /* ---------- tabs ----------
-     Five uppercase mono labels overrun a narrow phone, so the strip scrolls
-     sideways instead of wrapping into a second row that would shift the whole
-     page down. The scrollbar itself is hidden — the fade at the edge is the
-     affordance. */
-  .tabs {
+  /* ---------- menu drawer ----------
+     Everything that isn't the game itself — the six tabs, sign-in,
+     language, sound, and the admin entry point — lives in one slide-out
+     drawer behind a single button, so none of it sits between a
+     first-time visitor and the guess box. The tabs are a plain vertical
+     list here rather than the horizontal scrolling strip six of them used
+     to need across the full page width. */
+  .menu-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius);
+    background: none;
+    cursor: pointer;
+    flex: none;
+    box-shadow: none;
+  }
+  .menu-btn:hover { background: var(--sunken); }
+  .menu-btn-bars, .menu-btn-bars::before, .menu-btn-bars::after {
+    content: "";
+    display: block;
+    width: 1.25rem;
+    height: 2px;
+    background: var(--ink);
+    border-radius: 2px;
+    transition: transform var(--fast) var(--ease), opacity var(--fast) var(--ease), background var(--fast) var(--ease);
+  }
+  .menu-btn-bars { position: relative; }
+  .menu-btn-bars::before { content: ""; position: absolute; top: -6px; left: 0; }
+  .menu-btn-bars::after { content: ""; position: absolute; top: 6px; left: 0; }
+  .menu-btn[aria-expanded="true"] .menu-btn-bars { background: transparent; }
+  .menu-btn[aria-expanded="true"] .menu-btn-bars::before { transform: translateY(6px) rotate(45deg); }
+  .menu-btn[aria-expanded="true"] .menu-btn-bars::after { transform: translateY(-6px) rotate(-45deg); }
+  .menu-btn-dot {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--danger);
+  }
+
+  .menu-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(17, 15, 28, 0.4); }
+
+  .menu-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 41;
+    width: min(20rem, 88vw);
     display: flex;
-    gap: 1.5rem;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    background: var(--surface);
+    box-shadow: var(--lift-3);
+    overflow-y: auto;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .menu-backdrop { animation: menu-backdrop-in var(--fast) var(--ease) both; }
+    .menu-drawer { animation: menu-drawer-in var(--slow) var(--ease) both; }
+  }
+  @keyframes menu-backdrop-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+  @keyframes menu-drawer-in { 0% { transform: translateX(100%); } 100% { transform: translateX(0); } }
+
+  .menu-drawer-top { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  .menu-close {
+    appearance: none;
+    border: 0;
+    background: none;
+    font-size: var(--step-1);
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    line-height: 1;
+    box-shadow: none;
+  }
+  .menu-close:hover { color: var(--ink); }
+
+  .menu-drawer-settings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 1.25rem;
+    padding-bottom: 1.25rem;
     border-bottom: 1px solid var(--rule);
-    overflow-x: auto;
-    scrollbar-width: none;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
   }
-  .tabs::-webkit-scrollbar { display: none; }
-  /* Six tabs don't fit a phone at the roomy desktop spacing, and the strip
-     scrolls without showing it does — the last tab just looks cut off. Tighten
-     the gap and letter-spacing instead so the whole set fits on screen. */
-  @media (max-width: 34rem) {
-    .tabs { gap: 0.75rem; }
-    .tab { letter-spacing: 0.08em; }
-  }
-  @media (max-width: 22rem) {
-    .tabs { gap: 0.2rem; }
-    .tab { letter-spacing: 0.01em; }
-  }
+
+  .tabs { display: flex; flex-direction: column; }
 
   .tab {
     appearance: none;
     background: none;
     border: 0;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -1px;
-    padding: 0 0 0.625rem;
+    border-bottom: 1px solid var(--rule);
+    border-left: 3px solid transparent;
+    text-align: left;
+    padding: 0.875rem 0.625rem;
     min-height: 2.75rem;
-    font-family: var(--mono);
-    font-size: var(--micro);
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+    font-family: var(--sans);
+    font-size: var(--step-0);
+    font-weight: 500;
     color: var(--muted);
     cursor: pointer;
-    white-space: nowrap;
-    flex: none;
-    scroll-snap-align: start;
     box-shadow: none;
-    transition: color var(--fast) var(--ease), border-color var(--slow) var(--ease);
+    transition: color var(--fast) var(--ease), border-color var(--fast) var(--ease), background var(--fast) var(--ease);
   }
 
-  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+  .tab[aria-selected="true"] { color: var(--ink); border-left-color: var(--accent); background: var(--accent-wash); }
   .tab:hover { color: var(--ink); }
-  .tab:hover:not([aria-selected="true"]) { border-bottom-color: var(--rule); }
 
   /* ---------- panels ---------- */
   /* The hidden attribute sets display:none from the browser's own stylesheet,
@@ -459,12 +523,12 @@
      can't share a line, instead of breaking the eyebrow mid-phrase. */
   .masthead-top {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 0.375rem 1rem;
+    gap: 0.75rem 1rem;
   }
-  .masthead-left { display: flex; align-items: baseline; gap: 0.875rem; min-width: 0; }
+  .masthead-top h1 { flex: 1 1 auto; min-width: 0; }
   .purse {
     font-family: var(--mono);
     font-size: var(--micro);
@@ -605,10 +669,14 @@
     100% { transform: translate(-50%, 0); opacity: 1; }
   }
 
-  /* The four accent-keyed blocks — admin, account, announcements, coach —
-     all say "this is set apart from the page" the same way, so they share
-     one definition instead of four near-copies that drift. */
-  .admin-panel, .account-panel, .announce, .coach {
+  /* The three accent-keyed blocks — admin, account, coach — all say "this
+     is set apart from the page" the same way, so they share one
+     definition instead of three near-copies that drift. Announcements
+     used to be a fourth member of this set; it's a slim strip now (see
+     .announce below) instead of a boxed panel, since it can appear on
+     first load ahead of the game itself and shouldn't carry the same
+     visual weight as something the player actually opened. */
+  .admin-panel, .account-panel, .coach {
     background: var(--accent-wash);
     border: 1px solid var(--rule);
     border-left: 3px solid var(--accent);
@@ -617,7 +685,7 @@
   }
 
   .admin-panel { padding: 1.125rem; }
-  .masthead-right { display: flex; align-items: baseline; gap: 0.875rem; flex: none; }
+  .masthead-right { display: flex; align-items: center; gap: 0.875rem; flex: none; }
   .user-row {
     display: flex;
     flex-direction: column;
@@ -641,9 +709,11 @@
   .announce {
     display: flex;
     flex-direction: column;
-    gap: 0.625rem;
-    padding: 1.125rem;
+    gap: 0.375rem;
+    padding: 0 0 1rem;
+    border-bottom: 1px solid var(--rule);
   }
+  .announce .eyebrow { color: var(--accent); }
   .announce .chat-log { max-height: none; }
   .announce .chat-line { font-size: var(--step-0); line-height: 1.5; }
   .admin-item-row {
@@ -1484,18 +1554,15 @@
 <div class="wrap">
   <header class="masthead">
     <div class="masthead-top">
-      <div class="masthead-left">
-        <button type="button" class="admin-btn" id="admin-btn" title="Admin" hidden>Admin</button>
-        <div class="eyebrow" id="dictline">dictionary loading</div>
-      </div>
+      <h1 data-i18n="title">Nearword</h1>
       <div class="masthead-right">
-        <button type="button" class="admin-btn" id="sound-btn" title="Mute sound" aria-label="Mute sound" aria-pressed="true">🔊</button>
-        <button type="button" class="admin-btn" id="lang-btn" title="Français" aria-pressed="false">FR</button>
         <button type="button" class="purse" id="purse" aria-expanded="false">0 coins</button>
-        <button type="button" class="admin-btn" id="account-btn" data-i18n="sign-in">Sign in</button>
+        <button type="button" class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="menu-drawer" aria-haspopup="true" aria-label="Menu" title="Menu">
+          <span class="menu-btn-bars" aria-hidden="true"></span>
+          <span class="menu-btn-dot" id="menu-btn-dot" hidden></span>
+        </button>
       </div>
     </div>
-    <h1 data-i18n="title">Nearword</h1>
     <p class="standfirst" data-i18n="standfirst">A word is hidden. Every guess tells you how close you are.</p>
     <p class="gloss" id="tour-cta">
       <span data-i18n="new-here">New here?</span> <a href="#" id="start-tour" data-i18n="take-tour">Tutorial</a><span data-i18n="tour-after"> — one real round, guided.</span>
@@ -1508,8 +1575,38 @@
     </p>
   </header>
 
+  <!-- The 6-tab nav, the account/sign-in/language/sound controls and the
+       updates log all used to sit permanently on screen, ahead of the
+       guess box. They're the same features, just moved into one slide-out
+       drawer behind the menu button — nothing here was removed, only
+       relocated so the first thing on screen is the game itself. -->
+  <div class="menu-backdrop" id="menu-backdrop" hidden></div>
+  <nav class="menu-drawer" id="menu-drawer" hidden aria-hidden="true" aria-label="Menu">
+    <div class="menu-drawer-top">
+      <div class="eyebrow" id="dictline">dictionary loading</div>
+      <button type="button" class="menu-close" id="menu-close" aria-label="Close menu">✕</button>
+    </div>
+    <div class="menu-drawer-settings">
+      <button type="button" class="admin-btn" id="sound-btn" title="Mute sound" aria-label="Mute sound" aria-pressed="true">🔊</button>
+      <button type="button" class="admin-btn" id="lang-btn" title="Français" aria-pressed="false">FR</button>
+      <button type="button" class="admin-btn" id="account-btn" data-i18n="sign-in">Sign in</button>
+      <button type="button" class="admin-btn" id="admin-btn" title="Admin" hidden>Admin</button>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play" data-i18n="tab-play">play</button>
+      <button class="tab" role="tab" id="tab-friends" aria-selected="false" aria-controls="panel-friends"><span data-i18n="tab-friends">friends</span><span class="tab-dot" id="friends-dot" hidden></span></button>
+      <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve" data-i18n="tab-solve">solver</button>
+      <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="panel-compare" data-i18n="tab-compare">compare</button>
+      <button class="tab" role="tab" id="tab-shop" aria-selected="false" aria-controls="panel-shop" data-i18n="tab-shop">shop</button>
+      <button class="tab" role="tab" id="tab-community" aria-selected="false" aria-controls="panel-community" data-i18n="tab-chat">chat</button>
+    </div>
+  </nav>
+
   <!-- Read by every visitor, no login needed. Only the admin can post to it
-       — see admin-broadcast in the Admin panel below. -->
+       — see admin-broadcast in the Admin panel below. Restyled as a slim
+       strip rather than a boxed panel, so a rare admin update doesn't carry
+       the same visual weight as the game itself. -->
   <section class="announce" id="announce-panel" hidden>
     <div class="eyebrow" data-i18n="updates">updates</div>
     <ul class="chat-log" id="announce-log"></ul>
@@ -1571,15 +1668,6 @@
 
     <p class="gloss" id="account-notice" aria-live="polite" hidden></p>
   </section>
-
-  <nav class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play" data-i18n="tab-play">play</button>
-    <button class="tab" role="tab" id="tab-friends" aria-selected="false" aria-controls="panel-friends"><span data-i18n="tab-friends">friends</span><span class="tab-dot" id="friends-dot" hidden></span></button>
-    <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve" data-i18n="tab-solve">solver</button>
-    <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="panel-compare" data-i18n="tab-compare">compare</button>
-    <button class="tab" role="tab" id="tab-shop" aria-selected="false" aria-controls="panel-shop" data-i18n="tab-shop">shop</button>
-    <button class="tab" role="tab" id="tab-community" aria-selected="false" aria-controls="panel-community" data-i18n="tab-chat">chat</button>
-  </nav>
 
   <!-- ============ PLAY ============ -->
   <section class="panel" id="panel-play" role="tabpanel" aria-labelledby="tab-play">
@@ -2784,6 +2872,32 @@
     { tab: "tab-community", panel: "panel-community" }
   ];
 
+  /* ---------- menu drawer ----------
+     Tabs, sign-in, language, sound and the admin entry point all live
+     here now — one button opens/closes it, Escape and the backdrop both
+     close it too, and picking anything inside closes it automatically
+     so it never lingers open over whatever got chosen. */
+  function openMenu() {
+    $("menu-drawer").hidden = false;
+    $("menu-backdrop").hidden = false;
+    $("menu-drawer").setAttribute("aria-hidden", "false");
+    $("menu-btn").setAttribute("aria-expanded", "true");
+  }
+  function closeMenu() {
+    $("menu-drawer").hidden = true;
+    $("menu-backdrop").hidden = true;
+    $("menu-drawer").setAttribute("aria-hidden", "true");
+    $("menu-btn").setAttribute("aria-expanded", "false");
+  }
+  $("menu-btn").addEventListener("click", function () {
+    if ($("menu-drawer").hidden) openMenu(); else closeMenu();
+  });
+  $("menu-close").addEventListener("click", closeMenu);
+  $("menu-backdrop").addEventListener("click", closeMenu);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !$("menu-drawer").hidden) closeMenu();
+  });
+
   TABS.forEach(function (entry) {
     $(entry.tab).addEventListener("click", function () {
       $("admin-panel").hidden = true;
@@ -2793,6 +2907,7 @@
         $(other.tab).setAttribute("aria-selected", on ? "true" : "false");
         $(other.panel).hidden = !on;
       });
+      closeMenu();
     });
   });
 
@@ -3488,6 +3603,7 @@
     });
     $("admin-panel").hidden = true;
     $("account-panel").hidden = false;
+    closeMenu();
     accountSay("");
     renderAccountPanel();
   }
@@ -3819,6 +3935,10 @@
 
     var waiting = friendsState.reqs.length + friendsState.invites.length;
     $("friends-dot").hidden = !signedIn || !waiting;
+    // Friends now lives behind the menu, so its own dot (right on the tab,
+    // inside the drawer) would go unseen until the drawer's already open —
+    // mirror it onto the menu button itself, the thing actually visible.
+    $("menu-btn-dot").hidden = !signedIn || !waiting;
 
     if (!signedIn) return;
 
@@ -4387,6 +4507,7 @@
       $(entry.panel).hidden = true;
     });
     $("admin-panel").hidden = false;
+    closeMenu();
     renderAdminPanel();
   }
 
