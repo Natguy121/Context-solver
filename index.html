@@ -4200,23 +4200,34 @@
     }).join("");
   }
 
+  // An admin's own row never shows up in anyone else's board — same idea
+  // as spectating a room unseen. The admin still sees themself: this only
+  // strips a row for a viewer looking at someone else's.
+  function scoresVisibleToMe() {
+    return scoresState.filter(function (s) {
+      return !adminUids[s.uid] || (account && s.uid === account.uid);
+    });
+  }
+
   function renderScores() {
     var signedIn = !!account;
     $("scores-signin").hidden = signedIn;
     $("scores-live").hidden = !signedIn;
     if (!signedIn) return;
 
-    var fastest = scoresState.filter(function (s) { return s.best > 0; })
+    var visible = scoresVisibleToMe();
+
+    var fastest = visible.filter(function (s) { return s.best > 0; })
       .sort(function (a, b) { return a.best - b.best; }).slice(0, 20);
     $("scores-fastest").innerHTML = scoreRows(fastest, function (s) { return mmss(s.best); }) ||
       '<li class="chat-empty">' + escapeHtml(t("No timed wins yet — be the first.")) + '</li>';
 
-    var richest = scoresState.slice()
+    var richest = visible.slice()
       .sort(function (a, b) { return (b.coins || 0) - (a.coins || 0); }).slice(0, 20);
-    var total = scoresState.reduce(function (sum, s) { return sum + (s.coins || 0); }, 0);
+    var total = visible.reduce(function (sum, s) { return sum + (s.coins || 0); }, 0);
     $("scores-total").textContent = tf("{total} in play across {people}.", {
       total: tally(total, "coin", "coins"),
-      people: tally(scoresState.length, "account", "accounts")
+      people: tally(visible.length, "account", "accounts")
     });
     $("scores-coins").innerHTML = scoreRows(richest, function (s) { return tally(s.coins || 0, "coin", "coins"); }) ||
       '<li class="chat-empty">' + escapeHtml(t("Nobody has any coins yet.")) + '</li>';
@@ -5487,6 +5498,9 @@
       renderAccountPanel();
       if (!$("everyone-box").hidden) renderEveryone();
       renderAnnounceLog();
+      // Which rows the scoreboard hides depends on who's an admin, so a
+      // change here (someone claims or loses the role) has to repaint it.
+      if (typeof renderScores === "function") renderScores();
     });
     window.AccountRoom.onAssistants(function (map) {
       assistantUids = map;
