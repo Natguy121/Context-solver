@@ -1713,35 +1713,37 @@
 
       <div id="online-only" class="panel" hidden>
         <p class="gloss" id="online-signin" hidden>
-          <a href="#" id="online-signin-link" data-i18n="online-signin">Sign in to play online with others</a>
+          <a href="#" id="online-signin-link" data-i18n="online-signin">Sign in to play online</a>
         </p>
 
-        <div id="online-race-box" hidden>
-          <p class="gloss race-note" id="online-race-note"></p>
-          <button type="button" class="ghost" id="race-optout-btn" hidden></button>
-        </div>
-
-        <div class="field">
-          <label class="key" for="online-name" data-i18n="your-name">your name</label>
-          <input id="online-name" data-i18n-ph="ph-player" placeholder="Player" autocapitalize="words" spellcheck="false" />
-        </div>
-
-        <button class="wide" id="join-any" data-i18n="join-last">Join a game</button>
-
-        <button class="wide ghost" id="make-code" data-i18n="hide-word-code">Hide a word and get a code</button>
-        <div id="code-out"></div>
-
-        <div class="field">
-          <label class="key" for="code-in" data-i18n="open-code">or open a friend's code</label>
-          <div class="row">
-            <input class="grow code-input" id="code-in" placeholder="K7P2QX" maxlength="7"
-                   autocapitalize="characters" autocorrect="off" spellcheck="false" />
-            <button type="button" class="ghost" id="use-code" data-i18n="open">Open</button>
+        <div id="online-live" hidden>
+          <div id="online-race-box" hidden>
+            <p class="gloss race-note" id="online-race-note"></p>
+            <button type="button" class="ghost" id="race-optout-btn" hidden></button>
           </div>
-        </div>
 
-        <p class="notice" id="code-notice" aria-live="polite" hidden></p>
-        <p class="gloss" data-i18n="code-room-note">Same code, same room. Everyone guesses on their own.</p>
+          <div class="field">
+            <label class="key" for="online-name" data-i18n="your-name">your name</label>
+            <input id="online-name" data-i18n-ph="ph-player" placeholder="Player" autocapitalize="words" spellcheck="false" />
+          </div>
+
+          <button class="wide" id="join-any" data-i18n="join-last">Join a game</button>
+
+          <button class="wide ghost" id="make-code" data-i18n="hide-word-code">Hide a word and get a code</button>
+          <div id="code-out"></div>
+
+          <div class="field">
+            <label class="key" for="code-in" data-i18n="open-code">or open a friend's code</label>
+            <div class="row">
+              <input class="grow code-input" id="code-in" placeholder="K7P2QX" maxlength="7"
+                     autocapitalize="characters" autocorrect="off" spellcheck="false" />
+              <button type="button" class="ghost" id="use-code" data-i18n="open">Open</button>
+            </div>
+          </div>
+
+          <p class="notice" id="code-notice" aria-live="polite" hidden></p>
+          <p class="gloss" data-i18n="code-room-note">Same code, same room. Everyone guesses on their own.</p>
+        </div>
       </div>
     </div>
 
@@ -2441,7 +2443,7 @@
     "hide-word-code": "Cacher un mot et obtenir un code", "open-code": "ou ouvrir le code d'un ami", "open": "Ouvrir",
     "code-room-note": "Même code, même salon. Chacun propose de son côté.",
     "friends-signin": "Connectez-vous pour ajouter des amis", "add-friend": "ajouter un ami", "add": "Ajouter",
-    "online-signin": "Connectez-vous pour jouer en ligne avec d'autres",
+    "online-signin": "Connectez-vous pour jouer en ligne",
     "friend-requests": "veulent être vos amis", "your-friends": "vos amis",
     "got-it": "Compris", "skip-tour": "passer le tutoriel", "guess": "Proposer", "hint": "Indice", "give-up": "abandonner",
     "whos-here": "qui est dans la partie", "chat": "discussion", "send": "Envoyer",
@@ -4006,12 +4008,12 @@
     openAccountPanel();
   });
 
-  // Online play still works signed out — hosting and joining by code both
-  // do — but matchmaking (join-any) and keeping coins/hints across devices
-  // don't, so this nudges toward an account the same way the friends tab
-  // does, without gating any of the online controls behind it.
+  // Same shape as renderFriends(): signed out sees only the sign-in
+  // prompt, signed in sees the actual online controls — not both at once.
   function paintOnlineSignin() {
-    $("online-signin").hidden = !!account;
+    var signedIn = !!account;
+    $("online-signin").hidden = signedIn;
+    $("online-live").hidden = !signedIn;
   }
   $("online-signin-link").addEventListener("click", function (e) {
     e.preventDefault();
