@@ -1712,6 +1712,10 @@
       </div>
 
       <div id="online-only" class="panel" hidden>
+        <p class="gloss" id="online-signin" hidden>
+          <a href="#" id="online-signin-link" data-i18n="online-signin">Sign in to play online with others</a>
+        </p>
+
         <div id="online-race-box" hidden>
           <p class="gloss race-note" id="online-race-note"></p>
           <button type="button" class="ghost" id="race-optout-btn" hidden></button>
@@ -2437,6 +2441,7 @@
     "hide-word-code": "Cacher un mot et obtenir un code", "open-code": "ou ouvrir le code d'un ami", "open": "Ouvrir",
     "code-room-note": "Même code, même salon. Chacun propose de son côté.",
     "friends-signin": "Connectez-vous pour ajouter des amis", "add-friend": "ajouter un ami", "add": "Ajouter",
+    "online-signin": "Connectez-vous pour jouer en ligne avec d'autres",
     "friend-requests": "veulent être vos amis", "your-friends": "vos amis",
     "got-it": "Compris", "skip-tour": "passer le tutoriel", "guess": "Proposer", "hint": "Indice", "give-up": "abandonner",
     "whos-here": "qui est dans la partie", "chat": "discussion", "send": "Envoyer",
@@ -3648,6 +3653,7 @@
       renderAdminAvailability();
       renderAnnounceLog();
       renderFriends();
+      paintOnlineSignin();
     });
     claimGifts();
     watchFriends(uid);
@@ -3664,6 +3670,7 @@
     renderAccountPanel();
     renderAdminAvailability();
     renderFriends();
+    paintOnlineSignin();
   }
 
   function accountFields() {
@@ -3999,6 +4006,18 @@
     openAccountPanel();
   });
 
+  // Online play still works signed out — hosting and joining by code both
+  // do — but matchmaking (join-any) and keeping coins/hints across devices
+  // don't, so this nudges toward an account the same way the friends tab
+  // does, without gating any of the online controls behind it.
+  function paintOnlineSignin() {
+    $("online-signin").hidden = !!account;
+  }
+  $("online-signin-link").addEventListener("click", function (e) {
+    e.preventDefault();
+    openAccountPanel();
+  });
+
   $("friend-add-btn").addEventListener("click", function () {
     var toName = cleanName($("friend-add-input").value);
     var AR = window.AccountRoom;
@@ -4082,6 +4101,7 @@
   // Signed-out is the state most visitors land in, and neither sign-in nor
   // sign-out has fired yet at this point, so paint it once up front.
   renderFriends();
+  paintOnlineSignin();
 
   /* ---------- global chat ----------
      Open to every signed-in account, not just admins. Each message can be
@@ -5326,7 +5346,7 @@
       ? "Up to four of you on this phone, taking turns at one hidden word."
       : "Hide a word, send the code, and race it on your own phones.";
     say($("code-notice"), "");
-    if (mode === "online") renderRaceStatusNote();
+    if (mode === "online") { renderRaceStatusNote(); paintOnlineSignin(); }
   });
 
   pressGroup($("levels"), "level", function (level) { play.level = level; });
