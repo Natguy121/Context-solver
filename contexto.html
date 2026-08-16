@@ -1856,12 +1856,6 @@
         <p class="gloss" data-i18n="fastest-note">One line each — everybody's own quickest win.</p>
         <ul class="roster-list" id="scores-fastest"></ul>
       </div>
-
-      <div class="field">
-        <span class="key" data-i18n="most-coins">most coins</span>
-        <p class="gloss" id="scores-total"></p>
-        <ul class="roster-list" id="scores-coins"></ul>
-      </div>
     </div>
   </section>
 
@@ -2589,7 +2583,7 @@
     "code-room-note": "Même code, même salon. Chacun propose de son côté.",
     "friends-signin": "Connectez-vous pour ajouter des amis", "add-friend": "ajouter un ami", "add": "Ajouter",
     "scores-signin": "Connectez-vous pour voir le classement",
-    "fastest-wins": "meilleurs temps", "most-coins": "le plus de pièces",
+    "fastest-wins": "meilleurs temps",
     "fastest-note": "Une ligne par personne — sa victoire la plus rapide.",
     "online-signin": "Connectez-vous pour jouer en ligne",
     "friend-requests": "veulent être vos amis", "your-friends": "vos amis",
@@ -2678,8 +2672,6 @@
 
     /* ---- scoreboard ---- */
     "No timed wins yet — be the first.": "Aucune victoire chronométrée — soyez le premier.",
-    "Nobody has any coins yet.": "Personne n'a encore de pièces.",
-    "{total} in play across {people}.": "{total} en jeu sur {people}.",
 
     /* ---- ambient sound toggle ---- */
     "Mute sound": "Couper le son", "Unmute sound": "Réactiver le son",
@@ -2884,7 +2876,6 @@
     "hint":   ["indice", "indices"],
     "guess":  ["essai", "essais"],
     "player": ["joueur", "joueurs"],
-    "account": ["compte", "comptes"],
     "more":   ["de plus", "de plus"],
     "of them": ["d'entre eux", "d'entre eux"]
   };
@@ -3186,9 +3177,6 @@
       if (key === PURSE_KEY) { account.coins = n; patch.coins = n; }
       else { account.hints = n; patch.hints = n; }
       if (window.AccountRoom) window.AccountRoom.updateUser(account.uid, patch).catch(function () {});
-      // The scoreboard reads its own node, not `users`, so a balance that
-      // changed here has to be mirrored over or the coins board goes stale.
-      if (key === PURSE_KEY && typeof postScore === "function") postScore(null);
     } else {
       try { localStorage.setItem(key, String(n)); } catch (e) {}
     }
@@ -4210,16 +4198,6 @@
       .sort(function (a, b) { return a.best - b.best; }).slice(0, 20);
     $("scores-fastest").innerHTML = scoreRows(fastest, function (s) { return mmss(s.best); }) ||
       '<li class="chat-empty">' + escapeHtml(t("No timed wins yet — be the first.")) + '</li>';
-
-    var richest = scoresState.slice()
-      .sort(function (a, b) { return (b.coins || 0) - (a.coins || 0); }).slice(0, 20);
-    var total = scoresState.reduce(function (sum, s) { return sum + (s.coins || 0); }, 0);
-    $("scores-total").textContent = tf("{total} in play across {people}.", {
-      total: tally(total, "coin", "coins"),
-      people: tally(scoresState.length, "account", "accounts")
-    });
-    $("scores-coins").innerHTML = scoreRows(richest, function (s) { return tally(s.coins || 0, "coin", "coins"); }) ||
-      '<li class="chat-empty">' + escapeHtml(t("Nobody has any coins yet.")) + '</li>';
   }
 
   function stopWatchingScores() {
@@ -4234,12 +4212,13 @@
     scoresUnsub = AR.onScores(function (list) { scoresState = list; renderScores(); });
   }
 
-  // The board mirrors a couple of fields out of the account rather than
-  // reading them from `users`, so this keeps that mirror current. Called
-  // whenever coins move and whenever a timed round is won.
+  // The board mirrors a name and a best time out of the account rather
+  // than reading them from `users` — coins deliberately never go on this
+  // node, since it's readable by any signed-in account and a balance
+  // isn't something to hand to every other player.
   function postScore(extra) {
     if (!account || !window.AccountRoom || !window.AccountRoom.ready) return;
-    var patch = { name: account.name || "player", coins: purse(), at: Date.now() };
+    var patch = { name: account.name || "player", at: Date.now() };
     if (extra) Object.keys(extra).forEach(function (k) { patch[k] = extra[k]; });
     window.AccountRoom.submitScore(account.uid, patch).catch(function () {});
   }
@@ -4695,13 +4674,15 @@
       // but a row is writable only by the account it belongs to (or an
       // admin, for account deletion). Signed-out visitors can't read it at
       // all, which is what makes the scores tab show a sign-in prompt.
+      // Coins are deliberately never written here — this node is readable
+      // by any signed-in account, and a balance is nobody else's business.
+      // Only a name and a best time ever leave the account for it.
       scores: {
         ".read": "auth != null",
         "$uid": {
           ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())",
           name: { ".validate": "newData.isString() && newData.val().length <= 20" },
           best: { ".validate": "newData.isNumber() && newData.val() > 0" },
-          coins: { ".validate": "newData.isNumber() && newData.val() >= 0" },
           at: { ".validate": "newData.isNumber()" }
         }
       },
@@ -7236,10 +7217,9 @@
            ".read": "auth != null",
            "$uid": {
              ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())",
-             "name":  { ".validate": "newData.isString() && newData.val().length <= 20" },
-             "best":  { ".validate": "newData.isNumber() && newData.val() > 0" },
-             "coins": { ".validate": "newData.isNumber() && newData.val() >= 0" },
-             "at":    { ".validate": "newData.isNumber()" }
+             "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+             "best": { ".validate": "newData.isNumber() && newData.val() > 0" },
+             "at":   { ".validate": "newData.isNumber()" }
            }
          },
 
@@ -7676,18 +7656,15 @@
 
       // The scoreboard's own node. Deliberately not read out of `users`,
       // which is admin-only and holds far more than a leaderboard needs:
-      // this one carries a display name, a best time and a coin count,
-      // is readable by any signed-in account, and is writable only by the
-      // account it belongs to.
+      // this one carries only a display name and a best time — never a
+      // coin count, even though it's readable by any signed-in account —
+      // and is writable only by the account it belongs to.
       AccountRoom.onScores = function (cb) {
         return dbMod.onValue(dbMod.ref(db, "scores"), function (s) {
           var val = s.val() || {};
           cb(Object.keys(val).map(function (uid) {
             var r = val[uid] || {};
-            return {
-              uid: uid, name: r.name || uid.slice(0, 6),
-              best: r.best || 0, coins: r.coins || 0, at: r.at || 0
-            };
+            return { uid: uid, name: r.name || uid.slice(0, 6), best: r.best || 0, at: r.at || 0 };
           }));
         }, function () { cb([]); });
       };
