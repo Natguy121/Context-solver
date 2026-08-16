@@ -1596,6 +1596,7 @@
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play" data-i18n="tab-play">play</button>
       <button class="tab" role="tab" id="tab-friends" aria-selected="false" aria-controls="panel-friends"><span data-i18n="tab-friends">friends</span><span class="tab-dot" id="friends-dot" hidden></span></button>
+      <button class="tab" role="tab" id="tab-scores" aria-selected="false" aria-controls="panel-scores" data-i18n="tab-scores">scores</button>
       <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve" data-i18n="tab-solve">solver</button>
       <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="panel-compare" data-i18n="tab-compare">compare</button>
       <button class="tab" role="tab" id="tab-shop" aria-selected="false" aria-controls="panel-shop" data-i18n="tab-shop">shop</button>
@@ -1832,6 +1833,34 @@
       <div class="field">
         <span class="key" data-i18n="your-friends">your friends</span>
         <ul class="roster-list" id="friends-list"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCORES ============
+       Best times and coin counts live in their own `scores` node rather
+       than being read out of `users`. `users` is admin-only by design —
+       it holds every account's row — and a leaderboard is no reason to
+       open all of that to everyone. Each player writes only their own
+       line here, and only signed-in accounts can read the board at all,
+       so a signed-out visitor sees the same sign-in prompt the friends
+       tab shows rather than a list of other people's names. -->
+  <section class="panel" id="panel-scores" role="tabpanel" aria-labelledby="tab-scores" hidden>
+    <p class="gloss" id="scores-signin" hidden>
+      <a href="#" id="scores-signin-link" data-i18n="scores-signin">Sign in to see the scoreboard</a>
+    </p>
+
+    <div id="scores-live" hidden>
+      <div class="field">
+        <span class="key" data-i18n="fastest-wins">fastest wins</span>
+        <p class="gloss" data-i18n="fastest-note">One line each — everybody's own quickest win.</p>
+        <ul class="roster-list" id="scores-fastest"></ul>
+      </div>
+
+      <div class="field">
+        <span class="key" data-i18n="most-coins">most coins</span>
+        <p class="gloss" id="scores-total"></p>
+        <ul class="roster-list" id="scores-coins"></ul>
       </div>
     </div>
   </section>
@@ -2549,7 +2578,7 @@
     "done": "Terminé", "Nothing yet — an admin will reply here.": "Rien pour l'instant — un admin répondra ici.",
     "username": "nom d'utilisateur", "password": "mot de passe", "create-account": "Créer un compte",
     "account-id": "Identifiant de compte :", "claim-admin": "Devenir admin", "sign-out": "Se déconnecter",
-    "tab-play": "jouer", "tab-friends": "amis", "tab-solve": "solveur", "tab-compare": "comparer", "tab-shop": "boutique", "tab-chat": "discussion",
+    "tab-play": "jouer", "tab-friends": "amis", "tab-scores": "classement", "tab-solve": "solveur", "tab-compare": "comparer", "tab-shop": "boutique", "tab-chat": "discussion",
     "how-playing": "mode de jeu", "offline": "hors ligne", "online": "en ligne",
     "mode-note": "Jusqu'à quatre joueurs, chacun son tour sur cet appareil.",
     "difficulty": "difficulté", "easy": "facile", "normal": "normal", "hard": "difficile", "nightmare": "cauchemar",
@@ -2559,6 +2588,9 @@
     "hide-word-code": "Cacher un mot et obtenir un code", "open-code": "ou ouvrir le code d'un ami", "open": "Ouvrir",
     "code-room-note": "Même code, même salon. Chacun propose de son côté.",
     "friends-signin": "Connectez-vous pour ajouter des amis", "add-friend": "ajouter un ami", "add": "Ajouter",
+    "scores-signin": "Connectez-vous pour voir le classement",
+    "fastest-wins": "meilleurs temps", "most-coins": "le plus de pièces",
+    "fastest-note": "Une ligne par personne — sa victoire la plus rapide.",
     "online-signin": "Connectez-vous pour jouer en ligne",
     "friend-requests": "veulent être vos amis", "your-friends": "vos amis",
     "got-it": "Compris", "skip-tour": "passer le tutoriel", "guess": "Proposer", "hint": "Indice", "give-up": "abandonner",
@@ -2643,6 +2675,11 @@
       "{who} est invité — il peut rejoindre depuis son onglet amis.",
     "That invite's code doesn't work any more.": "Le code de cette invitation ne fonctionne plus.",
     "Couldn't do that. Try again in a moment.": "Impossible pour le moment. Réessayez dans un instant.",
+
+    /* ---- scoreboard ---- */
+    "No timed wins yet — be the first.": "Aucune victoire chronométrée — soyez le premier.",
+    "Nobody has any coins yet.": "Personne n'a encore de pièces.",
+    "{total} in play across {people}.": "{total} en jeu sur {people}.",
 
     /* ---- ambient sound toggle ---- */
     "Mute sound": "Couper le son", "Unmute sound": "Réactiver le son",
@@ -2847,6 +2884,7 @@
     "hint":   ["indice", "indices"],
     "guess":  ["essai", "essais"],
     "player": ["joueur", "joueurs"],
+    "account": ["compte", "comptes"],
     "more":   ["de plus", "de plus"],
     "of them": ["d'entre eux", "d'entre eux"]
   };
@@ -2884,6 +2922,12 @@
     if (typeof showCode === "function" && shownCode) showCode(shownCode);
     if (typeof refreshShopBoxLabels === "function") refreshShopBoxLabels();
     if (typeof paintSoundBtn === "function") paintSoundBtn();
+    // Both of these build their rows in JS, so switching language leaves
+    // whatever was already on screen in the old one until they repaint.
+    // The friends list had this too — it just wasn't visible until the
+    // scoreboard arrived with numbers and units in its lines.
+    if (typeof renderFriends === "function") renderFriends();
+    if (typeof renderScores === "function") renderScores();
   }
 
   $("lang-btn").addEventListener("click", function () {
@@ -2989,6 +3033,7 @@
   var TABS = [
     { tab: "tab-play", panel: "panel-play" },
     { tab: "tab-friends", panel: "panel-friends" },
+    { tab: "tab-scores", panel: "panel-scores" },
     { tab: "tab-solve", panel: "panel-solve" },
     { tab: "tab-compare", panel: "panel-compare" },
     { tab: "tab-shop", panel: "panel-shop" },
@@ -3141,6 +3186,9 @@
       if (key === PURSE_KEY) { account.coins = n; patch.coins = n; }
       else { account.hints = n; patch.hints = n; }
       if (window.AccountRoom) window.AccountRoom.updateUser(account.uid, patch).catch(function () {});
+      // The scoreboard reads its own node, not `users`, so a balance that
+      // changed here has to be mirrored over or the coins board goes stale.
+      if (key === PURSE_KEY && typeof postScore === "function") postScore(null);
     } else {
       try { localStorage.setItem(key, String(n)); } catch (e) {}
     }
@@ -3771,16 +3819,19 @@
       renderAdminAvailability();
       renderAnnounceLog();
       renderFriends();
+      renderScores();
       paintOnlineSignin();
     });
     claimGifts();
     watchFriends(uid);
+    watchScores(uid);
   }
 
   function forgetAccount() {
     if (accountUnsub) { accountUnsub(); accountUnsub = null; }
     if (giftUnsub) { giftUnsub(); giftUnsub = null; }
     stopWatchingFriends();
+    stopWatchingScores();
     if (window.LiveRoom) window.LiveRoom.stopSpectating();
     account = null;
     renderAnnounceLog();
@@ -3788,6 +3839,7 @@
     renderAccountPanel();
     renderAdminAvailability();
     renderFriends();
+    renderScores();
     paintOnlineSignin();
   }
 
@@ -4124,6 +4176,87 @@
     openAccountPanel();
   });
 
+  /* ---------- the scoreboard ----------
+     Two boards off one `scores` node: quickest win, and coins held. Each
+     account owns exactly one row there and can only write its own, so
+     "one line each" is a property of the storage rather than something
+     the render has to de-duplicate. Signed out shows only the sign-in
+     prompt, the same shape as the friends tab. */
+  var scoresState = [];
+  var scoresUnsub = null;
+
+  function mmss(seconds) {
+    var s = Math.max(0, Math.round(seconds));
+    return Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60);
+  }
+
+  function scoreRows(list, label) {
+    return list.map(function (s, i) {
+      var me = account && s.uid === account.uid;
+      return '<li class="roster-item' + (me ? " is-me" : "") + '">' +
+        '<span class="who">' + (i + 1) + ". " + escapeHtml(s.name) +
+        (me ? " " + escapeHtml(t("(you)")) : "") + '</span>' +
+        '<span class="stat">' + escapeHtml(label(s)) + '</span></li>';
+    }).join("");
+  }
+
+  function renderScores() {
+    var signedIn = !!account;
+    $("scores-signin").hidden = signedIn;
+    $("scores-live").hidden = !signedIn;
+    if (!signedIn) return;
+
+    var fastest = scoresState.filter(function (s) { return s.best > 0; })
+      .sort(function (a, b) { return a.best - b.best; }).slice(0, 20);
+    $("scores-fastest").innerHTML = scoreRows(fastest, function (s) { return mmss(s.best); }) ||
+      '<li class="chat-empty">' + escapeHtml(t("No timed wins yet — be the first.")) + '</li>';
+
+    var richest = scoresState.slice()
+      .sort(function (a, b) { return (b.coins || 0) - (a.coins || 0); }).slice(0, 20);
+    var total = scoresState.reduce(function (sum, s) { return sum + (s.coins || 0); }, 0);
+    $("scores-total").textContent = tf("{total} in play across {people}.", {
+      total: tally(total, "coin", "coins"),
+      people: tally(scoresState.length, "account", "accounts")
+    });
+    $("scores-coins").innerHTML = scoreRows(richest, function (s) { return tally(s.coins || 0, "coin", "coins"); }) ||
+      '<li class="chat-empty">' + escapeHtml(t("Nobody has any coins yet.")) + '</li>';
+  }
+
+  function stopWatchingScores() {
+    if (scoresUnsub) { scoresUnsub(); scoresUnsub = null; }
+    scoresState = [];
+  }
+
+  function watchScores(uid) {
+    stopWatchingScores();
+    var AR = window.AccountRoom;
+    if (!AR || !AR.ready || !uid) { renderScores(); return; }
+    scoresUnsub = AR.onScores(function (list) { scoresState = list; renderScores(); });
+  }
+
+  // The board mirrors a couple of fields out of the account rather than
+  // reading them from `users`, so this keeps that mirror current. Called
+  // whenever coins move and whenever a timed round is won.
+  function postScore(extra) {
+    if (!account || !window.AccountRoom || !window.AccountRoom.ready) return;
+    var patch = { name: account.name || "player", coins: purse(), at: Date.now() };
+    if (extra) Object.keys(extra).forEach(function (k) { patch[k] = extra[k]; });
+    window.AccountRoom.submitScore(account.uid, patch).catch(function () {});
+  }
+
+  // Only a genuinely faster win replaces the record — a slow round should
+  // never overwrite somebody's best.
+  function recordWinTime(seconds) {
+    if (!account || !(seconds > 0)) return;
+    var mine = scoresState.filter(function (s) { return s.uid === account.uid; })[0];
+    postScore(!mine || !mine.best || seconds < mine.best ? { best: seconds } : null);
+  }
+
+  $("scores-signin-link").addEventListener("click", function (e) {
+    e.preventDefault();
+    openAccountPanel();
+  });
+
   // Same shape as renderFriends(): signed out sees only the sign-in
   // prompt, signed in sees the actual online controls — not both at once.
   function paintOnlineSignin() {
@@ -4219,6 +4352,7 @@
   // Signed-out is the state most visitors land in, and neither sign-in nor
   // sign-out has fired yet at this point, so paint it once up front.
   renderFriends();
+  renderScores();
   paintOnlineSignin();
 
   /* ---------- global chat ----------
@@ -4555,6 +4689,20 @@
           hints: { ".validate": "newData.isNumber() && newData.val() >= 0" },
           name: { ".validate": "newData.isString() && newData.val().length <= 20" },
           username: { ".validate": "newData.isString() && newData.val().length <= 20" }
+        }
+      },
+      // The leaderboard: any signed-in account can read the whole board,
+      // but a row is writable only by the account it belongs to (or an
+      // admin, for account deletion). Signed-out visitors can't read it at
+      // all, which is what makes the scores tab show a sign-in prompt.
+      scores: {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())",
+          name: { ".validate": "newData.isString() && newData.val().length <= 20" },
+          best: { ".validate": "newData.isNumber() && newData.val() > 0" },
+          coins: { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          at: { ".validate": "newData.isNumber()" }
         }
       },
       friends: {
@@ -5354,7 +5502,11 @@
   // Each difficulty gets its own clock. Running out ends the game the way
   // giving up does: the word is shown, and no coin is earned.
   var LIMITS = { easy: 7 * 60, normal: 10 * 60, hard: 12 * 60, nightmare: 17 * 60 };
-  var clock = { left: 0, tick: null };
+  // `running` is not the same as `tick` being set: the tutorial fills in
+  // `left` without ever starting the countdown, and stopClock() clears the
+  // interval before finish() gets a chance to read anything. Without this
+  // flag a tutorial win would post a flat 0:00 as somebody's best time.
+  var clock = { left: 0, tick: null, running: false };
   var tour = { on: false, at: 0 };
   var lastHint = { after: -1, word: null };
 
@@ -5374,7 +5526,8 @@
     clock.left = LIMITS[play.level] || LIMITS.normal;
     // Nobody should be racing a clock while they are still being told the rules.
     // The tour starts it again on the way out.
-    if (tour.on) { $("play-clock").hidden = true; return; }
+    if (tour.on) { clock.running = false; $("play-clock").hidden = true; return; }
+    clock.running = true;
     $("play-clock").hidden = false;
     paintClock();
     clock.tick = setInterval(function () {
@@ -6192,7 +6345,13 @@
     $("coach").hidden = true;
     $("play-clock").hidden = true;
     $("tab-solve").hidden = false;
-    if (won) { sfx("win"); earnCoin(); }
+    if (won) {
+      sfx("win");
+      earnCoin();
+      // stopClock() above only clears the interval, so `left` still holds
+      // whatever was on the clock at the moment it was solved.
+      if (clock.running) recordWinTime((LIMITS[play.level] || LIMITS.normal) - clock.left);
+    }
     if (won && ownsFlash()) playWinFlash(show(play.secret));
     $("play-controls").hidden = true;
     $("play-quit").hidden = true;
@@ -7073,6 +7232,17 @@
            }
          },
 
+         "scores": {
+           ".read": "auth != null",
+           "$uid": {
+             ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())",
+             "name":  { ".validate": "newData.isString() && newData.val().length <= 20" },
+             "best":  { ".validate": "newData.isNumber() && newData.val() > 0" },
+             "coins": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+             "at":    { ".validate": "newData.isNumber()" }
+           }
+         },
+
          "friends": {
            "$uid": {
              ".read":  "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())",
@@ -7224,6 +7394,7 @@
     sendFriendReq: offline, acceptFriend: offline, declineFriend: offline, removeFriend: offline,
     sendInvite: offline, clearInvite: offline,
     onAdmins: noop, onAssistants: noop, claimAdmin: offline, setAssistant: offline, deleteAccount: offline,
+    onScores: noop, submitScore: offline,
     findOpenGame: offline, openGame: offline, closeGame: offline, onOpenGames: noop,
     sendGlobalChat: offline, onGlobalChat: noop, voteGlobal: offline, deleteGlobalChat: offline,
     ready: false, unavailable: false
@@ -7503,6 +7674,27 @@
         }, function () { cb([]); });
       };
 
+      // The scoreboard's own node. Deliberately not read out of `users`,
+      // which is admin-only and holds far more than a leaderboard needs:
+      // this one carries a display name, a best time and a coin count,
+      // is readable by any signed-in account, and is writable only by the
+      // account it belongs to.
+      AccountRoom.onScores = function (cb) {
+        return dbMod.onValue(dbMod.ref(db, "scores"), function (s) {
+          var val = s.val() || {};
+          cb(Object.keys(val).map(function (uid) {
+            var r = val[uid] || {};
+            return {
+              uid: uid, name: r.name || uid.slice(0, 6),
+              best: r.best || 0, coins: r.coins || 0, at: r.at || 0
+            };
+          }));
+        }, function () { cb([]); });
+      };
+      AccountRoom.submitScore = function (uid, patch) {
+        return dbMod.update(dbMod.ref(db, "scores/" + uid), patch);
+      };
+
       // Wipes an account's database footprint: whatever username(s) it
       // actually claimed, the profile row, and its friends/requests/
       // invites/gifts inboxes — including the reverse side of every
@@ -7537,7 +7729,8 @@
             dbMod.remove(dbMod.ref(db, "friends/" + uid)),
             dbMod.remove(dbMod.ref(db, "friendreqs/" + uid)),
             dbMod.remove(dbMod.ref(db, "invites/" + uid)),
-            dbMod.remove(dbMod.ref(db, "gifts/" + uid))
+            dbMod.remove(dbMod.ref(db, "gifts/" + uid)),
+            dbMod.remove(dbMod.ref(db, "scores/" + uid))
           ]));
         });
       };
