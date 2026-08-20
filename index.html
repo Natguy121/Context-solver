@@ -875,6 +875,66 @@
   }
   .linkish:hover { color: var(--ink); }
 
+  /* ---------- lights out ----------
+     An 8x8 board of buttons. The cells have to override the page's
+     button styling wholesale: the shared rule sets min-height 3rem and
+     side padding, which would stop the cells from ever going square on
+     a phone (eight of them plus gaps have to fit the width). aspect-ratio
+     keeps them square at whatever width is left over. */
+  .lights-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .lights-head #lights-left { color: var(--accent); }
+
+  .lights-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.375rem;
+    width: 100%;
+    max-width: 26rem;
+    margin: 0 auto;
+  }
+  @media (max-width: 26rem) {
+    .lights-grid { gap: 0.25rem; }
+  }
+
+  .lights-cell {
+    aspect-ratio: 1;
+    min-height: 0;
+    padding: 0;
+    border-radius: 10px;
+    border: 1px solid var(--rule);
+    background: var(--sunken);
+    box-shadow: none;
+    cursor: pointer;
+    transition: background-color var(--fast) var(--ease), border-color var(--fast) var(--ease),
+                box-shadow var(--fast) var(--ease), transform var(--fast) var(--ease);
+  }
+  .lights-cell:hover:not(:disabled) { border-color: var(--accent-edge); transform: none; }
+  .lights-cell.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0.75rem var(--glow);
+  }
+  /* The board stays on screen after a win so the finished pattern is
+     visible, but nothing on it should still look pressable. */
+  .lights-grid.done .lights-cell { cursor: default; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .lights-cell.flip { animation: lights-flip 0.22s var(--ease); }
+  }
+  @keyframes lights-flip {
+    0% { transform: scale(0.82); }
+    100% { transform: scale(1); }
+  }
+
   /* ---------- readings (the ladder) ---------- */
   .readings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 
@@ -1596,6 +1656,7 @@
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play" data-i18n="tab-play">play</button>
       <button class="tab" role="tab" id="tab-friends" aria-selected="false" aria-controls="panel-friends"><span data-i18n="tab-friends">friends</span><span class="tab-dot" id="friends-dot" hidden></span></button>
+      <button class="tab" role="tab" id="tab-minigames" aria-selected="false" aria-controls="panel-minigames" data-i18n="tab-minigames">minigames</button>
       <button class="tab" role="tab" id="tab-scores" aria-selected="false" aria-controls="panel-scores" data-i18n="tab-scores">scores</button>
       <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve" data-i18n="tab-solve">solver</button>
       <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="panel-compare" data-i18n="tab-compare">compare</button>
@@ -1862,6 +1923,30 @@
         <p class="gloss" id="scores-total"></p>
         <ul class="roster-list" id="scores-coins"></ul>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ MINIGAMES ============
+       A home for the small games that aren't the word game. Everything
+       here runs entirely on the device — no account, no network, nothing
+       to sync — so this whole section works exactly the same offline. -->
+  <section class="panel" id="panel-minigames" role="tabpanel" aria-labelledby="tab-minigames" hidden>
+    <div class="field">
+      <span class="key" data-i18n="lights-out">lights out</span>
+      <p class="gloss" data-i18n="lights-blurb">Pressing a light flips it and the four around it, in a cross. Turn every light off.</p>
+    </div>
+
+    <div class="lights-head">
+      <span id="lights-moves">0 moves</span>
+      <span id="lights-left"></span>
+    </div>
+
+    <div id="lights-grid" class="lights-grid"></div>
+
+    <p class="notice" id="lights-notice" aria-live="polite" hidden></p>
+
+    <div class="row">
+      <button type="button" class="grow" id="lights-new" data-i18n="new-board">New board</button>
     </div>
   </section>
 
@@ -2578,7 +2663,11 @@
     "done": "Terminé", "Nothing yet — an admin will reply here.": "Rien pour l'instant — un admin répondra ici.",
     "username": "nom d'utilisateur", "password": "mot de passe", "create-account": "Créer un compte",
     "account-id": "Identifiant de compte :", "claim-admin": "Devenir admin", "sign-out": "Se déconnecter",
-    "tab-play": "jouer", "tab-friends": "amis", "tab-scores": "classement", "tab-solve": "solveur", "tab-compare": "comparer", "tab-shop": "boutique", "tab-chat": "discussion",
+    "tab-play": "jouer", "tab-minigames": "mini-jeux", "tab-friends": "amis", "tab-scores": "classement", "tab-solve": "solveur", "tab-compare": "comparer", "tab-shop": "boutique", "tab-chat": "discussion",
+
+    /* ---- lights out ---- */
+    "lights-out": "éteins tout", "new-board": "Nouvelle grille",
+    "lights-blurb": "Appuyer sur une lumière l'inverse, ainsi que les quatre autour, en croix. Éteignez-les toutes.",
     "how-playing": "mode de jeu", "offline": "hors ligne", "online": "en ligne",
     "mode-note": "Jusqu'à quatre joueurs, chacun son tour sur cet appareil.",
     "difficulty": "difficulté", "easy": "facile", "normal": "normal", "hard": "difficile", "nightmare": "cauchemar",
@@ -2675,6 +2764,12 @@
       "{who} est invité — il peut rejoindre depuis son onglet amis.",
     "That invite's code doesn't work any more.": "Le code de cette invitation ne fonctionne plus.",
     "Couldn't do that. Try again in a moment.": "Impossible pour le moment. Réessayez dans un instant.",
+
+    /* ---- lights out ---- */
+    "row {r} column {c}, {state}": "ligne {r} colonne {c}, {state}",
+    "on": "allumée", "off": "éteinte",
+    "{n} still on": "{n} encore allumées",
+    "All out in {n}.": "Tout éteint en {n}.",
 
     /* ---- scoreboard ---- */
     "No timed wins yet — be the first.": "Aucune victoire chronométrée — soyez le premier.",
@@ -2885,6 +2980,7 @@
     "guess":  ["essai", "essais"],
     "player": ["joueur", "joueurs"],
     "account": ["compte", "comptes"],
+    "move":   ["coup", "coups"],
     "more":   ["de plus", "de plus"],
     "of them": ["d'entre eux", "d'entre eux"]
   };
@@ -2928,6 +3024,9 @@
     // scoreboard arrived with numbers and units in its lines.
     if (typeof renderFriends === "function") renderFriends();
     if (typeof renderScores === "function") renderScores();
+    // The board's move counter and its per-cell labels are both built in
+    // JS, so they'd otherwise stay in whichever language they were drawn.
+    if (typeof renderLights === "function" && lights && lights.on.length) renderLights();
   }
 
   $("lang-btn").addEventListener("click", function () {
@@ -3032,6 +3131,7 @@
      ================================================================ */
   var TABS = [
     { tab: "tab-play", panel: "panel-play" },
+    { tab: "tab-minigames", panel: "panel-minigames" },
     { tab: "tab-friends", panel: "panel-friends" },
     { tab: "tab-scores", panel: "panel-scores" },
     { tab: "tab-solve", panel: "panel-solve" },
@@ -4365,6 +4465,133 @@
   renderFriends();
   renderScores();
   paintOnlineSignin();
+
+  /* ================================================================
+     LIGHTS OUT
+     Eight by eight. Pressing a light flips it and its four orthogonal
+     neighbours — a cross, clipped at the edges of the board.
+
+     Boards are built by starting from every light off and then pressing
+     at random, never by filling cells at random. That distinction is the
+     whole reason this generator looks roundabout: a press is its own
+     inverse (press the same cell twice and the board is exactly where it
+     started), so whatever sequence of presses built a board will also
+     clear it. Every board made this way is therefore guaranteed to have
+     a solution. Filling cells by coin flip guarantees nothing — plenty
+     of random fills have no solution at all, and a player has no way to
+     tell one of those from a merely hard board.
+     ================================================================ */
+  var LIGHTS_N = 8;
+  var lights = { on: [], moves: 0, done: false };
+
+  function lightsSay(message) {
+    var node = $("lights-notice");
+    node.textContent = t(message) || "";
+    node.hidden = !message;
+  }
+
+  // Flips the cross and reports which cells it actually reached, so the
+  // caller can flash exactly those and no others.
+  function lightsPress(row, col) {
+    var spots = [[row, col], [row - 1, col], [row + 1, col], [row, col - 1], [row, col + 1]];
+    var touched = [], i, r, c, at;
+    for (i = 0; i < spots.length; i++) {
+      r = spots[i][0]; c = spots[i][1];
+      if (r < 0 || r >= LIGHTS_N || c < 0 || c >= LIGHTS_N) continue;
+      at = r * LIGHTS_N + c;
+      lights.on[at] = !lights.on[at];
+      touched.push(at);
+    }
+    return touched;
+  }
+
+  function lightsCount() {
+    var n = 0, i;
+    for (i = 0; i < lights.on.length; i++) if (lights.on[i]) n++;
+    return n;
+  }
+
+  function lightsBuildGrid() {
+    var html = "", r, c;
+    for (r = 0; r < LIGHTS_N; r++) {
+      for (c = 0; c < LIGHTS_N; c++) {
+        html += '<button type="button" class="lights-cell" data-row="' + r + '" data-col="' + c + '"></button>';
+      }
+    }
+    $("lights-grid").innerHTML = html;
+  }
+
+  function renderLights() {
+    var cells = $("lights-grid").children, i, cell, on;
+    for (i = 0; i < cells.length; i++) {
+      cell = cells[i];
+      on = !!lights.on[i];
+      cell.classList.toggle("on", on);
+      cell.setAttribute("aria-pressed", on ? "true" : "false");
+      // Nothing inside a cell is readable on its own — it's a coloured
+      // square — so each one has to say where it is and how it stands.
+      cell.setAttribute("aria-label", tf("row {r} column {c}, {state}", {
+        r: Math.floor(i / LIGHTS_N) + 1,
+        c: (i % LIGHTS_N) + 1,
+        state: t(on ? "on" : "off")
+      }));
+      cell.disabled = lights.done;
+    }
+    $("lights-grid").classList.toggle("done", lights.done);
+    $("lights-moves").textContent = tally(lights.moves, "move", "moves");
+    $("lights-left").textContent = lights.done ? "" : tf("{n} still on", { n: lightsCount() });
+  }
+
+  function lightsNewBoard() {
+    var total = LIGHTS_N * LIGHTS_N, i, presses;
+    do {
+      lights.on = [];
+      for (i = 0; i < total; i++) lights.on.push(false);
+      presses = 20 + Math.floor(Math.random() * 25);
+      for (i = 0; i < presses; i++) {
+        lightsPress(Math.floor(Math.random() * LIGHTS_N), Math.floor(Math.random() * LIGHTS_N));
+      }
+      // Random presses can cancel out and hand back a cleared board,
+      // which would be a puzzle already solved. Roll again.
+    } while (lightsCount() === 0);
+    lights.moves = 0;
+    lights.done = false;
+    lightsSay("");
+    renderLights();
+  }
+
+  $("lights-grid").addEventListener("click", function (e) {
+    var cell = e.target.closest && e.target.closest(".lights-cell");
+    if (!cell || lights.done) return;
+
+    var touched = lightsPress(
+      parseInt(cell.getAttribute("data-row"), 10),
+      parseInt(cell.getAttribute("data-col"), 10)
+    );
+    lights.moves++;
+    lightsSay("");
+    renderLights();
+
+    var cells = $("lights-grid").children, i;
+    for (i = 0; i < touched.length; i++) cells[touched[i]].classList.add("flip");
+    setTimeout(function () {
+      for (var j = 0; j < touched.length; j++) {
+        if (cells[touched[j]]) cells[touched[j]].classList.remove("flip");
+      }
+    }, 240);
+
+    if (lightsCount() === 0) {
+      lights.done = true;
+      sfx("win");
+      renderLights();
+      lightsSay(tf("All out in {n}.", { n: tally(lights.moves, "move", "moves") }));
+    }
+  });
+
+  $("lights-new").addEventListener("click", lightsNewBoard);
+
+  lightsBuildGrid();
+  lightsNewBoard();
 
   /* ---------- global chat ----------
      Open to every signed-in account, not just admins. Each message can be
