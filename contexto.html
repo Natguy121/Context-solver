@@ -1979,9 +1979,51 @@
 
     <div class="row">
       <button type="button" class="grow" id="lights-new" data-i18n="new-board">New board</button>
-      <!-- No data-i18n: this label flips between show/hide, so renderLights
-           owns it outright rather than fighting applyLang over it. -->
-      <button type="button" class="ghost grow" id="lights-solve">Show solution</button>
+    </div>
+
+    <!-- ---------- the solver ----------
+         Same shape as the word game's solver tab: a tool for a puzzle
+         being played somewhere else. Tap in the lights that are on, then
+         walk the fix one press at a time. Tapping here sets a single
+         light rather than flipping a cross — you're describing a board,
+         not playing one. -->
+    <div class="field">
+      <span class="key" data-i18n="lights-solver">lights out solver</span>
+      <p class="gloss" data-i18n="lsolve-blurb">Playing Lights Out somewhere else? Tap the lights that are on over there, then step through the fix one press at a time.</p>
+    </div>
+
+    <div class="field">
+      <span class="key" data-i18n="board-size">board size</span>
+      <div class="segmented" id="lsolve-sizes">
+        <button type="button" aria-pressed="false" data-size="3">3 × 3</button>
+        <button type="button" aria-pressed="false" data-size="4">4 × 4</button>
+        <button type="button" aria-pressed="true" data-size="5">5 × 5</button>
+        <button type="button" aria-pressed="false" data-size="6">6 × 6</button>
+        <button type="button" aria-pressed="false" data-size="7">7 × 7</button>
+        <button type="button" aria-pressed="false" data-size="8">8 × 8</button>
+      </div>
+    </div>
+
+    <div class="lights-head">
+      <span id="lsolve-mode"></span>
+      <span id="lsolve-step-note"></span>
+    </div>
+
+    <div id="lsolve-grid" class="lights-grid"></div>
+
+    <p class="notice" id="lsolve-notice" aria-live="polite" hidden></p>
+
+    <div class="row" id="lsolve-edit-controls">
+      <button type="button" class="grow" id="lsolve-go" data-i18n="solve-it">Solve it</button>
+      <button type="button" class="ghost grow" id="lsolve-clear" data-i18n="clear-board">Clear</button>
+    </div>
+
+    <div class="row" id="lsolve-step-controls" hidden>
+      <button type="button" class="ghost grow" id="lsolve-back" data-i18n="step-back">Back</button>
+      <button type="button" class="grow" id="lsolve-next" data-i18n="step-next">Next</button>
+    </div>
+    <div class="row" id="lsolve-restart" hidden>
+      <button type="button" class="ghost grow" id="lsolve-edit" data-i18n="edit-board">Edit the board</button>
     </div>
   </section>
 
@@ -2702,6 +2744,10 @@
 
     /* ---- lights out ---- */
     "lights-out": "éteins tout", "new-board": "Nouvelle grille", "board-size": "taille de la grille",
+    "lights-solver": "solveur éteins tout",
+    "lsolve-blurb": "Vous jouez à Éteins tout ailleurs ? Touchez les lumières allumées là-bas, puis suivez la solution appui par appui.",
+    "solve-it": "Résoudre", "clear-board": "Effacer",
+    "step-back": "Retour", "step-next": "Suivant", "edit-board": "Modifier la grille",
     "lights-blurb": "Appuyer sur une lumière l'inverse, ainsi que les quatre autour, en croix. Éteignez-les toutes.",
     "how-playing": "mode de jeu", "offline": "hors ligne", "online": "en ligne",
     "mode-note": "Jusqu'à quatre joueurs, chacun son tour sur cet appareil.",
@@ -2805,10 +2851,17 @@
     "on": "allumée", "off": "éteinte",
     "{n} still on": "{n} encore allumées",
     "All out in {n}.": "Tout éteint en {n}.",
-    "Show solution": "Afficher la solution", "Hide solution": "Masquer la solution",
-    "press this": "appuyez ici",
-    "{n} presses from here": "{n} appuis d'ici",
-    "no way to clear this": "impossible à éteindre",
+    "press this next": "appuyez ici ensuite",
+    "tap the lights that are on": "touchez les lumières allumées",
+    "{n} on": "{n} allumées",
+    "step {k} of {total}": "étape {k} sur {total}",
+    "press row {r}, column {c}": "appuyez ligne {r}, colonne {c}",
+    "all done": "terminé",
+    "Tap the lights that are on first.": "Touchez d'abord les lumières allumées.",
+    "This one can't be cleared — on a board this size, not every pattern can be.":
+      "Impossible à éteindre — sur une grille de cette taille, tous les motifs ne le sont pas.",
+    "{n} does it, and no fewer.": "{n} suffisent, et pas moins.",
+    "That's it — every light out.": "Voilà — toutes les lumières éteintes.",
 
     /* ---- scoreboard ---- */
     "No timed wins yet — be the first.": "Aucune victoire chronométrée — soyez le premier.",
@@ -3020,6 +3073,7 @@
     "player": ["joueur", "joueurs"],
     "account": ["compte", "comptes"],
     "move":   ["coup", "coups"],
+    "press":  ["appui", "appuis"],
     "more":   ["de plus", "de plus"],
     "of them": ["d'entre eux", "d'entre eux"]
   };
@@ -3066,6 +3120,7 @@
     // The board's move counter and its per-cell labels are both built in
     // JS, so they'd otherwise stay in whichever language they were drawn.
     if (typeof renderLights === "function" && lights && lights.on.length) renderLights();
+    if (typeof renderLsolve === "function" && lsolve && lsolve.on.length) renderLsolve();
   }
 
   $("lang-btn").addEventListener("click", function () {
@@ -4521,7 +4576,7 @@
      tell one of those from a merely hard board.
      ================================================================ */
   var LIGHTS_N = 8;
-  var lights = { on: [], moves: 0, done: false, showing: false, solution: null };
+  var lights = { on: [], moves: 0, done: false };
 
   function lightsSay(message) {
     var node = $("lights-notice");
@@ -4529,19 +4584,25 @@
     node.hidden = !message;
   }
 
-  // Flips the cross and reports which cells it actually reached, so the
-  // caller can flash exactly those and no others.
-  function lightsPress(row, col) {
+  // Flips the cross on whichever board it's handed, and reports which
+  // cells it actually reached so the caller can flash exactly those.
+  // Takes the board rather than assuming the played one, because the
+  // solver below runs the same rule over a board of its own.
+  function lightsCross(state, n, row, col) {
     var spots = [[row, col], [row - 1, col], [row + 1, col], [row, col - 1], [row, col + 1]];
     var touched = [], i, r, c, at;
     for (i = 0; i < spots.length; i++) {
       r = spots[i][0]; c = spots[i][1];
-      if (r < 0 || r >= LIGHTS_N || c < 0 || c >= LIGHTS_N) continue;
-      at = r * LIGHTS_N + c;
-      lights.on[at] = !lights.on[at];
+      if (r < 0 || r >= n || c < 0 || c >= n) continue;
+      at = r * n + c;
+      state[at] = !state[at];
       touched.push(at);
     }
     return touched;
+  }
+
+  function lightsPress(row, col) {
+    return lightsCross(lights.on, LIGHTS_N, row, col);
   }
 
   function lightsCount() {
@@ -4648,12 +4709,6 @@
     return best;
   }
 
-  // Recomputed after every press while the solution is showing, so the
-  // dots always point at what's left to do rather than going stale.
-  function lightsRefreshSolution() {
-    lights.solution = lights.showing && !lights.done ? lightsSolve(lights.on, LIGHTS_N) : null;
-  }
-
   function renderLights() {
     var cells = $("lights-grid").children, i, cell, on;
     for (i = 0; i < cells.length; i++) {
@@ -4663,33 +4718,16 @@
       cell.setAttribute("aria-pressed", on ? "true" : "false");
       // Nothing inside a cell is readable on its own — it's a coloured
       // square — so each one has to say where it is and how it stands.
-      var marked = !!(lights.solution && lights.solution[i]);
-      cell.classList.toggle("mark", marked);
       cell.setAttribute("aria-label", tf("row {r} column {c}, {state}", {
         r: Math.floor(i / LIGHTS_N) + 1,
         c: (i % LIGHTS_N) + 1,
-        state: t(on ? "on" : "off") + (marked ? ", " + t("press this") : "")
+        state: t(on ? "on" : "off")
       }));
       cell.disabled = lights.done;
     }
     $("lights-grid").classList.toggle("done", lights.done);
     $("lights-moves").textContent = tally(lights.moves, "move", "moves");
-    $("lights-solve").textContent = t(lights.showing ? "Hide solution" : "Show solution");
-
-    if (lights.done) {
-      $("lights-left").textContent = "";
-    } else if (lights.showing) {
-      // The count of dots on screen is the number of presses left, and
-      // it's the shortest route from here — worth saying, since it's the
-      // one thing the dots alone don't tell you.
-      var left = 0, k;
-      if (lights.solution) for (k = 0; k < lights.solution.length; k++) if (lights.solution[k]) left++;
-      $("lights-left").textContent = lights.solution
-        ? tf("{n} presses from here", { n: left })
-        : t("no way to clear this");
-    } else {
-      $("lights-left").textContent = tf("{n} still on", { n: lightsCount() });
-    }
+    $("lights-left").textContent = lights.done ? "" : tf("{n} still on", { n: lightsCount() });
   }
 
   function lightsNewBoard() {
@@ -4708,7 +4746,6 @@
     } while (lightsCount() === 0);
     lights.moves = 0;
     lights.done = false;
-    lightsRefreshSolution();
     lightsSay("");
     renderLights();
   }
@@ -4729,7 +4766,6 @@
     );
     lights.moves++;
     lightsSay("");
-    lightsRefreshSolution();
     renderLights();
 
     var cells = $("lights-grid").children, i;
@@ -4743,7 +4779,6 @@
     if (lightsCount() === 0) {
       lights.done = true;
       sfx("win");
-      lightsRefreshSolution();
       renderLights();
       lightsSay(tf("All out in {n}.", { n: tally(lights.moves, "move", "moves") }));
     }
@@ -4751,19 +4786,180 @@
 
   $("lights-new").addEventListener("click", lightsNewBoard);
 
-  $("lights-solve").addEventListener("click", function () {
-    if (lights.done) return;
-    lights.showing = !lights.showing;
-    lightsRefreshSolution();
-    renderLights();
-  });
-
   pressGroup($("lights-sizes"), "size", function (size) {
     lightsSetSize(parseInt(size, 10) || 8);
   });
 
   lightsBuildGrid();
   lightsNewBoard();
+
+  /* ---------- the solver, as a tool of its own ----------
+     Deliberately not attached to the board being played: you tap in a
+     position from wherever you're actually stuck, and it walks you
+     through clearing it one press at a time. Tapping a cell here sets
+     that one light rather than flipping a cross, because here you're
+     describing a board, not playing a move on one.
+
+     Whatever gets typed in may genuinely have no solution. The game's
+     own boards are always solvable by construction, but an arbitrary
+     pattern is not: on sizes whose system is underdetermined — 4x4 and
+     5x5 among these — most patterns can't be cleared at all. So "this
+     one can't be done" is a real answer here, and it says so plainly
+     rather than handing back a plan that doesn't work. */
+  var lsolve = { n: 5, on: [], steps: null, at: 0 };
+
+  function lsolveSay(message) {
+    var node = $("lsolve-notice");
+    node.textContent = t(message) || "";
+    node.hidden = !message;
+  }
+
+  function lsolveLit(state) {
+    var n = 0, i;
+    for (i = 0; i < state.length; i++) if (state[i]) n++;
+    return n;
+  }
+
+  function lsolveBuildGrid() {
+    var html = "", r, c, grid = $("lsolve-grid");
+    for (r = 0; r < lsolve.n; r++) {
+      for (c = 0; c < lsolve.n; c++) {
+        html += '<button type="button" class="lights-cell" data-row="' + r + '" data-col="' + c + '"></button>';
+      }
+    }
+    grid.innerHTML = html;
+    grid.style.setProperty("--lights-n", lsolve.n);
+    grid.style.maxWidth = Math.min(26, lsolve.n * 3.4) + "rem";
+  }
+
+  // The board as it looks after the first `at` presses of the plan, so
+  // stepping back and forth is just re-deriving rather than undoing.
+  function lsolveStateAt(at) {
+    var state = lsolve.on.slice(), i, cell;
+    for (i = 0; i < at; i++) {
+      cell = lsolve.steps[i];
+      lightsCross(state, lsolve.n, Math.floor(cell / lsolve.n), cell % lsolve.n);
+    }
+    return state;
+  }
+
+  function renderLsolve() {
+    var stepping = !!lsolve.steps;
+    var state = stepping ? lsolveStateAt(lsolve.at) : lsolve.on;
+    var nextCell = stepping && lsolve.at < lsolve.steps.length ? lsolve.steps[lsolve.at] : -1;
+    var cells = $("lsolve-grid").children, i, cell, on, marked;
+
+    for (i = 0; i < cells.length; i++) {
+      cell = cells[i];
+      on = !!state[i];
+      marked = i === nextCell;
+      cell.classList.toggle("on", on);
+      cell.classList.toggle("mark", marked);
+      cell.setAttribute("aria-pressed", on ? "true" : "false");
+      cell.setAttribute("aria-label", tf("row {r} column {c}, {state}", {
+        r: Math.floor(i / lsolve.n) + 1,
+        c: (i % lsolve.n) + 1,
+        state: t(on ? "on" : "off") + (marked ? ", " + t("press this next") : "")
+      }));
+    }
+
+    $("lsolve-edit-controls").hidden = stepping;
+    $("lsolve-step-controls").hidden = !stepping;
+    $("lsolve-restart").hidden = !stepping;
+    $("lsolve-back").disabled = !stepping || lsolve.at === 0;
+    $("lsolve-next").disabled = !stepping || lsolve.at >= lsolve.steps.length;
+
+    if (!stepping) {
+      $("lsolve-mode").textContent = t("tap the lights that are on");
+      $("lsolve-step-note").textContent = tf("{n} on", { n: lsolveLit(lsolve.on) });
+    } else if (nextCell < 0) {
+      $("lsolve-mode").textContent = t("all done");
+      $("lsolve-step-note").textContent = "";
+    } else {
+      $("lsolve-mode").textContent = tf("step {k} of {total}", {
+        k: lsolve.at + 1, total: lsolve.steps.length
+      });
+      $("lsolve-step-note").textContent = tf("press row {r}, column {c}", {
+        r: Math.floor(nextCell / lsolve.n) + 1,
+        c: (nextCell % lsolve.n) + 1
+      });
+    }
+  }
+
+  function lsolveSetSize(n) {
+    var i;
+    lsolve.n = n;
+    lsolve.on = [];
+    for (i = 0; i < n * n; i++) lsolve.on.push(false);
+    lsolve.steps = null;
+    lsolve.at = 0;
+    lsolveBuildGrid();
+    lsolveSay("");
+    renderLsolve();
+  }
+
+  function lsolveStep(delta) {
+    if (!lsolve.steps) return;
+    lsolve.at = Math.max(0, Math.min(lsolve.steps.length, lsolve.at + delta));
+    if (lsolve.at >= lsolve.steps.length) {
+      sfx("win");
+      lsolveSay("That's it — every light out.");
+    } else {
+      lsolveSay("");
+    }
+    renderLsolve();
+  }
+
+  $("lsolve-grid").addEventListener("click", function (e) {
+    var cell = e.target.closest && e.target.closest(".lights-cell");
+    if (!cell) return;
+    var idx = parseInt(cell.getAttribute("data-row"), 10) * lsolve.n +
+              parseInt(cell.getAttribute("data-col"), 10);
+
+    // Mid-walkthrough the board is a read-only illustration, except that
+    // tapping the highlighted cell is a natural way to say "done, next".
+    if (lsolve.steps) {
+      if (idx === lsolve.steps[lsolve.at]) lsolveStep(1);
+      return;
+    }
+
+    lsolve.on[idx] = !lsolve.on[idx];
+    lsolveSay("");
+    renderLsolve();
+  });
+
+  $("lsolve-go").addEventListener("click", function () {
+    if (!lsolveLit(lsolve.on)) { lsolveSay("Tap the lights that are on first."); return; }
+
+    var answer = lightsSolve(lsolve.on, lsolve.n);
+    if (!answer) {
+      lsolveSay("This one can't be cleared — on a board this size, not every pattern can be.");
+      return;
+    }
+
+    var steps = [], i;
+    for (i = 0; i < answer.length; i++) if (answer[i]) steps.push(i);
+    lsolve.steps = steps;
+    lsolve.at = 0;
+    lsolveSay(tf("{n} does it, and no fewer.", { n: tally(steps.length, "press", "presses") }));
+    renderLsolve();
+  });
+
+  $("lsolve-next").addEventListener("click", function () { lsolveStep(1); });
+  $("lsolve-back").addEventListener("click", function () { lsolveStep(-1); });
+  $("lsolve-clear").addEventListener("click", function () { lsolveSetSize(lsolve.n); });
+  $("lsolve-edit").addEventListener("click", function () {
+    lsolve.steps = null;
+    lsolve.at = 0;
+    lsolveSay("");
+    renderLsolve();
+  });
+
+  pressGroup($("lsolve-sizes"), "size", function (size) {
+    lsolveSetSize(parseInt(size, 10) || 5);
+  });
+
+  lsolveSetSize(5);
 
   /* ---------- global chat ----------
      Open to every signed-in account, not just admins. Each message can be
