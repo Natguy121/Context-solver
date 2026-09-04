@@ -2019,6 +2019,15 @@
         <p class="gloss" data-i18n="difficulty-note">Easy is things you can hold. Nightmare is words you rarely say.</p>
       </div>
 
+      <div class="field" id="villa-mode-field" hidden>
+        <span class="key" data-i18n="the-room">the room</span>
+        <div class="segmented" id="villa-mode">
+          <button type="button" aria-pressed="true" data-view="3d" data-i18n="villa-3d">3D</button>
+          <button type="button" aria-pressed="false" data-view="flat" data-i18n="villa-flat">classic</button>
+        </div>
+        <p class="gloss" data-i18n="villa-mode-note">A villa you can look around, with someone at the table who reacts to your guesses.</p>
+      </div>
+
       <div id="offline-only" class="panel">
         <div class="field">
           <span class="key" data-i18n="players">players</span>
@@ -3068,6 +3077,8 @@
     "steady": "régulier", "legendary": "légendaire",
     "show-room": "afficher la pièce", "Hide the room": "Masquer la pièce",
     "drag-to-turn": "faites glisser pour regarder autour",
+    "the-room": "la pièce", "villa-3d": "3D", "villa-flat": "classique",
+    "villa-mode-note": "Une villa que vous pouvez regarder autour de vous, avec quelqu'un à table qui réagit à vos essais.",
     "from the start": "dès le départ",
     "Level {n}": "Niveau {n}",
     "{xp} XP each": "{xp} XP chacune",
@@ -6417,18 +6428,28 @@
     face(-0.196, -0.02); put(m.sphere, skinLo, fx, fy, hz, 0.09, 0.13, 0.12, 0, 0, tilt, skinOpt);
     face(0.196, -0.02); put(m.sphere, skinLo, fx, fy, hz, 0.09, 0.13, 0.12, 0, 0, tilt, skinOpt);
 
+    // A big, dark iris with only a thin ring of white around it reads as
+    // warm and attentive; a small pupil adrift in a lot of white is the
+    // "startled doll" look this used to have. The catchlight is what
+    // actually sells "alive" — a fixed highlight rather than something
+    // that depends on the sun happening to glint off it from this angle.
     var eyeZ = hz + 0.365;
-    face(-0.096, 0.020);
-    put(m.sphere, [0.95, 0.94, 0.92], fx, fy, eyeZ - 0.035, 0.072, 0.082 * vstate.blink, 0.055, 0, 0, tilt, { shine: 0.3 });
-    put(m.sphere, [0.13, 0.10, 0.09], fx, fy, eyeZ, 0.042, 0.048 * vstate.blink, 0.032, 0, 0, tilt, { shine: 0.5 });
-    face(0.096, 0.020);
-    put(m.sphere, [0.95, 0.94, 0.92], fx, fy, eyeZ - 0.035, 0.072, 0.082 * vstate.blink, 0.055, 0, 0, tilt, { shine: 0.3 });
-    put(m.sphere, [0.13, 0.10, 0.09], fx, fy, eyeZ, 0.042, 0.048 * vstate.blink, 0.032, 0, 0, tilt, { shine: 0.5 });
+    face(-0.096, 0.016);
+    put(m.sphere, [0.95, 0.94, 0.92], fx, fy, eyeZ - 0.035, 0.066, 0.076 * vstate.blink, 0.050, 0, 0, tilt, { shine: 0.3 });
+    put(m.sphere, [0.16, 0.10, 0.07], fx, fy, eyeZ, 0.053, 0.060 * vstate.blink, 0.040, 0, 0, tilt, { shine: 0.5 });
+    put(m.sphere, [0.99, 0.99, 0.98], fx - 0.014, fy + 0.016, eyeZ + 0.026, 0.013, 0.014 * vstate.blink, 0.010, 0, 0, tilt, { emit: 0.5 });
+    face(0.096, 0.016);
+    put(m.sphere, [0.95, 0.94, 0.92], fx, fy, eyeZ - 0.035, 0.066, 0.076 * vstate.blink, 0.050, 0, 0, tilt, { shine: 0.3 });
+    put(m.sphere, [0.16, 0.10, 0.07], fx, fy, eyeZ, 0.053, 0.060 * vstate.blink, 0.040, 0, 0, tilt, { shine: 0.5 });
+    put(m.sphere, [0.99, 0.99, 0.98], fx - 0.014, fy + 0.016, eyeZ + 0.026, 0.013, 0.014 * vstate.blink, 0.010, 0, 0, tilt, { emit: 0.5 });
 
-    face(-0.098, 0.118);
-    put(m.box, hair, fx, fy, hz + 0.345, 0.135, 0.028, 0.055, 0, 0, tilt + vstate.brow);
-    face(0.098, 0.118);
-    put(m.box, hair, fx, fy, hz + 0.345, 0.135, 0.028, 0.055, 0, 0, tilt - vstate.brow);
+    // Thicker and a touch lower than before — thin enough and they read
+    // as a hairline, not an expression, which matters here because brow
+    // angle is most of how a mood reads at a glance.
+    face(-0.100, 0.106);
+    put(m.box, hair, fx, fy, hz + 0.350, 0.145, 0.038, 0.058, 0, 0, tilt + vstate.brow);
+    face(0.100, 0.106);
+    put(m.box, hair, fx, fy, hz + 0.350, 0.145, 0.038, 0.058, 0, 0, tilt - vstate.brow);
 
     face(0, -0.048);
     put(m.sphere, skin, fx, fy, hz + 0.375, 0.058, 0.078, 0.075, 0, 0, tilt, skinOpt);
@@ -6823,6 +6844,12 @@
     $("villa-show").hidden = on || !vr;
     $("villa-hide").title = t("Hide the room");
     $("villa-hide").setAttribute("aria-label", t("Hide the room"));
+    // The setup screen's own toggle, kept in step with whichever side
+    // changed it last — the in-play hide button or this one.
+    $("villa-mode-field").hidden = !vr;
+    Array.prototype.forEach.call($("villa-mode").children, function (b) {
+      b.setAttribute("aria-pressed", ((b.dataset.view === "3d") === on) ? "true" : "false");
+    });
     if (vr) {
       $("villa-hint").hidden = !on || vstate.turned;
       if (on) { vr.last = 0; villaTick(); }
@@ -6840,6 +6867,11 @@
     // The bubble only animates while the room is on screen, so a line said
     // while it was folded away has to be replayed by hand.
     if (villaSpokenEn) villaSay(t(villaSpokenEn));
+  });
+  pressGroup($("villa-mode"), "view", function (view) {
+    try { localStorage.setItem(VILLA_SHOWN_KEY, view === "3d" ? "1" : "0"); } catch (e) {}
+    paintVillaShown();
+    if (view === "3d" && villaSpokenEn) villaSay(t(villaSpokenEn));
   });
 
   vr = villaBuild();
