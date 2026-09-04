@@ -956,684 +956,63 @@
   }
 
   /* ---------- the villa ----------
-     The room the word game is played in: five CSS-3D planes (back wall,
-     two side walls, floor, ceiling) with a round table and the person
-     sitting across it standing in them as flat cards at different depths.
-     A stage set, not a model. No canvas, no WebGL, no images — so it
-     survives the page being saved to disk with the network gone, the same
-     as everything else on it.
+     A real room, not a picture of one: a WebGL scene with actual geometry,
+     a depth buffer and lights. The walls are boxes with thickness, the
+     table top is a cylinder, the host's head is an ellipsoid with eyebrows
+     you can watch rotate in space. Drag it and the camera orbits, which is
+     the honest test — an arrangement of flat cards falls apart the moment
+     you move off-axis, and this doesn't.
 
-     Props are sized in pixels rather than percentages on purpose: the
-     stage stretches to whatever width the column has, but a table should
-     not grow because the window did. Holding them still is what a fixed
-     lens does when the frame widens.
+     WebGL is part of the browser rather than a library, so this keeps the
+     same promise as the rest of the page: nothing downloaded, nothing
+     fetched, works from a file on disk. If a browser won't give us a
+     context at all the room simply doesn't appear, and the game is
+     otherwise unaffected.
 
-     The palette is its own and deliberately ignores the page theme. This
-     is an interior at golden hour; a room that repainted itself when the
-     OS flipped to dark would read as a bug rather than as a room. */
+     How it looks — the palette, the furniture, what each level of the
+     villa adds — all lives in the renderer in JS. There is nothing left
+     for CSS here but the frame and the things floating on top of it. */
   .villa {
-    --vd: 200px;                  /* how far back the room runs */
-
-    --v-wall-hi: #EBDDC7;
-    --v-wall-lo: #C7B394;
-    --v-side-hi: #DAC9AC;
-    --v-side-lo: #AD9A7C;
-    --v-ceil-hi: #F4ECDE;
-    --v-ceil-lo: #D9CBB4;
-    --v-floor-hi: #8C6139;
-    --v-floor-lo: #3E2818;
-    --v-trim: #B9995F;
-    --v-line: #33231A;
-
-    --v-sky-hi: #A9D6EF;
-    --v-sky-lo: #F8E7C7;
-    --v-sun: #FFEEB0;
-    --v-land: #7E9A6B;
-
-    --v-table: #7E5130;
-    --v-table-hi: #B2794A;
-    --v-table-lo: #4C3020;
-
-    --v-skin: #D9A175;
-    --v-skin-lo: #B47E57;
-    --v-hair: #32231C;
-    --v-cloth: #4F6FA8;
-    --v-cloth-lo: #3B5482;
-
-    --v-mood: #5C8BD9;
-
     position: relative;
     border: 1px solid var(--rule);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    background: #17131D;
+    background: #14111A;
     box-shadow: var(--lift-1);
   }
 
   .villa-scene {
     position: relative;
     width: 100%;
-    height: clamp(212px, 58vw, 264px);
-    perspective: 620px;
-    perspective-origin: 50% 46%;
+    height: clamp(212px, 58vw, 268px);
   }
-  .villa-room {
+  #villa-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* Dragging the room should turn the room — not select the page, and
+       not hand the gesture to the browser's own scrolling. */
+    touch-action: none;
+    cursor: grab;
+  }
+  #villa-canvas.dragging { cursor: grabbing; }
+
+  /* Says the room can be turned, until it has been. Floated over the
+     canvas rather than placed under it so it costs no height. */
+  .villa-hint {
     position: absolute;
-    inset: 0;
-    transform-style: preserve-3d;
-  }
-  .villa-face { position: absolute; overflow: hidden; }
-
-  /* The five planes. Each side wall is a rectangle as deep as the room,
-     hinged on the stage edge it starts from and swung a quarter turn into
-     the screen; the floor and ceiling are the same trick on the other
-     axis. Their far edges all land on the back wall's outline, so the box
-     closes with no seams to paper over. */
-  .villa-back {
-    inset: 0;
-    transform: translateZ(calc(var(--vd) * -1));
-    background: linear-gradient(var(--v-wall-hi), var(--v-wall-lo));
-  }
-  .villa-left {
-    left: 0; top: 0; width: var(--vd); height: 100%;
-    transform-origin: left center;
-    transform: rotateY(90deg);
-    background: linear-gradient(var(--v-side-hi), var(--v-side-lo));
-  }
-  .villa-right {
-    right: 0; top: 0; width: var(--vd); height: 100%;
-    transform-origin: right center;
-    transform: rotateY(-90deg);
-    background: linear-gradient(var(--v-side-hi), var(--v-side-lo));
-  }
-  .villa-floor {
-    left: 0; bottom: 0; width: 100%; height: var(--vd);
-    transform-origin: bottom center;
-    transform: rotateX(90deg);
-    background: linear-gradient(var(--v-floor-lo), var(--v-floor-hi));
-  }
-  .villa-ceiling {
-    left: 0; top: 0; width: 100%; height: var(--vd);
-    transform-origin: top center;
-    transform: rotateX(-90deg);
-    background: linear-gradient(var(--v-ceil-lo), var(--v-ceil-hi));
-  }
-
-  /* Floorboards, drawn onto the floor plane so the perspective comes for
-     free — a child of a rotated plane is painted in that plane. */
-  .villa-boards {
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(90deg,
-      rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 34px);
-    opacity: 0.7;
-  }
-
-  /* Skirting and a picture rail, so the walls have somewhere to end. */
-  .villa-skirting {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 9px;
-    background: linear-gradient(var(--v-trim), rgba(0, 0, 0, 0.35));
-  }
-
-  /* ---------- the window wall ---------- */
-  /* Three of them, always — one window would sit directly behind the host's
-     head and never be seen at all. What the villa earns is not more windows
-     but better ones: square casements to begin with, arches later. */
-  .villa-windows {
-    position: absolute;
-    left: 50%;
-    top: 15%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: flex-end;
-    gap: 16px;
-  }
-  .villa-window {
-    position: relative;
-    width: 54px;
-    height: 62px;
-    border-radius: 5px;
-    background: linear-gradient(var(--v-sky-hi), var(--v-sky-lo));
-    box-shadow: 0 0 0 5px var(--v-trim), 0 0 30px rgba(255, 214, 150, 0.45);
-    overflow: hidden;
-  }
-
-  .villa-sun {
-    position: absolute;
-    left: 50%;
-    top: 34%;
-    width: 22px;
-    height: 22px;
-    margin: -11px 0 0 -11px;
-    border-radius: 50%;
-    background: var(--v-sun);
-    box-shadow: 0 0 18px 6px rgba(255, 232, 160, 0.75);
-  }
-  .villa-hill {
-    position: absolute;
-    left: -20%;
-    right: -20%;
-    bottom: -34%;
-    height: 60%;
-    border-radius: 50% 50% 0 0;
-    background: var(--v-land);
-  }
-  .villa-mullion {
-    position: absolute;
-    left: 50%;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    margin-left: -2px;
-    background: var(--v-trim);
-  }
-
-  /* Framed pictures, hung on whichever plane they belong to. */
-  .villa-art {
-    position: absolute;
-    border: 4px solid var(--v-trim);
-    border-radius: 3px;
-    background: linear-gradient(140deg, #6E7FA8, #C0A07A);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
-    display: none;
-  }
-  .villa-left .villa-art { left: 26%; top: 26%; width: 54px; height: 40px; }
-  .villa-right .villa-art { right: 26%; top: 30%; width: 44px; height: 56px; }
-
-  /* ---------- what the experience buys ----------
-     Each tier is an additive class on the shell (r1 … r5), so a level is
-     everything below it plus one more thing, and no tier has to restate
-     what the last one already did. */
-  .villa.r1 { --v-floor-hi: #90663D; }
-  .villa.r1 .villa-rug { display: block; }
-  .villa.r1 .villa-lamp { display: block; }
-
-  .villa.r2 .villa-plant { display: block; }
-  .villa.r2 .villa-art { display: block; }
-  .villa.r2 .villa-candle { display: block; }
-  .villa.r2 { --v-cloth: #6D5AA8; --v-cloth-lo: #52418A; }
-
-  .villa.r3 { --v-floor-hi: #C9BCA8; --v-floor-lo: #8C7E6C; --v-wall-hi: #F2E8D6; }
-  .villa.r3 .villa-window { height: 90px; border-radius: 27px 27px 5px 5px; }
-  .villa.r3 .villa-boards {
-    background:
-      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 46px),
-      repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 46px);
-    opacity: 0.55;
-  }
-
-  .villa.r4 .villa-chandelier { display: block; }
-  .villa.r4 .villa-rail { display: block; }
-  .villa.r4 { --v-trim: #D9B368; --v-cloth: #8C3F52; --v-cloth-lo: #6E2F3F; }
-
-  .villa.r5 {
-    --v-sky-hi: #F0A05C;
-    --v-sky-lo: #FBE0B0;
-    --v-sun: #FFD27A;
-    --v-land: #4E5F63;
-    --v-wall-hi: #F0DCC0;
-    --v-wall-lo: #C79A6E;
-  }
-  .villa.r5 .villa-window { width: 60px; height: 100px; border-radius: 30px 30px 5px 5px; }
-  .villa.r5 .villa-sea { display: block; }
-  .villa.r5 .villa-hill { bottom: -46%; height: 52%; }
-  .villa.r5 .villa-dusk { opacity: 1; }
-
-  .villa-sea {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 26%;
-    background: linear-gradient(#3F6C82, #23414F);
-    display: none;
-  }
-  /* A warm wash over the whole frame at the last tier — the only thing in
-     here that sits above every plane, so it has to be outside the room. */
-  .villa-dusk {
-    position: absolute;
-    inset: 0;
+    left: 0.6rem;
+    bottom: 0.55rem;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(20, 17, 26, 0.5);
+    color: #F1E8DC;
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.06em;
     pointer-events: none;
-    opacity: 0;
-    background: radial-gradient(120% 80% at 50% 26%,
-      rgba(255, 186, 110, 0.34), rgba(60, 26, 40, 0.34) 78%);
-    transition: opacity var(--slow) var(--ease);
   }
 
-  .villa-rug {
-    position: absolute;
-    left: 50%;
-    top: 34%;
-    width: 240px;
-    height: 118px;
-    margin-left: -120px;
-    border-radius: 50%;
-    background:
-      radial-gradient(closest-side, rgba(255, 232, 200, 0.32), transparent 72%),
-      repeating-radial-gradient(closest-side, #9C3F3A 0 12px, #7C2F2C 12px 24px);
-    box-shadow: inset 0 0 0 5px rgba(232, 200, 150, 0.5);
-    display: none;
-  }
-
-  .villa-lamp,
-  .villa-plant,
-  .villa-chandelier,
-  .villa-rail { display: none; }
-
-  .villa-lamp {
-    position: absolute;
-    left: 50%;
-    bottom: 30%;
-    width: 26px;
-    height: 84px;
-    transform: translate3d(calc(-50% - 128px), 0, -136px);
-  }
-  /* A drum shade narrower at the top than the bottom, faked with a pair of
-     corner radii rather than a clip-path so it still fills with a gradient. */
-  .villa-lamp-shade {
-    position: absolute;
-    left: 50%; top: 0;
-    width: 30px; height: 24px;
-    margin-left: -15px;
-    border-radius: 40% 40% 12% 12% / 60% 60% 14% 14%;
-    background: linear-gradient(#FFF0CE, #E2AE63);
-    box-shadow: 0 12px 34px 10px rgba(255, 206, 132, 0.45);
-  }
-  .villa-lamp-stem {
-    position: absolute;
-    left: 50%; top: 24px; bottom: 4px;
-    width: 4px;
-    margin-left: -2px;
-    background: linear-gradient(90deg, #7A6034, var(--v-trim) 45%, #7A6034);
-  }
-  .villa-lamp-foot {
-    position: absolute;
-    left: 50%; bottom: 0;
-    width: 22px; height: 7px;
-    margin-left: -11px;
-    border-radius: 50%;
-    background: var(--v-trim);
-  }
-
-  .villa-plant {
-    position: absolute;
-    left: 50%;
-    bottom: 28%;
-    width: 44px;
-    height: 74px;
-    transform: translate3d(calc(-50% + 132px), 0, -140px);
-  }
-  .villa-pot {
-    position: absolute;
-    left: 50%; bottom: 0;
-    width: 26px; height: 22px;
-    margin-left: -13px;
-    border-radius: 3px 3px 10px 10px;
-    background: linear-gradient(#C0764B, #8E5233);
-  }
-  .villa-frond {
-    position: absolute;
-    left: 50%; bottom: 18px;
-    width: 9px; height: 44px;
-    margin-left: -4.5px;
-    border-radius: 50% 50% 20% 20%;
-    background: linear-gradient(#4F8F55, #2F6337);
-    transform-origin: bottom center;
-  }
-  .villa-frond:nth-child(2) { transform: rotate(-34deg); }
-  .villa-frond:nth-child(3) { transform: rotate(-11deg); }
-  .villa-frond:nth-child(4) { transform: rotate(12deg); }
-  .villa-frond:nth-child(5) { transform: rotate(35deg); }
-
-  /* Hung above the top of the stage on purpose. Perspective pulls anything
-     set back toward the vanishing point, so a chandelier placed at the
-     ceiling line lands on the host's head like a halo; starting it off the
-     top is what puts it back on the ceiling. */
-  .villa-chandelier {
-    position: absolute;
-    left: 50%;
-    top: -26px;
-    width: 62px;
-    height: 60px;
-    transform: translate3d(-50%, 0, -120px);
-  }
-  .villa-chandelier-stem {
-    position: absolute;
-    left: 50%; top: 0;
-    width: 2px; height: 26px;
-    margin-left: -1px;
-    background: var(--v-trim);
-  }
-  .villa-chandelier-ring {
-    position: absolute;
-    left: 0; top: 24px;
-    width: 62px; height: 18px;
-    border-radius: 50%;
-    border: 3px solid var(--v-trim);
-    box-shadow: 0 0 24px 8px rgba(255, 216, 150, 0.45);
-  }
-  .villa-chandelier-drop {
-    position: absolute;
-    top: 38px;
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: var(--v-sun);
-    box-shadow: 0 0 8px 3px rgba(255, 230, 170, 0.7);
-  }
-  .villa-chandelier-drop.d1 { left: 8px; }
-  .villa-chandelier-drop.d2 { left: 28px; top: 44px; }
-  .villa-chandelier-drop.d3 { left: 49px; }
-
-  .villa-rail {
-    position: absolute;
-    left: 0; right: 0; top: 18%;
-    height: 4px;
-    background: var(--v-trim);
-    opacity: 0.85;
-  }
-
-  /* ---------- the round table ----------
-     A circle seen from a little above is an ellipse, so the top is drawn
-     as one outright rather than tipped with rotateX — a plane at exactly
-     the camera's height would vanish, and cheating the angle to get it
-     back looks worse than just drawing the shape the camera would see. */
-  .villa-table {
-    position: absolute;
-    left: 50%;
-    bottom: 4%;
-    width: 190px;
-    height: 76px;
-    transform: translate3d(-50%, 0, -18px);
-  }
-  .villa-table-top {
-    position: absolute;
-    left: 0; top: 0;
-    width: 100%; height: 52px;
-    border-radius: 50%;
-    background:
-      radial-gradient(60% 120% at 42% 16%, rgba(255, 232, 190, 0.55), transparent 62%),
-      linear-gradient(var(--v-table-hi), var(--v-table));
-    box-shadow: 0 5px 0 var(--v-table-lo), 0 16px 26px rgba(0, 0, 0, 0.45);
-  }
-  .villa-table-stem {
-    position: absolute;
-    left: 50%; top: 34px;
-    width: 18px; height: 38px;
-    margin-left: -9px;
-    background: linear-gradient(90deg, var(--v-table-lo), var(--v-table-hi) 45%, var(--v-table-lo));
-  }
-  .villa-table-base {
-    position: absolute;
-    left: 50%; top: 64px;
-    width: 70px; height: 18px;
-    margin-left: -35px;
-    border-radius: 50%;
-    background: linear-gradient(var(--v-table), var(--v-table-lo));
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
-  }
-  /* Standing on the table, so its base has to land inside the ellipse
-     rather than above it — otherwise it reads as floating past the host's
-     shoulder. */
-  .villa-candle {
-    position: absolute;
-    left: 50%; top: 2px;
-    width: 8px; height: 22px;
-    margin-left: 46px;
-    border-radius: 3px;
-    background: linear-gradient(#FFF3D8, #E3CBA0);
-    display: none;
-  }
-  .villa-flame {
-    position: absolute;
-    left: 50%; top: -9px;
-    width: 7px; height: 11px;
-    margin-left: -3.5px;
-    border-radius: 50% 50% 40% 40%;
-    background: radial-gradient(circle at 50% 70%, #FFF6C9, #FF9E3D);
-    box-shadow: 0 0 14px 5px rgba(255, 176, 84, 0.6);
-  }
-
-  /* ---------- the host ----------
-     Sits further into the room than the table, so the table overlaps their
-     lower half and the two read as one arrangement rather than two cards.
-     Everything below the shoulders is deliberately simple: the face is
-     doing the work. */
-  .villa-host {
-    position: absolute;
-    left: 50%;
-    bottom: 19%;
-    width: 128px;
-    height: 150px;
-    transform: translate3d(-50%, 0, -118px);
-  }
-  .villa-host-inner {
-    position: absolute;
-    inset: 0;
-    transform-origin: bottom center;
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .villa-host-inner { animation: villa-breathe 5.4s var(--ease) infinite; }
-  }
-  @keyframes villa-breathe {
-    0%, 100% { transform: translateY(0) scaleY(1); }
-    50% { transform: translateY(-2px) scaleY(1.012); }
-  }
-
-  .villa-host-glow {
-    position: absolute;
-    left: 50%; top: 4px;
-    width: 130px; height: 130px;
-    margin-left: -65px;
-    border-radius: 50%;
-    background: radial-gradient(closest-side, var(--v-mood), transparent 72%);
-    opacity: 0.34;
-    transition: background var(--slow) var(--ease), opacity var(--slow) var(--ease);
-  }
-  .villa-host-body {
-    position: absolute;
-    left: 50%; bottom: 0;
-    width: 104px; height: 78px;
-    margin-left: -52px;
-    border-radius: 46px 46px 10px 10px;
-    background: linear-gradient(var(--v-cloth), var(--v-cloth-lo));
-    transition: background var(--slow) var(--ease);
-  }
-  .villa-host-collar {
-    position: absolute;
-    left: 50%; bottom: 56px;
-    width: 30px; height: 18px;
-    margin-left: -15px;
-    border-radius: 0 0 16px 16px;
-    background: rgba(255, 255, 255, 0.82);
-  }
-  .villa-host-arm {
-    position: absolute;
-    bottom: 6px;
-    width: 22px; height: 46px;
-    border-radius: 12px;
-    background: linear-gradient(var(--v-cloth-lo), var(--v-cloth));
-  }
-  .villa-host-arm.l { left: 4px; transform: rotate(11deg); }
-  .villa-host-arm.r { right: 4px; transform: rotate(-11deg); }
-  .villa-host-neck {
-    position: absolute;
-    left: 50%; bottom: 66px;
-    width: 20px; height: 16px;
-    margin-left: -10px;
-    background: var(--v-skin-lo);
-    border-radius: 6px;
-  }
-
-  .villa-host-head {
-    position: absolute;
-    left: 50%; top: 8px;
-    width: 66px; height: 74px;
-    margin-left: -33px;
-    transform-origin: bottom center;
-    transition: transform var(--slow) var(--ease);
-  }
-  .villa-host-face {
-    position: absolute;
-    inset: 0;
-    border-radius: 50% 50% 44% 44%;
-    background: linear-gradient(var(--v-skin), var(--v-skin-lo));
-    box-shadow: inset -5px -6px 12px rgba(0, 0, 0, 0.14);
-  }
-  /* Kept deliberately shallow. Anything taller and the hairline swallows
-     the eyebrows, which are doing most of the work of saying how close
-     you are. */
-  .villa-host-hair {
-    position: absolute;
-    left: -3px; right: -3px; top: -6px;
-    height: 25px;
-    border-radius: 50% 50% 34% 34%;
-    background: var(--v-hair);
-  }
-  .villa-ear {
-    position: absolute;
-    top: 38%;
-    width: 10px; height: 14px;
-    border-radius: 50%;
-    background: var(--v-skin-lo);
-  }
-  .villa-ear.l { left: -5px; }
-  .villa-ear.r { right: -5px; }
-
-  .villa-eye {
-    position: absolute;
-    top: 45%;
-    width: 8px; height: 9px;
-    border-radius: 50%;
-    background: var(--v-line);
-    transform-origin: center;
-    transition: transform var(--slow) var(--ease);
-  }
-  .villa-eye.l { left: 30%; }
-  .villa-eye.r { right: 30%; }
-  @media (prefers-reduced-motion: no-preference) {
-    .villa-eye { animation: villa-blink 6.2s steps(1, end) infinite; }
-  }
-  @keyframes villa-blink {
-    0%, 95%, 100% { opacity: 1; }
-    96%, 99% { opacity: 0.06; }
-  }
-
-  .villa-brow {
-    position: absolute;
-    top: 32%;
-    width: 15px; height: 3px;
-    border-radius: 2px;
-    background: var(--v-hair);
-    transition: transform var(--slow) var(--ease);
-  }
-  .villa-brow.l { left: 22%; }
-  .villa-brow.r { right: 22%; }
-
-  .villa-cheek {
-    position: absolute;
-    top: 59%;
-    width: 13px; height: 8px;
-    border-radius: 50%;
-    background: #E4796B;
-    opacity: 0;
-    transition: opacity var(--slow) var(--ease);
-  }
-  .villa-cheek.l { left: 12%; }
-  .villa-cheek.r { right: 12%; }
-
-  .villa-mouth {
-    position: absolute;
-    left: 50%; top: 68%;
-    width: 20px; height: 9px;
-    margin-left: -10px;
-    border-radius: 0 0 20px 20px;
-    border-bottom: 3px solid var(--v-line);
-    border-left: 3px solid transparent;
-    border-right: 3px solid transparent;
-    transition: width var(--slow) var(--ease), height var(--slow) var(--ease),
-                margin var(--slow) var(--ease), border-radius var(--slow) var(--ease),
-                background-color var(--slow) var(--ease), border-color var(--slow) var(--ease);
-  }
-
-  /* ---------- how close you are, on a face ----------
-     Seven readings of the same number. The mood also drives the glow
-     behind the host, which is the part that carries at a glance. */
-  .villa[data-mood="idle"] { --v-mood: #7E7A93; }
-  .villa[data-mood="idle"] .villa-mouth { width: 18px; margin-left: -9px; height: 5px; }
-
-  .villa[data-mood="cold"] { --v-mood: #4F7FD1; }
-  .villa[data-mood="cold"] .villa-mouth {
-    height: 7px; border-bottom: 0; border-top: 3px solid var(--v-line);
-    border-radius: 20px 20px 0 0;
-  }
-  .villa[data-mood="cold"] .villa-brow.l { transform: rotate(11deg) translateY(2px); }
-  .villa[data-mood="cold"] .villa-brow.r { transform: rotate(-11deg) translateY(2px); }
-  .villa[data-mood="cold"] .villa-host-head { transform: rotate(-3deg); }
-
-  .villa[data-mood="chilly"] { --v-mood: #3FA0BC; }
-  .villa[data-mood="chilly"] .villa-mouth { height: 0; width: 16px; margin-left: -8px; }
-
-  .villa[data-mood="cool"] { --v-mood: #43AE7C; }
-  .villa[data-mood="cool"] .villa-mouth { height: 6px; }
-
-  .villa[data-mood="warm"] { --v-mood: #D9A93A; }
-  .villa[data-mood="warm"] .villa-mouth { width: 24px; margin-left: -12px; height: 11px; }
-  .villa[data-mood="warm"] .villa-cheek { opacity: 0.2; }
-  .villa[data-mood="warm"] .villa-brow.l { transform: translateY(-2px); }
-  .villa[data-mood="warm"] .villa-brow.r { transform: translateY(-2px); }
-
-  .villa[data-mood="hot"] { --v-mood: #E5812C; }
-  .villa[data-mood="hot"] .villa-mouth { width: 27px; margin-left: -13.5px; height: 13px; }
-  .villa[data-mood="hot"] .villa-cheek { opacity: 0.34; }
-  .villa[data-mood="hot"] .villa-brow.l { transform: rotate(-9deg) translateY(-3px); }
-  .villa[data-mood="hot"] .villa-brow.r { transform: rotate(9deg) translateY(-3px); }
-  .villa[data-mood="hot"] .villa-host-head { transform: rotate(2deg); }
-
-  .villa[data-mood="blazing"] { --v-mood: #E14A2E; }
-  .villa[data-mood="blazing"] .villa-mouth {
-    width: 17px; height: 19px; margin-left: -8.5px;
-    border: 0; border-radius: 50%; background: var(--v-line);
-  }
-  .villa[data-mood="blazing"] .villa-cheek { opacity: 0.46; }
-  .villa[data-mood="blazing"] .villa-eye { transform: scale(1.25); }
-  /* Held to a small lift on purpose — any higher and the brows disappear
-     under the hairline, which is where all the surprise was supposed to be. */
-  .villa[data-mood="blazing"] .villa-brow.l { transform: rotate(-13deg) translateY(-2px); }
-  .villa[data-mood="blazing"] .villa-brow.r { transform: rotate(13deg) translateY(-2px); }
-  .villa[data-mood="blazing"] .villa-host-glow { opacity: 0.6; }
-
-  .villa[data-mood="won"] { --v-mood: #2FA86A; }
-  .villa[data-mood="won"] .villa-mouth {
-    width: 30px; height: 20px; margin-left: -15px;
-    border: 0; border-radius: 4px 4px 26px 26px; background: var(--v-line);
-  }
-  .villa[data-mood="won"] .villa-cheek { opacity: 0.5; }
-  .villa[data-mood="won"] .villa-brow.l { transform: rotate(-6deg) translateY(-2px); }
-  .villa[data-mood="won"] .villa-brow.r { transform: rotate(6deg) translateY(-2px); }
-  .villa[data-mood="won"] .villa-host-glow { opacity: 0.66; }
-  .villa[data-mood="won"] .villa-host-head { transform: rotate(-2deg); }
-
-  .villa[data-mood="lost"] { --v-mood: #7E7A93; }
-  .villa[data-mood="lost"] .villa-mouth {
-    height: 8px; border-bottom: 0; border-top: 3px solid var(--v-line);
-    border-radius: 20px 20px 0 0;
-  }
-  .villa[data-mood="lost"] .villa-host-head { transform: rotate(4deg) translateY(3px); }
-
-  /* A small kick when a new line lands, so the face reads as reacting to
-     the guess rather than as having always looked like that. Written with
-     the standalone `scale`/`translate` properties rather than `transform`
-     on purpose: the mood rules above already own this element's transform
-     to tilt the head, and an animated `transform` would drop that tilt for
-     the half-second it runs and then snap it back. */
-  @media (prefers-reduced-motion: no-preference) {
-    .villa-host-head.reacting { animation: villa-react 0.5s var(--ease); }
-  }
-  @keyframes villa-react {
-    0% { scale: 1; translate: 0 0; }
-    40% { scale: 1.06; translate: 0 -7px; }
-    100% { scale: 1; translate: 0 0; }
-  }
 
   /* ---------- what the host says ----------
      Kept out of the 3D subtree entirely: text inside a transformed plane
@@ -2712,97 +2091,13 @@
         <div class="villa" id="villa" data-mood="idle" data-room="0" hidden>
           <button type="button" class="villa-toggle" id="villa-hide" title="Hide the room" aria-label="Hide the room">▾</button>
 
-          <!-- The room itself says nothing a screen reader needs: every
-               number behind it is already on the ladder and in the count
-               above. What the host says is prose worth reading, so only
-               the drawing is hidden, not the bubble. -->
-          <div class="villa-scene" aria-hidden="true">
-            <div class="villa-room" id="villa-shell">
-              <div class="villa-face villa-ceiling">
-                <div class="villa-boards"></div>
-              </div>
-
-              <div class="villa-face villa-floor">
-                <div class="villa-boards"></div>
-                <div class="villa-rug"></div>
-              </div>
-
-              <div class="villa-face villa-left">
-                <div class="villa-art"></div>
-                <div class="villa-rail"></div>
-                <div class="villa-skirting"></div>
-              </div>
-
-              <div class="villa-face villa-right">
-                <div class="villa-art"></div>
-                <div class="villa-rail"></div>
-                <div class="villa-skirting"></div>
-              </div>
-
-              <div class="villa-face villa-back">
-                <div class="villa-rail"></div>
-                <div class="villa-windows">
-                  <div class="villa-window villa-window-side">
-                    <i class="villa-hill"></i><i class="villa-sea"></i><i class="villa-mullion"></i>
-                  </div>
-                  <div class="villa-window">
-                    <i class="villa-sun"></i><i class="villa-hill"></i><i class="villa-sea"></i><i class="villa-mullion"></i>
-                  </div>
-                  <div class="villa-window villa-window-side">
-                    <i class="villa-hill"></i><i class="villa-sea"></i><i class="villa-mullion"></i>
-                  </div>
-                </div>
-                <div class="villa-skirting"></div>
-              </div>
-
-              <div class="villa-chandelier">
-                <i class="villa-chandelier-stem"></i>
-                <i class="villa-chandelier-ring"></i>
-                <i class="villa-chandelier-drop d1"></i>
-                <i class="villa-chandelier-drop d2"></i>
-                <i class="villa-chandelier-drop d3"></i>
-              </div>
-
-              <div class="villa-lamp">
-                <i class="villa-lamp-shade"></i><i class="villa-lamp-stem"></i><i class="villa-lamp-foot"></i>
-              </div>
-
-              <div class="villa-plant">
-                <i class="villa-frond"></i><i class="villa-frond"></i>
-                <i class="villa-frond"></i><i class="villa-frond"></i>
-                <i class="villa-pot"></i>
-              </div>
-
-              <div class="villa-host">
-                <div class="villa-host-inner">
-                  <div class="villa-host-glow"></div>
-                  <div class="villa-host-body"></div>
-                  <div class="villa-host-arm l"></div>
-                  <div class="villa-host-arm r"></div>
-                  <div class="villa-host-collar"></div>
-                  <div class="villa-host-neck"></div>
-                  <div class="villa-host-head" id="villa-head">
-                    <div class="villa-host-face">
-                      <i class="villa-ear l"></i><i class="villa-ear r"></i>
-                      <i class="villa-brow l"></i><i class="villa-brow r"></i>
-                      <i class="villa-eye l"></i><i class="villa-eye r"></i>
-                      <i class="villa-cheek l"></i><i class="villa-cheek r"></i>
-                      <i class="villa-mouth"></i>
-                    </div>
-                    <div class="villa-host-hair"></div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="villa-table">
-                <div class="villa-table-stem"></div>
-                <div class="villa-table-base"></div>
-                <div class="villa-table-top"></div>
-                <div class="villa-candle"><i class="villa-flame"></i></div>
-              </div>
-            </div>
-
-            <div class="villa-dusk"></div>
+          <!-- The room says nothing a screen reader needs: every number
+               behind it is already on the ladder and in the count above.
+               What the host says is prose worth reading, so the bubble
+               below stays readable while the drawing itself is hidden. -->
+          <div class="villa-scene">
+            <canvas id="villa-canvas" aria-hidden="true"></canvas>
+            <span class="villa-hint" id="villa-hint" data-i18n="drag-to-turn" hidden>drag to look around</span>
           </div>
 
           <p class="villa-speech" id="villa-speech"></p>
@@ -3772,6 +3067,7 @@
     "quests-order": "Les plus faciles en haut. Elles se corsent en descendant, et rapportent davantage.",
     "steady": "régulier", "legendary": "légendaire",
     "show-room": "afficher la pièce", "Hide the room": "Masquer la pièce",
+    "drag-to-turn": "faites glisser pour regarder autour",
     "from the start": "dès le départ",
     "Level {n}": "Niveau {n}",
     "{xp} XP each": "{xp} XP chacune",
@@ -6237,6 +5533,1123 @@
 
   function questDone(id) { return qstate.done.indexOf(id) !== -1; }
 
+  /* ---------- the villa, in three dimensions ----------
+     Not a picture of a room — a room. Every wall is a solid with
+     thickness, the table top is a cylinder, the floor tiles and the
+     marble and the wood grain are computed per pixel from where in the
+     room that pixel is, and the mountains through the windows are an
+     actual heightfield standing about fifty metres away. It all goes
+     through a perspective projection with a depth buffer deciding what is
+     in front of what. Drag it and the camera orbits, which is the test a
+     stack of flat cards fails: the moment you leave the one angle they
+     were arranged for, they stop being a room.
+
+     WebGL is part of the browser rather than a library, so this keeps the
+     page's bargain — nothing downloaded, nothing fetched, works from a
+     file on disk with the network gone. A browser that won't hand over a
+     context gets no room at all and a game that is otherwise unchanged.
+
+     Distances are metres. The room is 5 across, 3 tall and 5 deep, with
+     no fourth wall, because the camera is standing roughly where it would
+     be. That is also why the orbit is clamped: turn far enough and you
+     would be looking out through a wall nobody built. */
+
+  /* ---- matrices, column-major to match what WebGL expects ---- */
+  function m4Ident() {
+    return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  }
+
+  function m4Perspective(fovy, aspect, near, far, out) {
+    var f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far), i;
+    for (i = 0; i < 16; i++) out[i] = 0;
+    out[0] = f / aspect;
+    out[5] = f;
+    out[10] = (far + near) * nf;
+    out[11] = -1;
+    out[14] = 2 * far * near * nf;
+    return out;
+  }
+
+  function v3Sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function v3Cross(a, b) {
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  }
+  function v3Norm(a) {
+    var d = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]) || 1;
+    return [a[0] / d, a[1] / d, a[2] / d];
+  }
+  function v3Dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+
+  function m4LookAt(eye, at, up, out) {
+    var z = v3Norm(v3Sub(eye, at));
+    var x = v3Norm(v3Cross(up, z));
+    var y = v3Cross(z, x);
+    out[0] = x[0]; out[1] = y[0]; out[2] = z[0]; out[3] = 0;
+    out[4] = x[1]; out[5] = y[1]; out[6] = z[1]; out[7] = 0;
+    out[8] = x[2]; out[9] = y[2]; out[10] = z[2]; out[11] = 0;
+    out[12] = -v3Dot(x, eye); out[13] = -v3Dot(y, eye); out[14] = -v3Dot(z, eye); out[15] = 1;
+    return out;
+  }
+
+  // Translate · Rz · Ry · Rx · scale, written straight into one matrix
+  // rather than multiplied out of four — this runs for every object in the
+  // room, every frame.
+  function m4Compose(px, py, pz, rx, ry, rz, sx, sy, sz, out) {
+    var cx = Math.cos(rx), sxr = Math.sin(rx);
+    var cy = Math.cos(ry), syr = Math.sin(ry);
+    var cz = Math.cos(rz), szr = Math.sin(rz);
+    var r00 = cz * cy, r01 = cz * syr * sxr - szr * cx, r02 = cz * syr * cx + szr * sxr;
+    var r10 = szr * cy, r11 = szr * syr * sxr + cz * cx, r12 = szr * syr * cx - cz * sxr;
+    var r20 = -syr, r21 = cy * sxr, r22 = cy * cx;
+    out[0] = r00 * sx; out[1] = r10 * sx; out[2] = r20 * sx; out[3] = 0;
+    out[4] = r01 * sy; out[5] = r11 * sy; out[6] = r21 * sy; out[7] = 0;
+    out[8] = r02 * sz; out[9] = r12 * sz; out[10] = r22 * sz; out[11] = 0;
+    out[12] = px; out[13] = py; out[14] = pz; out[15] = 1;
+    return out;
+  }
+
+  // Normals don't survive a non-uniform scale: squash a sphere and its
+  // surface tilts differently from its geometry. The matrix that does
+  // survive it is the inverse transpose of the upper 3×3, which is the
+  // cofactor matrix over the determinant — and since the shader
+  // normalises anyway, the determinant can be left off.
+  function m3NormalFrom(m, out) {
+    out[0] = m[5] * m[10] - m[9] * m[6];
+    out[1] = -(m[4] * m[10] - m[8] * m[6]);
+    out[2] = m[4] * m[9] - m[8] * m[5];
+    out[3] = -(m[1] * m[10] - m[9] * m[2]);
+    out[4] = m[0] * m[10] - m[8] * m[2];
+    out[5] = -(m[0] * m[9] - m[8] * m[1]);
+    out[6] = m[1] * m[6] - m[5] * m[2];
+    out[7] = -(m[0] * m[6] - m[4] * m[2]);
+    out[8] = m[0] * m[5] - m[4] * m[1];
+    return out;
+  }
+
+  /* ---- geometry ----
+     Each builder returns flat position/normal/index arrays centred on the
+     origin, so a model matrix can put one anywhere. The box gets one
+     normal per face, to keep its edges crisp; the round shapes get one
+     per vertex, so they don't facet.
+
+     Backface culling is deliberately off. Every solid here is closed and
+     opaque, so the depth buffer already decides what shows and culling
+     would only save work there is none of — and leaving it off means the
+     host's hair, which is an open cap rather than a solid, doesn't need
+     to be built twice. */
+  function meshBox(w, h, d) {
+    var x = w / 2, y = h / 2, z = d / 2;
+    var faces = [
+      [[-x, -y, z], [x, -y, z], [x, y, z], [-x, y, z], [0, 0, 1]],
+      [[x, -y, -z], [-x, -y, -z], [-x, y, -z], [x, y, -z], [0, 0, -1]],
+      [[x, -y, z], [x, -y, -z], [x, y, -z], [x, y, z], [1, 0, 0]],
+      [[-x, -y, -z], [-x, -y, z], [-x, y, z], [-x, y, -z], [-1, 0, 0]],
+      [[-x, y, z], [x, y, z], [x, y, -z], [-x, y, -z], [0, 1, 0]],
+      [[-x, -y, -z], [x, -y, -z], [x, -y, z], [-x, -y, z], [0, -1, 0]]
+    ];
+    var pos = [], nrm = [], idx = [], i, j, base;
+    for (i = 0; i < faces.length; i++) {
+      base = i * 4;
+      for (j = 0; j < 4; j++) {
+        pos.push(faces[i][j][0], faces[i][j][1], faces[i][j][2]);
+        nrm.push(faces[i][4][0], faces[i][4][1], faces[i][4][2]);
+      }
+      idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+    return { pos: pos, nrm: nrm, idx: idx };
+  }
+
+  // A cone frustum, so one builder covers the table's splayed foot, the
+  // lamp shade, the plant pot and the cypresses as well as every plain
+  // cylinder.
+  function meshCyl(rTop, rBot, h, seg) {
+    var pos = [], nrm = [], idx = [], i, a, ca, sa, y = h / 2;
+    var slope = (rBot - rTop) / h, len = Math.sqrt(1 + slope * slope);
+    for (i = 0; i <= seg; i++) {
+      a = (i / seg) * Math.PI * 2; ca = Math.cos(a); sa = Math.sin(a);
+      pos.push(ca * rTop, y, sa * rTop);
+      nrm.push(ca / len, slope / len, sa / len);
+      pos.push(ca * rBot, -y, sa * rBot);
+      nrm.push(ca / len, slope / len, sa / len);
+    }
+    for (i = 0; i < seg; i++) {
+      var b = i * 2;
+      idx.push(b, b + 1, b + 3, b, b + 3, b + 2);
+    }
+    // The caps are separate fans so the rim's normal doesn't get averaged
+    // into the side's and round the edge off.
+    var cap = pos.length / 3;
+    pos.push(0, y, 0); nrm.push(0, 1, 0);
+    for (i = 0; i <= seg; i++) {
+      a = (i / seg) * Math.PI * 2;
+      pos.push(Math.cos(a) * rTop, y, Math.sin(a) * rTop); nrm.push(0, 1, 0);
+    }
+    for (i = 0; i < seg; i++) idx.push(cap, cap + 1 + i, cap + 2 + i);
+    cap = pos.length / 3;
+    pos.push(0, -y, 0); nrm.push(0, -1, 0);
+    for (i = 0; i <= seg; i++) {
+      a = (i / seg) * Math.PI * 2;
+      pos.push(Math.cos(a) * rBot, -y, Math.sin(a) * rBot); nrm.push(0, -1, 0);
+    }
+    for (i = 0; i < seg; i++) idx.push(cap, cap + 2 + i, cap + 1 + i);
+    return { pos: pos, nrm: nrm, idx: idx };
+  }
+
+  // v0/v1 clip the polar sweep, which is how the host gets hair: a cap of
+  // a slightly larger sphere, sitting on the same ellipsoid as the head.
+  function meshSphere(r, seg, rings, v0, v1) {
+    v0 = v0 === undefined ? 0 : v0;
+    v1 = v1 === undefined ? 1 : v1;
+    var pos = [], nrm = [], idx = [], i, j, phi, theta, x, y, z;
+    for (j = 0; j <= rings; j++) {
+      phi = (v0 + (v1 - v0) * (j / rings)) * Math.PI;
+      for (i = 0; i <= seg; i++) {
+        theta = (i / seg) * Math.PI * 2;
+        x = Math.sin(phi) * Math.cos(theta);
+        y = Math.cos(phi);
+        z = Math.sin(phi) * Math.sin(theta);
+        pos.push(x * r, y * r, z * r);
+        nrm.push(x, y, z);
+      }
+    }
+    for (j = 0; j < rings; j++) {
+      for (i = 0; i < seg; i++) {
+        var a = j * (seg + 1) + i, b = a + seg + 1;
+        idx.push(a, a + 1, b, a + 1, b + 1, b);
+      }
+    }
+    return { pos: pos, nrm: nrm, idx: idx };
+  }
+
+  function meshTorus(R, r, su, sv) {
+    var pos = [], nrm = [], idx = [], i, j, u, v, cu, su2, cv, sv2;
+    for (i = 0; i <= su; i++) {
+      u = (i / su) * Math.PI * 2; cu = Math.cos(u); su2 = Math.sin(u);
+      for (j = 0; j <= sv; j++) {
+        v = (j / sv) * Math.PI * 2; cv = Math.cos(v); sv2 = Math.sin(v);
+        pos.push((R + r * cv) * cu, r * sv2, (R + r * cv) * su2);
+        nrm.push(cv * cu, sv2, cv * su2);
+      }
+    }
+    for (i = 0; i < su; i++) {
+      for (j = 0; j < sv; j++) {
+        var a = i * (sv + 1) + j, b = a + sv + 1;
+        idx.push(a, a + 1, b, a + 1, b + 1, b);
+      }
+    }
+    return { pos: pos, nrm: nrm, idx: idx };
+  }
+
+  // A flat quad in the x/y plane, facing the camera. The sky is one of
+  // these, ninety metres out.
+  function meshQuad() {
+    return {
+      pos: [-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0],
+      nrm: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],
+      idx: [0, 1, 2, 0, 2, 3]
+    };
+  }
+
+  // A hanging curtain: a plane rippled into folds, with the normals that
+  // go with the ripple so the light catches each one.
+  function meshCurtain(folds, cols, rows) {
+    var pos = [], nrm = [], idx = [], i, j;
+    for (j = 0; j <= rows; j++) {
+      var v = j / rows;
+      for (i = 0; i <= cols; i++) {
+        var u = i / cols;
+        // The folds settle out toward the floor, the way hung cloth does.
+        var amp = 0.055 * (0.45 + 0.55 * (1 - v));
+        var a = u * Math.PI * 2 * folds;
+        pos.push(u - 0.5, 0.5 - v, Math.sin(a) * amp);
+        var dz = Math.cos(a) * amp * Math.PI * 2 * folds;
+        var len = Math.sqrt(1 + dz * dz);
+        nrm.push(-dz / len, 0, 1 / len);
+      }
+    }
+    for (j = 0; j < rows; j++) {
+      for (i = 0; i < cols; i++) {
+        var p = j * (cols + 1) + i, q = p + cols + 1;
+        idx.push(p, p + 1, q, p + 1, q + 1, q);
+      }
+    }
+    return { pos: pos, nrm: nrm, idx: idx };
+  }
+
+  /* ---- the land outside ----
+     Value noise, folded into ridges the usual way — take 1 − |2n − 1| and
+     the smooth humps of the noise turn into creases with peaks along
+     them. Summed over a few octaves that is a mountain range, and it is
+     built once at start-up as a single mesh about a hundred and eighty
+     metres across. */
+  function vHash(x, y) {
+    var n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+    return n - Math.floor(n);
+  }
+  function vNoise(x, y) {
+    var xi = Math.floor(x), yi = Math.floor(y);
+    var xf = x - xi, yf = y - yi;
+    var u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    return (vHash(xi, yi) * (1 - u) + vHash(xi + 1, yi) * u) * (1 - v) +
+           (vHash(xi, yi + 1) * (1 - u) + vHash(xi + 1, yi + 1) * u) * v;
+  }
+  function vRidged(x, y) {
+    var s = 0, a = 0.5, f = 1, i, n;
+    for (i = 0; i < 5; i++) {
+      n = vNoise(x * f, y * f);
+      s += a * (1 - Math.abs(n * 2 - 1));
+      f *= 2.07; a *= 0.52;
+    }
+    return s;
+  }
+  // Nothing near the terrace, rising hard with distance: a lake in the
+  // foreground and a range behind it, rather than a wall of rock right
+  // outside the window.
+  // Nothing at all for the first thirty metres, so the lake has somewhere
+  // to be, then hills, then a range that tops out around twelve metres up
+  // at ninety metres out. Those numbers are what it takes to look like a
+  // mountain from a window: a summit only a metre or two above the
+  // horizon reads as a bank, however far away it is put.
+  function terrainY(x, z) {
+    var d = Math.min(1, Math.max(0, (-z - 34) / 70));
+    var e = d * d * (3 - 2 * d);
+    var r = vRidged(x * 0.011 + 11.3, z * 0.010 + 4.1);
+    return -2.6 + e * 2.0 + e * 19.0 * (r - 0.30);
+  }
+
+  function meshTerrain(halfW, zNear, zFar, cols, rows) {
+    var pos = [], nrm = [], idx = [], i, j;
+    for (j = 0; j <= rows; j++) {
+      var z = zNear + (zFar - zNear) * (j / rows);
+      for (i = 0; i <= cols; i++) {
+        var x = -halfW + (2 * halfW) * (i / cols);
+        pos.push(x, terrainY(x, z), z);
+        // Central differences, at roughly the grid spacing.
+        var e = 1.2;
+        var dx = terrainY(x + e, z) - terrainY(x - e, z);
+        var dz = terrainY(x, z + e) - terrainY(x, z - e);
+        var n = v3Norm([-dx, 2 * e, -dz]);
+        nrm.push(n[0], n[1], n[2]);
+      }
+    }
+    for (j = 0; j < rows; j++) {
+      for (i = 0; i < cols; i++) {
+        var p = j * (cols + 1) + i, q = p + cols + 1;
+        idx.push(p, p + 1, q, p + 1, q + 1, q);
+      }
+    }
+    return { pos: pos, nrm: nrm, idx: idx };
+  }
+
+  // The one piece of geometry rebuilt while the page runs: a tube bent
+  // along a parabola whose curvature is the mood. Swapping between a few
+  // fixed mouths would snap from one to the next; bending a single one
+  // lets a face go from a scowl to a grin the way a face does. The vertex
+  // count never changes, so the buffers are written over rather than
+  // thrown away and remade.
+  var MOUTH_STEPS = 14, MOUTH_RING = 6;
+
+  function mouthPositions(width, curve, tube, pos, nrm) {
+    var i, j, n = 0;
+    for (i = 0; i <= MOUTH_STEPS; i++) {
+      var t = i / MOUTH_STEPS, x = (t - 0.5) * width, k = (t - 0.5) * 2;
+      var y = -curve * (1 - k * k);          // curve > 0 bows the ends up: a smile
+      var dy = curve * 2 * k;
+      var len = Math.sqrt(1 + dy * dy), tx = 1 / len, ty = dy / len;
+      for (j = 0; j <= MOUTH_RING; j++) {
+        var a = (j / MOUTH_RING) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+        var vx = -ty * ca, vy = tx * ca, vz = sa;   // a ring across the tangent
+        pos[n] = x + vx * tube; nrm[n++] = vx;
+        pos[n] = y + vy * tube; nrm[n++] = vy;
+        pos[n] = vz * tube;     nrm[n++] = vz;
+      }
+    }
+  }
+
+  function mouthIndices() {
+    var idx = [], i, j;
+    for (i = 0; i < MOUTH_STEPS; i++) {
+      for (j = 0; j < MOUTH_RING; j++) {
+        var p = i * (MOUTH_RING + 1) + j, q = p + MOUTH_RING + 1;
+        idx.push(p, p + 1, q, p + 1, q + 1, q);
+      }
+    }
+    return idx;
+  }
+
+  /* ---- the shaders ----
+     One directional light standing in for the sun, two point lights — the
+     mood thrown against the wall behind the host, and whatever lamp the
+     villa has earned — a soft fill from the camera, and a split ambient
+     that gives up-facing surfaces the sky's colour and down-facing ones
+     the floor's. The last two stand in for light bouncing around the
+     room, which nothing here traces. Without them the room is nearly
+     black: the only real light arrives through windows in the back wall,
+     so the back wall — the thing you spend the whole game looking at — is
+     lit from behind. Correct, and unwatchable.
+
+     Surfaces are patterned in the fragment shader from where in the room
+     they are: tiles from the floor plane, grain along the length of a
+     board, veins through marble, mottling on plaster. That is cheaper
+     than any texture and it needs no files, which matters for a page that
+     has to keep working with nothing to download from.
+
+     Colours are authored as sRGB and squared on the way in, lit in that
+     roughly-linear space, then square-rooted on the way out. Light adds
+     the way light does rather than the way paint does, and a surface at
+     full illumination comes back out the colour it was written as. */
+  var VILLA_VS = [
+    "attribute vec3 aPos;",
+    "attribute vec3 aNrm;",
+    "uniform mat4 uProj, uView, uModel;",
+    "uniform mat3 uNrmMat;",
+    "varying vec3 vN, vP;",
+    "void main() {",
+    "  vec4 world = uModel * vec4(aPos, 1.0);",
+    "  vP = world.xyz;",
+    "  vN = uNrmMat * aNrm;",
+    "  gl_Position = uProj * uView * world;",
+    "}"
+  ].join("\n");
+
+  var VILLA_FS = [
+    "#ifdef GL_FRAGMENT_PRECISION_HIGH",
+    "precision highp float;",
+    "#else",
+    "precision mediump float;",
+    "#endif",
+    "varying vec3 vN, vP;",
+    "uniform vec3 uColor, uColor2, uEye, uAmbSky, uAmbGnd, uSunDir, uSunCol, uHaze;",
+    "uniform vec3 uL1Pos, uL1Col, uL2Pos, uL2Col;",
+    "uniform float uEmit, uShine, uFill, uMat, uAlpha;",
+    "float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }",
+    "float vnoise(vec2 p) {",
+    "  vec2 i = floor(p), f = fract(p);",
+    "  f = f * f * (3.0 - 2.0 * f);",
+    "  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),",
+    "             mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);",
+    "}",
+    "float fbm(vec2 p) {",
+    "  float s = 0.0, a = 0.5;",
+    "  for (int k = 0; k < 4; k++) { s += a * vnoise(p); p *= 2.03; a *= 0.5; }",
+    "  return s;",
+    "}",
+    "vec3 lamp(vec3 lp, vec3 lc, vec3 N) {",
+    "  vec3 d = lp - vP;",
+    "  float r = length(d);",
+    "  return max(dot(N, d / r), 0.0) * lc / (1.0 + 0.14 * r * r);",
+    "}",
+    "void main() {",
+    "  vec3 N = normalize(vN);",
+    "  vec3 base = uColor;",
+    "  float shine = uShine;",
+    "  if (uMat > 6.5) {",
+    "    if (uMat < 7.5) {",                    // sky: a straight vertical gradient
+    "      gl_FragColor = vec4(mix(uColor, uColor2, clamp((vP.y + 16.0) / 64.0, 0.0, 1.0)), 1.0);",
+    "      return;",
+    "    }",
+    "    if (uMat < 8.5) {",                    // a soft shadow pooled on the floor
+    "      float d = length(vP.xz - vec2(uColor2.x, uColor2.z)) / uColor2.y;",
+    "      gl_FragColor = vec4(uColor, uAlpha * (1.0 - smoothstep(0.35, 1.0, d)));",
+    "      return;",
+    "    }",
+    "    if (uMat < 9.5) {",
+    "      base = uColor * (0.86 + 0.26 * fbm(vec2(vP.x * 2.2 + vP.z * 2.2, vP.y * 3.0)));",  // stone
+    "    } else {",
+    // The hillside: pasture at the bottom, bare rock up the steeps, snow on
+    // the summits — and only where a slope is shallow enough to hold it.
+    "      float n = fbm(vP.xz * 0.24);",
+    "      float h = vP.y + n * 3.0 - 1.5;",
+    "      base = mix(uColor, uColor2, smoothstep(-1.0, 4.0, h));",
+    "      base = mix(base, vec3(0.93, 0.95, 0.98), smoothstep(5.0, 8.5, h) * smoothstep(0.40, 0.78, N.y));",
+    "      base *= 0.80 + 0.38 * n;",
+    "    }",
+    "  } else if (uMat > 0.5) {",
+    "    if (uMat < 1.5) {",                    // terracotta tiles, with grout
+    "      vec2 g = vP.xz / 0.58;",
+    "      vec2 f = abs(fract(g) - 0.5);",
+    "      float grout = smoothstep(0.41, 0.49, max(f.x, f.y));",
+    "      float tone = 0.84 + 0.30 * hash(floor(g));",
+    "      base = mix(uColor * tone * (0.92 + 0.16 * fbm(vP.xz * 6.0)), uColor2, grout);",
+    "    } else if (uMat < 2.5) {",             // wood, grained the long way
+    "      float grain = fbm(vec2(vP.x * 1.6 + vP.z * 0.2, vP.z * 22.0));",
+    "      base = mix(uColor, uColor2, grain * 0.62);",
+    "      shine += 0.16;",
+    "    } else if (uMat < 3.5) {",             // plaster
+    "      base = uColor * (0.94 + 0.10 * fbm(vec2(vP.x + vP.z * 0.4, vP.y) * 4.0));",
+    "    } else if (uMat < 4.5) {",             // marble, veined
+    "      float v = fbm(vec2(vP.x * 1.1, vP.z * 1.1) + fbm(vP.xz * 0.55) * 3.0);",
+    "      base = mix(uColor, uColor2, smoothstep(0.40, 0.60, v));",
+    "      shine += 0.24;",
+    "    } else if (uMat < 5.5) {",             // the rug
+    "      float r = length(vP.xz - vec2(0.0, -0.30));",
+    "      base = mix(uColor, uColor2, step(0.0, sin(r * 11.0)) * 0.55 + 0.14 * fbm(vP.xz * 18.0));",
+    "    } else {",                             // foliage
+    "      base = uColor * (0.66 + 0.62 * fbm(vec2(vP.x * 7.0 + vP.y * 3.0, vP.z * 7.0)));",
+    "    }",
+    "  }",
+    "  vec3 S = normalize(uSunDir);",
+    "  vec3 V = normalize(uEye - vP);",
+    "  vec3 lit = mix(uAmbGnd, uAmbSky, N.y * 0.5 + 0.5);",
+    "  lit += max(dot(N, S), 0.0) * uSunCol;",
+    "  lit += max(dot(N, V), 0.0) * uFill;",
+    "  lit += lamp(uL1Pos, uL1Col, N);",
+    "  lit += lamp(uL2Pos, uL2Col, N);",
+    "  vec3 col = base * base * lit;",
+    "  col += uSunCol * pow(max(dot(N, normalize(V + S)), 0.0), 44.0) * shine;",
+    // Distance haze. Everything indoors is within a few metres of the
+    // camera and gets none of it; the range fifty metres out gets nearly
+    // all of it, which is most of why it reads as being fifty metres out.
+    "  float fog = 1.0 - exp(-max(0.0, length(vP - uEye) - 7.0) * 0.0055);",
+    "  col = mix(sqrt(clamp(col, 0.0, 1.0)), uHaze, fog);",
+    "  gl_FragColor = vec4(mix(col, base, uEmit), uAlpha);",
+    "}"
+  ].join("\n");
+
+  // The material each surface is patterned with, by name rather than by
+  // the number the shader wants.
+  var MAT = { plain: 0, tile: 1, wood: 2, plaster: 3, marble: 4, rug: 5, leaf: 6,
+              sky: 7, shadow: 8, stone: 9, hillside: 10 };
+
+  // Every colour the room is made of, by level. A tier that doesn't name a
+  // part keeps whatever the tier below it said — the same additive idea
+  // the stylesheet used, moved to where the room now lives.
+  var VILLA_PAINT = [
+    { wall: [0.85, 0.79, 0.68], wall2: [0.74, 0.67, 0.56], side: [0.82, 0.75, 0.64],
+      ceil: [0.90, 0.87, 0.80], beam: [0.32, 0.22, 0.15],
+      floor: [0.72, 0.42, 0.28], grout: [0.55, 0.48, 0.42], floorMat: MAT.tile,
+      trim: [0.74, 0.65, 0.49], stone: [0.82, 0.76, 0.65], amb: 0.44,
+      sky: [0.74, 0.84, 0.92], skyHi: [0.31, 0.55, 0.84], haze: [0.76, 0.83, 0.90],
+      land: [0.34, 0.44, 0.30], rock: [0.46, 0.43, 0.42], water: [0.30, 0.46, 0.54],
+      sun: [1.0, 0.97, 0.86], cloth: [0.24, 0.34, 0.54], sunCol: [0.86, 0.79, 0.62] },
+    { amb: 0.48 },
+    { cloth: [0.34, 0.28, 0.50], amb: 0.50 },
+    { floor: [0.88, 0.86, 0.82], grout: [0.62, 0.60, 0.58], floorMat: MAT.marble,
+      wall: [0.94, 0.91, 0.85], side: [0.92, 0.89, 0.82], amb: 0.54 },
+    { trim: [0.86, 0.74, 0.46], cloth: [0.46, 0.20, 0.26], amb: 0.56 },
+    { sky: [0.95, 0.66, 0.42], skyHi: [0.34, 0.34, 0.56], haze: [0.66, 0.47, 0.42],
+      sun: [1.0, 0.82, 0.52], land: [0.20, 0.21, 0.23], rock: [0.26, 0.23, 0.25],
+      water: [0.30, 0.28, 0.34], wall: [0.86, 0.75, 0.62],
+      sunCol: [0.86, 0.56, 0.32], amb: 0.36 }
+  ];
+
+  // What the host's face is doing, per band. brow is a rotation in
+  // radians, curve bends the mouth (negative frowns), open lets it fall
+  // open, tilt leans the whole head, light is the colour thrown behind
+  // them — the part that carries at a glance.
+  var VILLA_MOODS = {
+    idle:    { brow: 0.00, curve: 0.010, open: 0.00, cheek: 0.0, tilt: 0.00, light: [0.20, 0.19, 0.24] },
+    cold:    { brow: -0.34, curve: -0.030, open: 0.00, cheek: 0.0, tilt: -0.07, light: [0.12, 0.22, 0.52] },
+    chilly:  { brow: -0.14, curve: 0.000, open: 0.00, cheek: 0.0, tilt: -0.03, light: [0.10, 0.30, 0.42] },
+    cool:    { brow: 0.02, curve: 0.022, open: 0.00, cheek: 0.1, tilt: 0.00, light: [0.12, 0.38, 0.26] },
+    warm:    { brow: 0.10, curve: 0.042, open: 0.00, cheek: 0.4, tilt: 0.03, light: [0.46, 0.36, 0.10] },
+    hot:     { brow: 0.20, curve: 0.058, open: 0.06, cheek: 0.7, tilt: 0.05, light: [0.56, 0.28, 0.07] },
+    blazing: { brow: 0.30, curve: 0.030, open: 0.32, cheek: 1.0, tilt: 0.02, light: [0.62, 0.18, 0.09] },
+    won:     { brow: 0.22, curve: 0.072, open: 0.26, cheek: 1.0, tilt: -0.04, light: [0.12, 0.50, 0.28] },
+    lost:    { brow: -0.20, curve: -0.038, open: 0.00, cheek: 0.0, tilt: 0.10, light: [0.18, 0.17, 0.21] }
+  };
+
+  // Somebody who has asked for less movement gets a room that holds still
+  // — no drift, no breathing, no blinking — but can still be turned by
+  // hand, because that is a thing they did rather than a thing it did.
+  var villaStill = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  // Everything the renderer owns. Null until villaBuild() succeeds, and
+  // left null for good if the browser has no WebGL to give.
+  var vr = null;
+
+  // What is being drawn, and what it is easing toward. The face is
+  // interpolated every frame so a change of mood is a movement rather
+  // than a jump.
+  var vstate = {
+    level: 0, mood: "idle",
+    brow: 0, curve: 0.01, open: 0, cheek: 0, tilt: 0, light: [0.20, 0.19, 0.24],
+    dragYaw: 0, dragPitch: 0, dragging: false,
+    bob: 0, blink: 1, t: 0, turned: false
+  };
+
+  function villaCompile(gl, type, src) {
+    var sh = gl.createShader(type);
+    gl.shaderSource(sh, src);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) { gl.deleteShader(sh); return null; }
+    return sh;
+  }
+
+  function villaUpload(gl, data, dynamic) {
+    var use = dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
+    var m = { pos: gl.createBuffer(), nrm: gl.createBuffer(), idx: gl.createBuffer(), count: data.idx.length };
+    gl.bindBuffer(gl.ARRAY_BUFFER, m.pos);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.pos), use);
+    gl.bindBuffer(gl.ARRAY_BUFFER, m.nrm);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.nrm), use);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.idx);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(data.idx), gl.STATIC_DRAW);
+    return m;
+  }
+
+  function villaBuild() {
+    var canvas = $("villa-canvas");
+    if (!canvas || !window.WebGLRenderingContext) return null;
+
+    var opts = { antialias: true, alpha: false, depth: true };
+    var gl = null;
+    try {
+      gl = canvas.getContext("webgl", opts) || canvas.getContext("experimental-webgl", opts);
+    } catch (e) { gl = null; }
+    if (!gl) return null;
+
+    var vs = villaCompile(gl, gl.VERTEX_SHADER, VILLA_VS);
+    var fs = villaCompile(gl, gl.FRAGMENT_SHADER, VILLA_FS);
+    if (!vs || !fs) return null;
+    var prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+    gl.useProgram(prog);
+
+    var u = {};
+    ["uProj", "uView", "uModel", "uNrmMat", "uColor", "uColor2", "uEye", "uAmbSky",
+     "uAmbGnd", "uSunDir", "uSunCol", "uHaze", "uL1Pos", "uL1Col", "uL2Pos", "uL2Col",
+     "uEmit", "uShine", "uFill", "uMat", "uAlpha"
+    ].forEach(function (name) { u[name] = gl.getUniformLocation(prog, name); });
+
+    var aPos = gl.getAttribLocation(prog, "aPos");
+    var aNrm = gl.getAttribLocation(prog, "aNrm");
+    gl.enableVertexAttribArray(aPos);
+    gl.enableVertexAttribArray(aNrm);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // One unit copy of each shape, put where it belongs by the model
+    // matrix. The room comes to about a hundred and forty draws a frame,
+    // which is nothing, so none of this is batched or instanced.
+    var mesh = {
+      box: villaUpload(gl, meshBox(1, 1, 1)),
+      cyl: villaUpload(gl, meshCyl(0.5, 0.5, 1, 26)),
+      cone: villaUpload(gl, meshCyl(0.34, 0.5, 1, 22)),
+      spire: villaUpload(gl, meshCyl(0.02, 0.5, 1, 14)),
+      sphere: villaUpload(gl, meshSphere(0.5, 22, 15)),
+      cap: villaUpload(gl, meshSphere(0.5, 22, 8, 0, 0.5)),
+      torus: villaUpload(gl, meshTorus(0.42, 0.08, 24, 10)),
+      quad: villaUpload(gl, meshQuad()),
+      curtain: villaUpload(gl, meshCurtain(3, 22, 6)),
+      land: villaUpload(gl, meshTerrain(190, -14, -124, 96, 44))
+    };
+
+    var mp = new Float32Array((MOUTH_STEPS + 1) * (MOUTH_RING + 1) * 3);
+    var mn = new Float32Array(mp.length);
+    mouthPositions(0.24, 0.01, 0.022, mp, mn);
+    var mouth = villaUpload(gl, { pos: mp, nrm: mn, idx: mouthIndices() }, true);
+
+    return {
+      gl: gl, canvas: canvas, prog: prog, u: u, aPos: aPos, aNrm: aNrm, mesh: mesh,
+      mouth: mouth, mouthPos: mp, mouthNrm: mn, mouthCurve: 0.01,
+      proj: m4Ident(), view: m4Ident(), model: m4Ident(), nrmMat: new Float32Array(9),
+      w: 0, h: 0, raf: 0, last: 0
+    };
+  }
+
+  function villaResize() {
+    var cssW = vr.canvas.clientWidth, cssH = vr.canvas.clientHeight;
+    if (!cssW || !cssH) return false;
+    // Capped at 2: a phone reporting 3 or 4 buys nothing visible in a room
+    // this size and triples the pixels being shaded.
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = Math.round(cssW * dpr), h = Math.round(cssH * dpr);
+    if (w !== vr.w || h !== vr.h) {
+      vr.canvas.width = w; vr.canvas.height = h;
+      vr.w = w; vr.h = h;
+      vr.gl.viewport(0, 0, w, h);
+    }
+    return true;
+  }
+
+  // Colour lookup down the tiers: the highest level at or below this one
+  // that actually names the part being asked about.
+  function villaColor(part) {
+    for (var i = Math.min(vstate.level, VILLA_PAINT.length - 1); i >= 0; i--) {
+      if (VILLA_PAINT[i][part]) return VILLA_PAINT[i][part];
+    }
+    return [1, 1, 1];
+  }
+  function villaNum(part, fallback) {
+    for (var i = Math.min(vstate.level, VILLA_PAINT.length - 1); i >= 0; i--) {
+      if (VILLA_PAINT[i][part] !== undefined) return VILLA_PAINT[i][part];
+    }
+    return fallback;
+  }
+
+  // Objects are queued rather than drawn where they're described, so one
+  // set-uniforms-and-draw path handles the whole room instead of a hundred
+  // and forty copies of it. The queue's entries are reused between frames
+  // — at sixty frames a second, that many fresh objects each time is
+  // litter. Shadows go in a second queue, drawn last with the depth buffer
+  // read but not written, so they lie on the floor without fighting it.
+  var vframe = [], vcount = 0, vshade = [], vscount = 0;
+
+  function put(mesh, color, px, py, pz, sx, sy, sz, rx, ry, rz, opt) {
+    var it = vframe[vcount] || (vframe[vcount] = {});
+    it.mesh = mesh; it.color = color;
+    it.px = px; it.py = py; it.pz = pz;
+    it.sx = sx; it.sy = sy; it.sz = sz;
+    it.rx = rx || 0; it.ry = ry || 0; it.rz = rz || 0;
+    opt = opt || 0;
+    it.mat = opt.mat || 0;
+    it.color2 = opt.c2 || color;
+    it.emit = opt.emit || 0;
+    it.shine = opt.shine === undefined ? 0.04 : opt.shine;
+    vcount++;
+  }
+
+  function shadow(cx, cz, radius, strength) {
+    var it = vshade[vscount] || (vshade[vscount] = {});
+    it.cx = cx; it.cz = cz; it.r = radius; it.a = strength;
+    vscount++;
+  }
+
+  /* ---- the room ----
+     The five slabs run well past the room they enclose. A camera swung to
+     the end of its arc can just see round a corner, and what it should
+     find there is more wall, not the void. */
+  function villaScene() {
+    var m = vr.mesh, i, lvl = vstate.level;
+    var wall = villaColor("wall"), wall2 = villaColor("wall2"), side = villaColor("side");
+    var ceil = villaColor("ceil"), beam = villaColor("beam");
+    var floor = villaColor("floor"), grout = villaColor("grout"), trim = villaColor("trim");
+    var stone = villaColor("stone"), floorMat = villaNum("floorMat", MAT.tile);
+    var plaster = { mat: MAT.plaster, c2: wall2 };
+
+    /* the shell */
+    put(m.box, floor, 0, -0.25, 0, 12, 0.5, 12, 0, 0, 0,
+        { mat: floorMat, c2: grout, shine: floorMat === MAT.marble ? 0.20 : 0.06 });
+    put(m.box, ceil, 0, 3.32, 0, 12, 0.5, 12, 0, 0, 0, plaster);
+    put(m.box, side, -2.78, 1.5, 0, 0.5, 7, 12, 0, 0, 0, plaster);
+    put(m.box, side, 2.78, 1.5, 0, 0.5, 7, 12, 0, 0, 0, plaster);
+
+    // Beams across the ceiling, and the cornice that hides the join.
+    for (i = -2; i <= 2; i++) {
+      put(m.box, beam, 0, 2.94, i * 1.15, 5.6, 0.20, 0.24, 0, 0, 0, { mat: MAT.wood, c2: [0.20, 0.13, 0.09] });
+    }
+    put(m.box, ceil, 0, 2.98, -2.44, 12, 0.14, 0.14);
+    put(m.box, ceil, -2.44, 2.98, 0, 0.14, 0.14, 12);
+    put(m.box, ceil, 2.44, 2.98, 0, 0.14, 0.14, 12);
+
+    // A panelled dado, which is most of what makes a plain box read as a
+    // room somebody built rather than a box.
+    put(m.box, wall2, -2.44, 0.50, 0, 0.10, 1.0, 12, 0, 0, 0, plaster);
+    put(m.box, wall2, 2.44, 0.50, 0, 0.10, 1.0, 12, 0, 0, 0, plaster);
+    put(m.box, trim, -2.42, 1.02, 0, 0.13, 0.07, 12);
+    put(m.box, trim, 2.42, 1.02, 0, 0.13, 0.07, 12);
+    put(m.box, stone, -2.42, 0.08, 0, 0.14, 0.17, 12, 0, 0, 0, { mat: MAT.stone });
+    put(m.box, stone, 2.42, 0.08, 0, 0.14, 0.17, 12, 0, 0, 0, { mat: MAT.stone });
+
+    /* the window wall, in pieces — the openings are holes, and a hole is
+       the one thing a solid box cannot have */
+    var openY0 = lvl >= 3 ? 0.78 : 0.86;
+    var openY1 = lvl >= 3 ? 2.52 : 2.32;
+    var wins = [[-2.00, -1.10], [-0.58, 0.58], [1.10, 2.00]];
+    var piers = [[-6.0, -2.00], [-1.10, -0.58], [0.58, 1.10], [2.00, 6.0]];
+    var WZ = -2.66, WD = 0.42;      // the wall's centre line and its thickness
+
+    put(m.box, wall, 0, openY0 / 2, WZ, 12, openY0, WD, 0, 0, 0, plaster);
+    put(m.box, wall, 0, (openY1 + 4.6) / 2, WZ, 12, 4.6 - openY1, WD, 0, 0, 0, plaster);
+    for (i = 0; i < piers.length; i++) {
+      put(m.box, wall, (piers[i][0] + piers[i][1]) / 2, (openY0 + openY1) / 2, WZ,
+          piers[i][1] - piers[i][0], openY1 - openY0, WD, 0, 0, 0, plaster);
+    }
+    put(m.box, stone, 0, 0.08, WZ, 12, 0.17, WD + 0.04, 0, 0, 0, { mat: MAT.stone });
+
+    // Once the villa has earned its arches, the square heads get filled in
+    // to a curve by a row of small blocks following it. Real masonry, so
+    // it still reads as an arch from off to one side.
+    if (lvl >= 3) {
+      for (i = 0; i < wins.length; i++) {
+        var x0 = wins[i][0], x1 = wins[i][1], r = (x1 - x0) / 2, cx = (x0 + x1) / 2;
+        var springer = openY1 - r;
+        for (var s = 0; s < 18; s++) {
+          var t0 = x0 + (s / 18) * (x1 - x0), t1 = x0 + ((s + 1) / 18) * (x1 - x0);
+          var mid = (t0 + t1) / 2 - cx;
+          var yc = springer + Math.sqrt(Math.max(0, r * r - mid * mid));
+          if (yc >= openY1 - 0.004) continue;
+          put(m.box, wall, (t0 + t1) / 2, (yc + openY1) / 2, WZ, t1 - t0 + 0.012, openY1 - yc, WD,
+              0, 0, 0, plaster);
+        }
+      }
+    }
+
+    // Stone surrounds and sills, on the room side, plus a glazing bar so
+    // the openings read as windows rather than as holes.
+    for (i = 0; i < wins.length; i++) {
+      var a = wins[i][0], b = wins[i][1], mx = (a + b) / 2;
+      put(m.box, stone, mx, openY0 - 0.05, WZ + 0.10, b - a + 0.22, 0.10, WD + 0.02, 0, 0, 0, { mat: MAT.stone });
+      put(m.box, stone, a - 0.13, (openY0 + openY1) / 2, WZ + 0.02, 0.20, openY1 - openY0 + 0.2, WD + 0.10, 0, 0, 0, { mat: MAT.stone });
+      put(m.box, stone, b + 0.13, (openY0 + openY1) / 2, WZ + 0.02, 0.20, openY1 - openY0 + 0.2, WD + 0.10, 0, 0, 0, { mat: MAT.stone });
+      put(m.box, trim, mx, (openY0 + openY1) / 2, WZ - 0.14, 0.05, openY1 - openY0, 0.06);
+      put(m.box, trim, mx, openY0 + (openY1 - openY0) * 0.62, WZ - 0.14, b - a, 0.05, 0.06);
+    }
+
+    // Curtains, hung either side of the middle window and swagged back.
+    if (lvl >= 2) {
+      var curt = [0.86, 0.80, 0.70];
+      put(m.curtain, curt, -0.80, 1.60, WZ - 0.30, 0.70, 1.90, 1, 0, 0, 0, { shine: 0.10 });
+      put(m.curtain, curt, 0.80, 1.60, WZ - 0.30, 0.70, 1.90, 1, 0, 0, 0, { shine: 0.10 });
+      put(m.box, trim, 0, 2.58, WZ - 0.30, 2.6, 0.06, 0.06);
+    }
+
+    /* ---- the world outside ----
+       Sky first, then the range, then the water, then the terrace: four
+       depths, each hazed by how far away it is, which is most of why the
+       view reads as a view rather than as a poster on the wall. */
+    var sky = villaColor("sky"), skyHi = villaColor("skyHi");
+    put(m.quad, sky, 0, 22, -165, 440, 230, 1, 0, 0, 0, { mat: MAT.sky, c2: skyHi });
+    put(m.sphere, villaColor("sun"), -26, lvl >= 5 ? 6 : 26, -140, 9, 9, 9, 0, 0, 0, { emit: 0.95 });
+
+    put(m.land, villaColor("land"), 0, 0, 0, 1, 1, 1, 0, 0, 0,
+        { mat: MAT.hillside, c2: villaColor("rock"), shine: 0 });
+    // The lake the range comes down to.
+    put(m.box, villaColor("water"), 0, -1.50, -46, 280, 0.4, 78, 0, 0, 0, { shine: 0.55 });
+
+    // The terrace, its balustrade, and a few cypresses beyond it.
+    put(m.box, stone, 0, -0.26, -3.45, 17, 0.30, 1.7, 0, 0, 0, { mat: MAT.stone });
+    put(m.box, stone, 0, 0.02, -4.10, 17, 0.20, 0.46, 0, 0, 0, { mat: MAT.stone });
+    put(m.box, stone, 0, 0.80, -4.10, 17, 0.15, 0.50, 0, 0, 0, { mat: MAT.stone });
+    for (i = -13; i <= 13; i++) {
+      put(m.cone, stone, i * 0.34, 0.40, -4.10, 0.23, 0.68, 0.23, 0, 0, 0, { mat: MAT.stone });
+    }
+    var cyp = [[-3.4, -6.4, 5.0], [3.1, -6.0, 4.3], [5.4, -7.6, 5.6], [-6.2, -8.4, 3.9]];
+    for (i = 0; i < cyp.length; i++) {
+      put(m.cyl, [0.36, 0.30, 0.20], cyp[i][0], -0.4, cyp[i][1], 0.16, 1.0, 0.16, 0, 0, 0, { mat: MAT.wood, c2: [0.24, 0.19, 0.13] });
+      put(m.spire, [0.16, 0.30, 0.19], cyp[i][0], cyp[i][2] / 2 - 0.4, cyp[i][1],
+          1.15, cyp[i][2], 1.15, 0, 0, 0, { mat: MAT.leaf, shine: 0 });
+    }
+
+    /* ---- what the experience bought ---- */
+    if (lvl >= 1) {
+      // Something underfoot, and a lamp lit in the corner.
+      put(m.cyl, [0.46, 0.17, 0.16], 0, 0.014, -0.30, 3.5, 0.028, 3.2, 0, 0, 0,
+          { mat: MAT.rug, c2: [0.72, 0.56, 0.40], shine: 0 });
+      put(m.cyl, trim, -1.98, 0.03, -1.60, 0.5, 0.06, 0.5, 0, 0, 0, { mat: MAT.wood, c2: [0.42, 0.32, 0.20] });
+      put(m.cyl, trim, -1.98, 0.70, -1.60, 0.06, 1.34, 0.06);
+      put(m.cone, [1.0, 0.94, 0.80], -1.98, 1.50, -1.60, 0.58, 0.36, 0.58, 0, 0, 0, { emit: 0.7 });
+      shadow(-1.98, -1.60, 0.42, 0.30);
+    }
+
+    if (lvl >= 2) {
+      // A palm in a pot, pictures on the side walls, a candle on the table.
+      put(m.cone, [0.66, 0.40, 0.26], 1.95, 0.21, -1.66, 0.48, 0.42, 0.48, 0, 0, 0, { mat: MAT.stone });
+      for (i = 0; i < 6; i++) {
+        var ang = (i / 6) * Math.PI * 2 + 0.4;
+        put(m.sphere, [0.22, 0.42, 0.23], 1.95 + Math.cos(ang) * 0.18, 0.66,
+            -1.66 + Math.sin(ang) * 0.18, 0.15, 0.66, 0.34,
+            Math.sin(ang) * 0.6, -ang, Math.cos(ang) * -0.6, { mat: MAT.leaf, shine: 0 });
+      }
+      shadow(1.95, -1.66, 0.42, 0.32);
+      put(m.box, trim, -2.36, 1.86, -1.05, 0.06, 0.66, 0.90);
+      put(m.box, [0.34, 0.40, 0.52], -2.32, 1.86, -1.05, 0.02, 0.52, 0.76, 0, 0, 0, { mat: MAT.plaster, shine: 0.2 });
+      put(m.box, trim, 2.36, 1.80, -0.62, 0.06, 0.82, 0.64);
+      put(m.box, [0.50, 0.38, 0.30], 2.32, 1.80, -0.62, 0.02, 0.68, 0.50, 0, 0, 0, { mat: MAT.plaster, shine: 0.2 });
+      put(m.cyl, [0.96, 0.94, 0.88], 0.56, 0.93, -0.02, 0.08, 0.26, 0.08);
+      put(m.sphere, [1.0, 0.76, 0.36], 0.56, 1.08, -0.02, 0.08, 0.14, 0.08, 0, 0, 0, { emit: 0.9 });
+    }
+
+    if (lvl >= 4) {
+      // A chandelier, hung from the ceiling for real: the ring is a torus,
+      // and it stays a ring from every angle the camera can reach.
+      put(m.cyl, trim, 0, 2.80, -0.5, 0.04, 0.34, 0.04);
+      put(m.torus, trim, 0, 2.56, -0.5, 1.6, 1.6, 1.6, 0, 0, 0, { shine: 0.3 });
+      for (i = 0; i < 6; i++) {
+        var a2 = (i / 6) * Math.PI * 2;
+        put(m.sphere, [1.0, 0.90, 0.66], Math.cos(a2) * 0.67, 2.48, -0.5 + Math.sin(a2) * 0.67,
+            0.12, 0.17, 0.12, 0, 0, 0, { emit: 0.92 });
+      }
+    }
+
+    /* ---- the round table ---- */
+    var tbl = [0.50, 0.31, 0.17], tblDark = [0.30, 0.18, 0.10];
+    var woodOpt = { mat: MAT.wood, c2: tblDark, shine: 0.26 };
+    put(m.cyl, tbl, 0, 0.75, -0.34, 1.40, 0.08, 1.40, 0, 0, 0, woodOpt);
+    put(m.cyl, tbl, 0, 0.69, -0.34, 1.33, 0.06, 1.33, 0, 0, 0, woodOpt);
+    put(m.cyl, tbl, 0, 0.39, -0.34, 0.20, 0.64, 0.20, 0, 0, 0, woodOpt);
+    put(m.cone, tbl, 0, 0.06, -0.34, 0.92, 0.12, 0.92, 0, 0, 0, woodOpt);
+    shadow(0, -0.34, 0.98, 0.40);
+
+    /* ---- the host ----
+       Seated, so nothing below the table is modelled. They sit just inside
+       the table's far edge, which means the two solids overlap — which is
+       what a person at a table looks like, and the depth buffer sorts it
+       out without being asked. */
+    var cloth = villaColor("cloth");
+    var clothLo = [cloth[0] * 0.78, cloth[1] * 0.78, cloth[2] * 0.78];
+    var skin = [0.85, 0.65, 0.49], skinLo = [0.72, 0.52, 0.37];
+    var hair = [0.19, 0.13, 0.10];
+    var hz = -1.30;
+    var breath = villaStill ? 0 : Math.sin(vstate.t * 1.1) * 0.009;
+    var tilt = vstate.tilt;
+    var skinOpt = { shine: 0.10 };
+
+    put(m.cyl, cloth, 0, 1.00 + breath, hz, 0.56, 0.64, 0.50, 0, 0, 0, { shine: 0.02 });
+    put(m.sphere, cloth, 0, 1.26 + breath, hz, 0.64, 0.40, 0.50, 0, 0, 0, { shine: 0.02 });
+    put(m.cyl, skinLo, 0, 1.37 + breath, hz, 0.16, 0.20, 0.16, 0, 0, 0, skinOpt);
+    // An open collar, as a shallow ring of shirt rather than a torus — a
+    // torus round a neck reads as a beard from the front, because what you
+    // see of it is its shaded inside edge.
+    put(m.cone, [0.93, 0.92, 0.89], 0, 1.30 + breath, hz + 0.03, 0.40, 0.10, 0.38, -0.18);
+
+    // Arms laid down onto the table from the shoulders.
+    put(m.cyl, clothLo, -0.37, 1.01 + breath, hz + 0.24, 0.16, 0.64, 0.16, -0.88, 0, -0.30, { shine: 0.02 });
+    put(m.cyl, clothLo, 0.37, 1.01 + breath, hz + 0.24, 0.16, 0.64, 0.16, -0.88, 0, 0.30, { shine: 0.02 });
+    put(m.sphere, skin, -0.43, 0.85, hz + 0.55, 0.16, 0.12, 0.20, 0, 0, 0, skinOpt);
+    put(m.sphere, skin, 0.43, 0.85, hz + 0.55, 0.16, 0.12, 0.20, 0, 0, 0, skinOpt);
+
+    // The head, and everything on it. The face is placed in the head's own
+    // frame and carried round by the tilt with it — a head that leans
+    // while its eyes stay level is a horror, not a host.
+    var hy = 1.58 + breath + vstate.bob;
+    var ct = Math.cos(tilt), st = Math.sin(tilt);
+    var fx = 0, fy = 0;
+    function face(x, y) { fx = x * ct - y * st; fy = hy + x * st + y * ct; }
+
+    put(m.sphere, skin, 0, hy, hz, 0.40, 0.46, 0.42, 0, 0, tilt, skinOpt);
+    put(m.cap, hair, 0, hy + 0.030, hz - 0.02, 0.425, 0.46, 0.44, -0.20, 0, tilt, { shine: 0.14 });
+    face(-0.196, -0.02); put(m.sphere, skinLo, fx, fy, hz, 0.09, 0.13, 0.12, 0, 0, tilt, skinOpt);
+    face(0.196, -0.02); put(m.sphere, skinLo, fx, fy, hz, 0.09, 0.13, 0.12, 0, 0, tilt, skinOpt);
+
+    var eyeZ = hz + 0.365;
+    face(-0.096, 0.020);
+    put(m.sphere, [0.95, 0.94, 0.92], fx, fy, eyeZ - 0.035, 0.072, 0.082 * vstate.blink, 0.055, 0, 0, tilt, { shine: 0.3 });
+    put(m.sphere, [0.13, 0.10, 0.09], fx, fy, eyeZ, 0.042, 0.048 * vstate.blink, 0.032, 0, 0, tilt, { shine: 0.5 });
+    face(0.096, 0.020);
+    put(m.sphere, [0.95, 0.94, 0.92], fx, fy, eyeZ - 0.035, 0.072, 0.082 * vstate.blink, 0.055, 0, 0, tilt, { shine: 0.3 });
+    put(m.sphere, [0.13, 0.10, 0.09], fx, fy, eyeZ, 0.042, 0.048 * vstate.blink, 0.032, 0, 0, tilt, { shine: 0.5 });
+
+    face(-0.098, 0.118);
+    put(m.box, hair, fx, fy, hz + 0.345, 0.135, 0.028, 0.055, 0, 0, tilt + vstate.brow);
+    face(0.098, 0.118);
+    put(m.box, hair, fx, fy, hz + 0.345, 0.135, 0.028, 0.055, 0, 0, tilt - vstate.brow);
+
+    face(0, -0.048);
+    put(m.sphere, skin, fx, fy, hz + 0.375, 0.058, 0.078, 0.075, 0, 0, tilt, skinOpt);
+
+    if (vstate.cheek > 0.02) {
+      face(-0.178, -0.100);
+      put(m.sphere, [0.87, 0.48, 0.42], fx, fy, hz + 0.29, 0.18 * vstate.cheek, 0.12 * vstate.cheek, 0.08, 0, 0, tilt, { shine: 0.14 });
+      face(0.178, -0.100);
+      put(m.sphere, [0.87, 0.48, 0.42], fx, fy, hz + 0.29, 0.18 * vstate.cheek, 0.12 * vstate.cheek, 0.08, 0, 0, tilt, { shine: 0.14 });
+    }
+
+    face(0, -0.172);
+    if (vstate.open > 0.03) {
+      put(m.sphere, [0.17, 0.07, 0.08], fx, fy, hz + 0.335, 0.21, 0.085 + 0.30 * vstate.open, 0.11, 0, 0, tilt);
+    }
+    if (Math.abs(vr.mouthCurve - vstate.curve) > 0.0015) {
+      mouthPositions(0.21, vstate.curve, 0.019, vr.mouthPos, vr.mouthNrm);
+      vr.gl.bindBuffer(vr.gl.ARRAY_BUFFER, vr.mouth.pos);
+      vr.gl.bufferData(vr.gl.ARRAY_BUFFER, vr.mouthPos, vr.gl.DYNAMIC_DRAW);
+      vr.gl.bindBuffer(vr.gl.ARRAY_BUFFER, vr.mouth.nrm);
+      vr.gl.bufferData(vr.gl.ARRAY_BUFFER, vr.mouthNrm, vr.gl.DYNAMIC_DRAW);
+      vr.mouthCurve = vstate.curve;
+    }
+    put(vr.mouth, [0.17, 0.07, 0.08], fx, fy, hz + 0.385, 1, 1, 1, 0, 0, tilt);
+  }
+
+  function villaRender(now) {
+    if (!vr) return;
+    vr.raf = 0;
+    if (!villaResize()) return;
+
+    var gl = vr.gl, u = vr.u, i;
+    var dt = vr.last ? Math.min((now - vr.last) / 1000, 0.05) : 0.016;
+    vr.last = now;
+    vstate.t += dt;
+
+    // Ease toward the mood rather than snapping to it.
+    var want = VILLA_MOODS[vstate.mood] || VILLA_MOODS.idle;
+    var k = 1 - Math.pow(0.0025, dt);
+    var moving = 0;
+    moving += Math.abs(want.brow - vstate.brow); vstate.brow += (want.brow - vstate.brow) * k;
+    moving += Math.abs(want.curve - vstate.curve) * 10; vstate.curve += (want.curve - vstate.curve) * k;
+    moving += Math.abs(want.open - vstate.open); vstate.open += (want.open - vstate.open) * k;
+    moving += Math.abs(want.cheek - vstate.cheek); vstate.cheek += (want.cheek - vstate.cheek) * k;
+    moving += Math.abs(want.tilt - vstate.tilt); vstate.tilt += (want.tilt - vstate.tilt) * k;
+    for (i = 0; i < 3; i++) {
+      moving += Math.abs(want.light[i] - vstate.light[i]);
+      vstate.light[i] += (want.light[i] - vstate.light[i]) * k;
+    }
+    moving += vstate.bob * 20;
+    vstate.bob *= Math.pow(0.02, dt);
+
+    // A blink every few seconds — a quick squash of both eyes.
+    var phase = vstate.t % 5.2;
+    vstate.blink = (!villaStill && phase > 5.04) ? Math.max(0.08, Math.abs(phase - 5.12) * 12) : 1;
+
+    // Left alone the camera drifts a little; dragged, it goes where it's
+    // put. Either way the arc stays inside the part of the room that has
+    // walls in the right places.
+    var driftY = villaStill ? 0 : Math.sin(vstate.t * 0.17) * 0.09;
+    var driftP = villaStill ? 0 : Math.sin(vstate.t * 0.11 + 1.2) * 0.025;
+    var yaw = Math.max(-0.62, Math.min(0.62, vstate.dragYaw + driftY));
+    var pitch = Math.max(-0.12, Math.min(0.50, 0.10 + vstate.dragPitch + driftP));
+
+    var tx = 0, ty = 1.36, tz = -0.80, rad = 3.62;
+    var eye = [
+      tx + Math.sin(yaw) * Math.cos(pitch) * rad,
+      ty + Math.sin(pitch) * rad,
+      tz + Math.cos(yaw) * Math.cos(pitch) * rad
+    ];
+    m4Perspective(37 * Math.PI / 180, vr.w / vr.h, 0.25, 420, vr.proj);
+    m4LookAt(eye, [tx, ty, tz], [0, 1, 0], vr.view);
+
+    var amb = villaNum("amb", 0.46);
+    var haze = villaColor("haze");
+    var sunCol = villaColor("sunCol");
+    gl.useProgram(vr.prog);
+    gl.uniformMatrix4fv(u.uProj, false, vr.proj);
+    gl.uniformMatrix4fv(u.uView, false, vr.view);
+    gl.uniform3f(u.uEye, eye[0], eye[1], eye[2]);
+    gl.uniform3f(u.uAmbSky, amb * 1.08, amb * 1.02, amb * 0.92);
+    gl.uniform3f(u.uAmbGnd, amb * 0.74, amb * 0.62, amb * 0.50);
+    gl.uniform3f(u.uHaze, haze[0], haze[1], haze[2]);
+    // Generous, because it is standing in for the whole room's worth of
+    // bounced light — the window wall in particular faces its own only
+    // light source and would otherwise be a silhouette.
+    gl.uniform1f(u.uFill, 0.25);
+    // Afternoon, coming in over the left-hand shoulder of the range.
+    gl.uniform3f(u.uSunDir, -0.46, 0.42, -0.78);
+    gl.uniform3f(u.uSunCol, sunCol[0], sunCol[1], sunCol[2]);
+    // The mood, thrown against the wall behind the host.
+    gl.uniform3f(u.uL1Pos, 0, 1.95, -2.10);
+    gl.uniform3f(u.uL1Col, vstate.light[0] * 2.4, vstate.light[1] * 2.4, vstate.light[2] * 2.4);
+    // And whatever in the room is actually lit, once anything is.
+    if (vstate.level >= 4) gl.uniform3f(u.uL2Pos, 0, 2.48, -0.5);
+    else gl.uniform3f(u.uL2Pos, -1.98, 1.50, -1.60);
+    if (vstate.level >= 1) gl.uniform3f(u.uL2Col, 1.4, 1.08, 0.62);
+    else gl.uniform3f(u.uL2Col, 0, 0, 0);
+
+    gl.clearColor(haze[0] * haze[0], haze[1] * haze[1], haze[2] * haze[2], 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    vcount = 0; vscount = 0;
+    villaScene();
+
+    var item, bound = null;
+    function bind(mesh) {
+      if (mesh === bound) return;
+      gl.bindBuffer(gl.ARRAY_BUFFER, mesh.pos);
+      gl.vertexAttribPointer(vr.aPos, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, mesh.nrm);
+      gl.vertexAttribPointer(vr.aNrm, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.idx);
+      bound = mesh;
+    }
+
+    gl.uniform1f(u.uAlpha, 1);
+    for (i = 0; i < vcount; i++) {
+      item = vframe[i];
+      bind(item.mesh);
+      m4Compose(item.px, item.py, item.pz, item.rx, item.ry, item.rz,
+                item.sx, item.sy, item.sz, vr.model);
+      m3NormalFrom(vr.model, vr.nrmMat);
+      gl.uniformMatrix4fv(u.uModel, false, vr.model);
+      gl.uniformMatrix3fv(u.uNrmMat, false, vr.nrmMat);
+      gl.uniform3f(u.uColor, item.color[0], item.color[1], item.color[2]);
+      gl.uniform3f(u.uColor2, item.color2[0], item.color2[1], item.color2[2]);
+      gl.uniform1f(u.uEmit, item.emit);
+      gl.uniform1f(u.uShine, item.shine);
+      gl.uniform1f(u.uMat, item.mat);
+      gl.drawElements(gl.TRIANGLES, item.mesh.count, gl.UNSIGNED_SHORT, 0);
+    }
+
+    // The shadows go on last, over a floor that has already been drawn:
+    // depth tested so a table leg still covers them, but not written, so
+    // they don't stop each other overlapping.
+    if (vscount) {
+      gl.depthMask(false);
+      gl.uniform1f(u.uMat, MAT.shadow);
+      gl.uniform1f(u.uEmit, 0);
+      gl.uniform3f(u.uColor, 0.10, 0.07, 0.05);
+      bind(vr.mesh.cyl);
+      for (i = 0; i < vscount; i++) {
+        item = vshade[i];
+        m4Compose(item.cx, 0.015, item.cz, 0, 0, 0, item.r * 2, 0.01, item.r * 2, vr.model);
+        m3NormalFrom(vr.model, vr.nrmMat);
+        gl.uniformMatrix4fv(u.uModel, false, vr.model);
+        gl.uniformMatrix3fv(u.uNrmMat, false, vr.nrmMat);
+        // The shadow shader wants its own centre and radius, and uColor2 is
+        // the spare slot that can carry them.
+        gl.uniform3f(u.uColor2, item.cx, item.r, item.cz);
+        gl.uniform1f(u.uAlpha, item.a);
+        gl.drawElements(gl.TRIANGLES, vr.mesh.cyl.count, gl.UNSIGNED_SHORT, 0);
+      }
+      gl.depthMask(true);
+    }
+
+    // A room that has finished moving stops asking for frames. Left to
+    // itself it never quite does — the drift and the breathing see to that
+    // — but with reduced motion on, everything settles and the loop ends.
+    if (!villaStill || vstate.dragging || moving > 0.001) villaTick();
+    else vr.last = 0;
+  }
+
+  function villaTick() {
+    if (!vr || vr.raf) return;
+    // Nothing to draw while the room is off screen, and no reason to hold
+    // a frame loop open for it either.
+    if ($("villa").hidden || $("play-live").hidden || $("panel-play").hidden ||
+        document.hidden) { vr.last = 0; return; }
+    vr.raf = window.requestAnimationFrame(villaRender);
+  }
+
+  // The kick the host gives when a new line lands, so the face reads as
+  // reacting to the guess rather than as having always looked like that.
+  function villaBump() {
+    vstate.bob = 0.06;
+    villaTick();
+  }
+
+  /* ---- turning the room by hand ----
+     The part that makes the claim checkable: if this were a stack of flat
+     cards, moving off the one angle they were arranged for would take the
+     room apart. */
+  function villaDragWire() {
+    var canvas = vr.canvas, lastX = 0, lastY = 0;
+
+    canvas.addEventListener("pointerdown", function (e) {
+      vstate.dragging = true;
+      lastX = e.clientX; lastY = e.clientY;
+      canvas.classList.add("dragging");
+      if (canvas.setPointerCapture) { try { canvas.setPointerCapture(e.pointerId); } catch (err) {} }
+      if (!vstate.turned) { vstate.turned = true; $("villa-hint").hidden = true; }
+      villaTick();
+    });
+    canvas.addEventListener("pointermove", function (e) {
+      if (!vstate.dragging) return;
+      vstate.dragYaw = Math.max(-0.62, Math.min(0.62, vstate.dragYaw + (e.clientX - lastX) * 0.006));
+      vstate.dragPitch = Math.max(-0.22, Math.min(0.40, vstate.dragPitch - (e.clientY - lastY) * 0.005));
+      lastX = e.clientX; lastY = e.clientY;
+      e.preventDefault();
+      villaTick();
+    });
+    function release() {
+      vstate.dragging = false;
+      canvas.classList.remove("dragging");
+    }
+    canvas.addEventListener("pointerup", release);
+    canvas.addEventListener("pointercancel", release);
+    // Somewhere to put it back, for anyone who has turned it somewhere odd.
+    canvas.addEventListener("dblclick", function () {
+      vstate.dragYaw = 0; vstate.dragPitch = 0; villaTick();
+    });
+
+    window.addEventListener("resize", function () { vr.last = 0; villaTick(); });
+    document.addEventListener("visibilitychange", function () { vr.last = 0; villaTick(); });
+    // Coming back to the play tab has to restart a loop that stopped when
+    // the tab left the screen.
+    $("tab-play").addEventListener("click", function () { vr.last = 0; villaTick(); });
+  }
+
   /* ---------- the host ----------
      Seven readings of one number, each with a few ways of saying it so a
      long round doesn't turn into the same sentence twelve times. The
@@ -6332,10 +6745,7 @@
       box.classList.remove("said");
       void box.offsetWidth; // restart the animation on a repeat line
       box.classList.add("said");
-      var head = $("villa-head");
-      head.classList.remove("reacting");
-      void head.offsetWidth;
-      head.classList.add("reacting");
+      villaBump();
     }
   }
 
@@ -6355,8 +6765,10 @@
   }
 
   function villaMood(band) {
+    vstate.mood = VILLA_MOODS[band] ? band : "idle";
     var el = $("villa");
-    if (el) el.setAttribute("data-mood", band);
+    if (el) el.setAttribute("data-mood", vstate.mood);
+    villaTick();
   }
 
   function villaReact(rank) {
@@ -6384,30 +6796,37 @@
     if (villaSpokenEn) $("villa-speech").textContent = t(villaSpokenEn);
   }
 
-  /* ---------- painting the room ----------
-     Tiers are additive classes (r1 … r5) rather than one class per level,
-     so each tier's rules only have to describe the one thing it adds and
-     never restate what the tier below already did. */
+  /* ---------- what the experience bought ----------
+     The level is a number the renderer reads. Beyond the colour table and
+     a handful of "is this level high enough" checks in villaScene(),
+     there is no per-tier code at all. */
   function paintVillaRoom() {
     var el = $("villa");
     if (!el) return;
-    var lvl = villaLevel(), cls = "villa", i;
-    for (i = 1; i <= lvl; i++) cls += " r" + i;
-    el.className = cls;
+    var lvl = villaLevel();
+    vstate.level = lvl;
     el.setAttribute("data-room", String(lvl));
     $("villa-badge").textContent = t(VILLA_LEVELS[lvl].name);
+    villaTick();
   }
 
   function villaShown() {
+    if (!vr) return false;
     try { return localStorage.getItem(VILLA_SHOWN_KEY) !== "0"; } catch (e) { return true; }
   }
 
   function paintVillaShown() {
     var on = villaShown();
     $("villa").hidden = !on;
-    $("villa-show").hidden = on;
+    // With no WebGL there is no room to offer, so the way back in is
+    // hidden too rather than promising something that can't be drawn.
+    $("villa-show").hidden = on || !vr;
     $("villa-hide").title = t("Hide the room");
     $("villa-hide").setAttribute("aria-label", t("Hide the room"));
+    if (vr) {
+      $("villa-hint").hidden = !on || vstate.turned;
+      if (on) { vr.last = 0; villaTick(); }
+    }
   }
 
   $("villa-hide").addEventListener("click", function () {
@@ -6422,6 +6841,10 @@
     // while it was folded away has to be replayed by hand.
     if (villaSpokenEn) villaSay(t(villaSpokenEn));
   });
+
+  vr = villaBuild();
+  if (vr) villaDragWire();
+
 
   /* ---------- recording what happened ----------
      One entry point, called from the places that already know something
