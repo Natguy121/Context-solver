@@ -3106,7 +3106,7 @@
     "the green room": "la pièce verte",
     "A palm by the wall, pictures on it, a candle on the table.": "Un palmier contre le mur, des tableaux dessus, une bougie sur la table.",
     "the marble hall": "la salle de marbre",
-    "A marble floor, and the windows rise into arches.": "Un sol de marbre, et les fenêtres s'élèvent en arcades.",
+    "The floor turns to marble, and the walls pale to cream.": "Le sol devient marbre, et les murs pâlissent en crème.",
     "the great room": "la grande salle",
     "A chandelier overhead, and gold running along the walls.": "Un lustre au plafond, et de l'or qui court le long des murs.",
     "the terrace at dusk": "la terrasse au crépuscule",
@@ -5464,7 +5464,7 @@
     { at: 340, gift: 2, name: "the green room",
       note: "A palm by the wall, pictures on it, a candle on the table." },
     { at: 700, gift: 2, name: "the marble hall",
-      note: "A marble floor, and the windows rise into arches." },
+      note: "The floor turns to marble, and the walls pale to cream." },
     { at: 1150, gift: 3, name: "the great room",
       note: "A chandelier overhead, and gold running along the walls." },
     { at: 1750, gift: 4, name: "the terrace at dusk",
@@ -6021,12 +6021,12 @@
       trim: [0.74, 0.65, 0.49], stone: [0.82, 0.76, 0.65], amb: 0.44,
       sky: [0.74, 0.84, 0.92], skyHi: [0.31, 0.55, 0.84], haze: [0.76, 0.83, 0.90],
       land: [0.34, 0.44, 0.30], rock: [0.46, 0.43, 0.42], water: [0.30, 0.46, 0.54],
-      sun: [1.0, 0.97, 0.86], cloth: [0.24, 0.34, 0.54], sunCol: [0.86, 0.79, 0.62] },
+      sun: [1.0, 0.97, 0.86], cloth: [0.52, 0.66, 0.54], sunCol: [0.86, 0.79, 0.62] },
     { amb: 0.48 },
-    { cloth: [0.34, 0.28, 0.50], amb: 0.50 },
+    { cloth: [0.44, 0.58, 0.68], amb: 0.50 },
     { floor: [0.88, 0.86, 0.82], grout: [0.62, 0.60, 0.58], floorMat: MAT.marble,
       wall: [0.94, 0.91, 0.85], side: [0.92, 0.89, 0.82], amb: 0.54 },
-    { trim: [0.86, 0.74, 0.46], cloth: [0.46, 0.20, 0.26], amb: 0.56 },
+    { trim: [0.86, 0.74, 0.46], cloth: [0.78, 0.52, 0.54], amb: 0.56 },
     { sky: [0.95, 0.66, 0.42], skyHi: [0.34, 0.34, 0.56], haze: [0.66, 0.47, 0.42],
       sun: [1.0, 0.82, 0.52], land: [0.20, 0.21, 0.23], rock: [0.26, 0.23, 0.25],
       water: [0.30, 0.28, 0.34], wall: [0.86, 0.75, 0.62],
@@ -6248,8 +6248,10 @@
 
     /* the window wall, in pieces — the openings are holes, and a hole is
        the one thing a solid box cannot have */
-    var openY0 = lvl >= 3 ? 0.78 : 0.86;
-    var openY1 = lvl >= 3 ? 2.52 : 2.32;
+    // Arched from the start, like a villa actually would be — this used
+    // to be an XP unlock, but a squared-off window doesn't read as a villa.
+    var openY0 = 0.78;
+    var openY1 = 2.52;
     var wins = [[-2.00, -1.10], [-0.58, 0.58], [1.10, 2.00]];
     var piers = [[-6.0, -2.00], [-1.10, -0.58], [0.58, 1.10], [2.00, 6.0]];
     var WZ = -2.66, WD = 0.42;      // the wall's centre line and its thickness
@@ -6262,21 +6264,19 @@
     }
     put(m.box, stone, 0, 0.08, WZ, 12, 0.17, WD + 0.04, 0, 0, 0, { mat: MAT.stone });
 
-    // Once the villa has earned its arches, the square heads get filled in
-    // to a curve by a row of small blocks following it. Real masonry, so
-    // it still reads as an arch from off to one side.
-    if (lvl >= 3) {
-      for (i = 0; i < wins.length; i++) {
-        var x0 = wins[i][0], x1 = wins[i][1], r = (x1 - x0) / 2, cx = (x0 + x1) / 2;
-        var springer = openY1 - r;
-        for (var s = 0; s < 18; s++) {
-          var t0 = x0 + (s / 18) * (x1 - x0), t1 = x0 + ((s + 1) / 18) * (x1 - x0);
-          var mid = (t0 + t1) / 2 - cx;
-          var yc = springer + Math.sqrt(Math.max(0, r * r - mid * mid));
-          if (yc >= openY1 - 0.004) continue;
-          put(m.box, wall, (t0 + t1) / 2, (yc + openY1) / 2, WZ, t1 - t0 + 0.012, openY1 - yc, WD,
-              0, 0, 0, plaster);
-        }
+    // The square heads get filled in to a curve by a row of small blocks
+    // following it. Real masonry, so it still reads as an arch from off to
+    // one side.
+    for (i = 0; i < wins.length; i++) {
+      var x0 = wins[i][0], x1 = wins[i][1], r = (x1 - x0) / 2, cx = (x0 + x1) / 2;
+      var springer = openY1 - r;
+      for (var s = 0; s < 18; s++) {
+        var t0 = x0 + (s / 18) * (x1 - x0), t1 = x0 + ((s + 1) / 18) * (x1 - x0);
+        var mid = (t0 + t1) / 2 - cx;
+        var yc = springer + Math.sqrt(Math.max(0, r * r - mid * mid));
+        if (yc >= openY1 - 0.004) continue;
+        put(m.box, wall, (t0 + t1) / 2, (yc + openY1) / 2, WZ, t1 - t0 + 0.012, openY1 - yc, WD,
+            0, 0, 0, plaster);
       }
     }
 
