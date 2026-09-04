@@ -955,6 +955,871 @@
     100% { transform: scale(1); }
   }
 
+  /* ---------- the villa ----------
+     The room the word game is played in: five CSS-3D planes (back wall,
+     two side walls, floor, ceiling) with a round table and the person
+     sitting across it standing in them as flat cards at different depths.
+     A stage set, not a model. No canvas, no WebGL, no images — so it
+     survives the page being saved to disk with the network gone, the same
+     as everything else on it.
+
+     Props are sized in pixels rather than percentages on purpose: the
+     stage stretches to whatever width the column has, but a table should
+     not grow because the window did. Holding them still is what a fixed
+     lens does when the frame widens.
+
+     The palette is its own and deliberately ignores the page theme. This
+     is an interior at golden hour; a room that repainted itself when the
+     OS flipped to dark would read as a bug rather than as a room. */
+  .villa {
+    --vd: 200px;                  /* how far back the room runs */
+
+    --v-wall-hi: #EBDDC7;
+    --v-wall-lo: #C7B394;
+    --v-side-hi: #DAC9AC;
+    --v-side-lo: #AD9A7C;
+    --v-ceil-hi: #F4ECDE;
+    --v-ceil-lo: #D9CBB4;
+    --v-floor-hi: #8C6139;
+    --v-floor-lo: #3E2818;
+    --v-trim: #B9995F;
+    --v-line: #33231A;
+
+    --v-sky-hi: #A9D6EF;
+    --v-sky-lo: #F8E7C7;
+    --v-sun: #FFEEB0;
+    --v-land: #7E9A6B;
+
+    --v-table: #7E5130;
+    --v-table-hi: #B2794A;
+    --v-table-lo: #4C3020;
+
+    --v-skin: #D9A175;
+    --v-skin-lo: #B47E57;
+    --v-hair: #32231C;
+    --v-cloth: #4F6FA8;
+    --v-cloth-lo: #3B5482;
+
+    --v-mood: #5C8BD9;
+
+    position: relative;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: #17131D;
+    box-shadow: var(--lift-1);
+  }
+
+  .villa-scene {
+    position: relative;
+    width: 100%;
+    height: clamp(212px, 58vw, 264px);
+    perspective: 620px;
+    perspective-origin: 50% 46%;
+  }
+  .villa-room {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+  }
+  .villa-face { position: absolute; overflow: hidden; }
+
+  /* The five planes. Each side wall is a rectangle as deep as the room,
+     hinged on the stage edge it starts from and swung a quarter turn into
+     the screen; the floor and ceiling are the same trick on the other
+     axis. Their far edges all land on the back wall's outline, so the box
+     closes with no seams to paper over. */
+  .villa-back {
+    inset: 0;
+    transform: translateZ(calc(var(--vd) * -1));
+    background: linear-gradient(var(--v-wall-hi), var(--v-wall-lo));
+  }
+  .villa-left {
+    left: 0; top: 0; width: var(--vd); height: 100%;
+    transform-origin: left center;
+    transform: rotateY(90deg);
+    background: linear-gradient(var(--v-side-hi), var(--v-side-lo));
+  }
+  .villa-right {
+    right: 0; top: 0; width: var(--vd); height: 100%;
+    transform-origin: right center;
+    transform: rotateY(-90deg);
+    background: linear-gradient(var(--v-side-hi), var(--v-side-lo));
+  }
+  .villa-floor {
+    left: 0; bottom: 0; width: 100%; height: var(--vd);
+    transform-origin: bottom center;
+    transform: rotateX(90deg);
+    background: linear-gradient(var(--v-floor-lo), var(--v-floor-hi));
+  }
+  .villa-ceiling {
+    left: 0; top: 0; width: 100%; height: var(--vd);
+    transform-origin: top center;
+    transform: rotateX(-90deg);
+    background: linear-gradient(var(--v-ceil-lo), var(--v-ceil-hi));
+  }
+
+  /* Floorboards, drawn onto the floor plane so the perspective comes for
+     free — a child of a rotated plane is painted in that plane. */
+  .villa-boards {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 34px);
+    opacity: 0.7;
+  }
+
+  /* Skirting and a picture rail, so the walls have somewhere to end. */
+  .villa-skirting {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 9px;
+    background: linear-gradient(var(--v-trim), rgba(0, 0, 0, 0.35));
+  }
+
+  /* ---------- the window wall ---------- */
+  /* Three of them, always — one window would sit directly behind the host's
+     head and never be seen at all. What the villa earns is not more windows
+     but better ones: square casements to begin with, arches later. */
+  .villa-windows {
+    position: absolute;
+    left: 50%;
+    top: 15%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+  }
+  .villa-window {
+    position: relative;
+    width: 54px;
+    height: 62px;
+    border-radius: 5px;
+    background: linear-gradient(var(--v-sky-hi), var(--v-sky-lo));
+    box-shadow: 0 0 0 5px var(--v-trim), 0 0 30px rgba(255, 214, 150, 0.45);
+    overflow: hidden;
+  }
+
+  .villa-sun {
+    position: absolute;
+    left: 50%;
+    top: 34%;
+    width: 22px;
+    height: 22px;
+    margin: -11px 0 0 -11px;
+    border-radius: 50%;
+    background: var(--v-sun);
+    box-shadow: 0 0 18px 6px rgba(255, 232, 160, 0.75);
+  }
+  .villa-hill {
+    position: absolute;
+    left: -20%;
+    right: -20%;
+    bottom: -34%;
+    height: 60%;
+    border-radius: 50% 50% 0 0;
+    background: var(--v-land);
+  }
+  .villa-mullion {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    margin-left: -2px;
+    background: var(--v-trim);
+  }
+
+  /* Framed pictures, hung on whichever plane they belong to. */
+  .villa-art {
+    position: absolute;
+    border: 4px solid var(--v-trim);
+    border-radius: 3px;
+    background: linear-gradient(140deg, #6E7FA8, #C0A07A);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+    display: none;
+  }
+  .villa-left .villa-art { left: 26%; top: 26%; width: 54px; height: 40px; }
+  .villa-right .villa-art { right: 26%; top: 30%; width: 44px; height: 56px; }
+
+  /* ---------- what the experience buys ----------
+     Each tier is an additive class on the shell (r1 … r5), so a level is
+     everything below it plus one more thing, and no tier has to restate
+     what the last one already did. */
+  .villa.r1 { --v-floor-hi: #90663D; }
+  .villa.r1 .villa-rug { display: block; }
+  .villa.r1 .villa-lamp { display: block; }
+
+  .villa.r2 .villa-plant { display: block; }
+  .villa.r2 .villa-art { display: block; }
+  .villa.r2 .villa-candle { display: block; }
+  .villa.r2 { --v-cloth: #6D5AA8; --v-cloth-lo: #52418A; }
+
+  .villa.r3 { --v-floor-hi: #C9BCA8; --v-floor-lo: #8C7E6C; --v-wall-hi: #F2E8D6; }
+  .villa.r3 .villa-window { height: 90px; border-radius: 27px 27px 5px 5px; }
+  .villa.r3 .villa-boards {
+    background:
+      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 46px),
+      repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 46px);
+    opacity: 0.55;
+  }
+
+  .villa.r4 .villa-chandelier { display: block; }
+  .villa.r4 .villa-rail { display: block; }
+  .villa.r4 { --v-trim: #D9B368; --v-cloth: #8C3F52; --v-cloth-lo: #6E2F3F; }
+
+  .villa.r5 {
+    --v-sky-hi: #F0A05C;
+    --v-sky-lo: #FBE0B0;
+    --v-sun: #FFD27A;
+    --v-land: #4E5F63;
+    --v-wall-hi: #F0DCC0;
+    --v-wall-lo: #C79A6E;
+  }
+  .villa.r5 .villa-window { width: 60px; height: 100px; border-radius: 30px 30px 5px 5px; }
+  .villa.r5 .villa-sea { display: block; }
+  .villa.r5 .villa-hill { bottom: -46%; height: 52%; }
+  .villa.r5 .villa-dusk { opacity: 1; }
+
+  .villa-sea {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 26%;
+    background: linear-gradient(#3F6C82, #23414F);
+    display: none;
+  }
+  /* A warm wash over the whole frame at the last tier — the only thing in
+     here that sits above every plane, so it has to be outside the room. */
+  .villa-dusk {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(120% 80% at 50% 26%,
+      rgba(255, 186, 110, 0.34), rgba(60, 26, 40, 0.34) 78%);
+    transition: opacity var(--slow) var(--ease);
+  }
+
+  .villa-rug {
+    position: absolute;
+    left: 50%;
+    top: 34%;
+    width: 240px;
+    height: 118px;
+    margin-left: -120px;
+    border-radius: 50%;
+    background:
+      radial-gradient(closest-side, rgba(255, 232, 200, 0.32), transparent 72%),
+      repeating-radial-gradient(closest-side, #9C3F3A 0 12px, #7C2F2C 12px 24px);
+    box-shadow: inset 0 0 0 5px rgba(232, 200, 150, 0.5);
+    display: none;
+  }
+
+  .villa-lamp,
+  .villa-plant,
+  .villa-chandelier,
+  .villa-rail { display: none; }
+
+  .villa-lamp {
+    position: absolute;
+    left: 50%;
+    bottom: 30%;
+    width: 26px;
+    height: 84px;
+    transform: translate3d(calc(-50% - 128px), 0, -136px);
+  }
+  /* A drum shade narrower at the top than the bottom, faked with a pair of
+     corner radii rather than a clip-path so it still fills with a gradient. */
+  .villa-lamp-shade {
+    position: absolute;
+    left: 50%; top: 0;
+    width: 30px; height: 24px;
+    margin-left: -15px;
+    border-radius: 40% 40% 12% 12% / 60% 60% 14% 14%;
+    background: linear-gradient(#FFF0CE, #E2AE63);
+    box-shadow: 0 12px 34px 10px rgba(255, 206, 132, 0.45);
+  }
+  .villa-lamp-stem {
+    position: absolute;
+    left: 50%; top: 24px; bottom: 4px;
+    width: 4px;
+    margin-left: -2px;
+    background: linear-gradient(90deg, #7A6034, var(--v-trim) 45%, #7A6034);
+  }
+  .villa-lamp-foot {
+    position: absolute;
+    left: 50%; bottom: 0;
+    width: 22px; height: 7px;
+    margin-left: -11px;
+    border-radius: 50%;
+    background: var(--v-trim);
+  }
+
+  .villa-plant {
+    position: absolute;
+    left: 50%;
+    bottom: 28%;
+    width: 44px;
+    height: 74px;
+    transform: translate3d(calc(-50% + 132px), 0, -140px);
+  }
+  .villa-pot {
+    position: absolute;
+    left: 50%; bottom: 0;
+    width: 26px; height: 22px;
+    margin-left: -13px;
+    border-radius: 3px 3px 10px 10px;
+    background: linear-gradient(#C0764B, #8E5233);
+  }
+  .villa-frond {
+    position: absolute;
+    left: 50%; bottom: 18px;
+    width: 9px; height: 44px;
+    margin-left: -4.5px;
+    border-radius: 50% 50% 20% 20%;
+    background: linear-gradient(#4F8F55, #2F6337);
+    transform-origin: bottom center;
+  }
+  .villa-frond:nth-child(2) { transform: rotate(-34deg); }
+  .villa-frond:nth-child(3) { transform: rotate(-11deg); }
+  .villa-frond:nth-child(4) { transform: rotate(12deg); }
+  .villa-frond:nth-child(5) { transform: rotate(35deg); }
+
+  /* Hung above the top of the stage on purpose. Perspective pulls anything
+     set back toward the vanishing point, so a chandelier placed at the
+     ceiling line lands on the host's head like a halo; starting it off the
+     top is what puts it back on the ceiling. */
+  .villa-chandelier {
+    position: absolute;
+    left: 50%;
+    top: -26px;
+    width: 62px;
+    height: 60px;
+    transform: translate3d(-50%, 0, -120px);
+  }
+  .villa-chandelier-stem {
+    position: absolute;
+    left: 50%; top: 0;
+    width: 2px; height: 26px;
+    margin-left: -1px;
+    background: var(--v-trim);
+  }
+  .villa-chandelier-ring {
+    position: absolute;
+    left: 0; top: 24px;
+    width: 62px; height: 18px;
+    border-radius: 50%;
+    border: 3px solid var(--v-trim);
+    box-shadow: 0 0 24px 8px rgba(255, 216, 150, 0.45);
+  }
+  .villa-chandelier-drop {
+    position: absolute;
+    top: 38px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--v-sun);
+    box-shadow: 0 0 8px 3px rgba(255, 230, 170, 0.7);
+  }
+  .villa-chandelier-drop.d1 { left: 8px; }
+  .villa-chandelier-drop.d2 { left: 28px; top: 44px; }
+  .villa-chandelier-drop.d3 { left: 49px; }
+
+  .villa-rail {
+    position: absolute;
+    left: 0; right: 0; top: 18%;
+    height: 4px;
+    background: var(--v-trim);
+    opacity: 0.85;
+  }
+
+  /* ---------- the round table ----------
+     A circle seen from a little above is an ellipse, so the top is drawn
+     as one outright rather than tipped with rotateX — a plane at exactly
+     the camera's height would vanish, and cheating the angle to get it
+     back looks worse than just drawing the shape the camera would see. */
+  .villa-table {
+    position: absolute;
+    left: 50%;
+    bottom: 4%;
+    width: 190px;
+    height: 76px;
+    transform: translate3d(-50%, 0, -18px);
+  }
+  .villa-table-top {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%; height: 52px;
+    border-radius: 50%;
+    background:
+      radial-gradient(60% 120% at 42% 16%, rgba(255, 232, 190, 0.55), transparent 62%),
+      linear-gradient(var(--v-table-hi), var(--v-table));
+    box-shadow: 0 5px 0 var(--v-table-lo), 0 16px 26px rgba(0, 0, 0, 0.45);
+  }
+  .villa-table-stem {
+    position: absolute;
+    left: 50%; top: 34px;
+    width: 18px; height: 38px;
+    margin-left: -9px;
+    background: linear-gradient(90deg, var(--v-table-lo), var(--v-table-hi) 45%, var(--v-table-lo));
+  }
+  .villa-table-base {
+    position: absolute;
+    left: 50%; top: 64px;
+    width: 70px; height: 18px;
+    margin-left: -35px;
+    border-radius: 50%;
+    background: linear-gradient(var(--v-table), var(--v-table-lo));
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+  }
+  /* Standing on the table, so its base has to land inside the ellipse
+     rather than above it — otherwise it reads as floating past the host's
+     shoulder. */
+  .villa-candle {
+    position: absolute;
+    left: 50%; top: 2px;
+    width: 8px; height: 22px;
+    margin-left: 46px;
+    border-radius: 3px;
+    background: linear-gradient(#FFF3D8, #E3CBA0);
+    display: none;
+  }
+  .villa-flame {
+    position: absolute;
+    left: 50%; top: -9px;
+    width: 7px; height: 11px;
+    margin-left: -3.5px;
+    border-radius: 50% 50% 40% 40%;
+    background: radial-gradient(circle at 50% 70%, #FFF6C9, #FF9E3D);
+    box-shadow: 0 0 14px 5px rgba(255, 176, 84, 0.6);
+  }
+
+  /* ---------- the host ----------
+     Sits further into the room than the table, so the table overlaps their
+     lower half and the two read as one arrangement rather than two cards.
+     Everything below the shoulders is deliberately simple: the face is
+     doing the work. */
+  .villa-host {
+    position: absolute;
+    left: 50%;
+    bottom: 19%;
+    width: 128px;
+    height: 150px;
+    transform: translate3d(-50%, 0, -118px);
+  }
+  .villa-host-inner {
+    position: absolute;
+    inset: 0;
+    transform-origin: bottom center;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .villa-host-inner { animation: villa-breathe 5.4s var(--ease) infinite; }
+  }
+  @keyframes villa-breathe {
+    0%, 100% { transform: translateY(0) scaleY(1); }
+    50% { transform: translateY(-2px) scaleY(1.012); }
+  }
+
+  .villa-host-glow {
+    position: absolute;
+    left: 50%; top: 4px;
+    width: 130px; height: 130px;
+    margin-left: -65px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, var(--v-mood), transparent 72%);
+    opacity: 0.34;
+    transition: background var(--slow) var(--ease), opacity var(--slow) var(--ease);
+  }
+  .villa-host-body {
+    position: absolute;
+    left: 50%; bottom: 0;
+    width: 104px; height: 78px;
+    margin-left: -52px;
+    border-radius: 46px 46px 10px 10px;
+    background: linear-gradient(var(--v-cloth), var(--v-cloth-lo));
+    transition: background var(--slow) var(--ease);
+  }
+  .villa-host-collar {
+    position: absolute;
+    left: 50%; bottom: 56px;
+    width: 30px; height: 18px;
+    margin-left: -15px;
+    border-radius: 0 0 16px 16px;
+    background: rgba(255, 255, 255, 0.82);
+  }
+  .villa-host-arm {
+    position: absolute;
+    bottom: 6px;
+    width: 22px; height: 46px;
+    border-radius: 12px;
+    background: linear-gradient(var(--v-cloth-lo), var(--v-cloth));
+  }
+  .villa-host-arm.l { left: 4px; transform: rotate(11deg); }
+  .villa-host-arm.r { right: 4px; transform: rotate(-11deg); }
+  .villa-host-neck {
+    position: absolute;
+    left: 50%; bottom: 66px;
+    width: 20px; height: 16px;
+    margin-left: -10px;
+    background: var(--v-skin-lo);
+    border-radius: 6px;
+  }
+
+  .villa-host-head {
+    position: absolute;
+    left: 50%; top: 8px;
+    width: 66px; height: 74px;
+    margin-left: -33px;
+    transform-origin: bottom center;
+    transition: transform var(--slow) var(--ease);
+  }
+  .villa-host-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 50% 50% 44% 44%;
+    background: linear-gradient(var(--v-skin), var(--v-skin-lo));
+    box-shadow: inset -5px -6px 12px rgba(0, 0, 0, 0.14);
+  }
+  /* Kept deliberately shallow. Anything taller and the hairline swallows
+     the eyebrows, which are doing most of the work of saying how close
+     you are. */
+  .villa-host-hair {
+    position: absolute;
+    left: -3px; right: -3px; top: -6px;
+    height: 25px;
+    border-radius: 50% 50% 34% 34%;
+    background: var(--v-hair);
+  }
+  .villa-ear {
+    position: absolute;
+    top: 38%;
+    width: 10px; height: 14px;
+    border-radius: 50%;
+    background: var(--v-skin-lo);
+  }
+  .villa-ear.l { left: -5px; }
+  .villa-ear.r { right: -5px; }
+
+  .villa-eye {
+    position: absolute;
+    top: 45%;
+    width: 8px; height: 9px;
+    border-radius: 50%;
+    background: var(--v-line);
+    transform-origin: center;
+    transition: transform var(--slow) var(--ease);
+  }
+  .villa-eye.l { left: 30%; }
+  .villa-eye.r { right: 30%; }
+  @media (prefers-reduced-motion: no-preference) {
+    .villa-eye { animation: villa-blink 6.2s steps(1, end) infinite; }
+  }
+  @keyframes villa-blink {
+    0%, 95%, 100% { opacity: 1; }
+    96%, 99% { opacity: 0.06; }
+  }
+
+  .villa-brow {
+    position: absolute;
+    top: 32%;
+    width: 15px; height: 3px;
+    border-radius: 2px;
+    background: var(--v-hair);
+    transition: transform var(--slow) var(--ease);
+  }
+  .villa-brow.l { left: 22%; }
+  .villa-brow.r { right: 22%; }
+
+  .villa-cheek {
+    position: absolute;
+    top: 59%;
+    width: 13px; height: 8px;
+    border-radius: 50%;
+    background: #E4796B;
+    opacity: 0;
+    transition: opacity var(--slow) var(--ease);
+  }
+  .villa-cheek.l { left: 12%; }
+  .villa-cheek.r { right: 12%; }
+
+  .villa-mouth {
+    position: absolute;
+    left: 50%; top: 68%;
+    width: 20px; height: 9px;
+    margin-left: -10px;
+    border-radius: 0 0 20px 20px;
+    border-bottom: 3px solid var(--v-line);
+    border-left: 3px solid transparent;
+    border-right: 3px solid transparent;
+    transition: width var(--slow) var(--ease), height var(--slow) var(--ease),
+                margin var(--slow) var(--ease), border-radius var(--slow) var(--ease),
+                background-color var(--slow) var(--ease), border-color var(--slow) var(--ease);
+  }
+
+  /* ---------- how close you are, on a face ----------
+     Seven readings of the same number. The mood also drives the glow
+     behind the host, which is the part that carries at a glance. */
+  .villa[data-mood="idle"] { --v-mood: #7E7A93; }
+  .villa[data-mood="idle"] .villa-mouth { width: 18px; margin-left: -9px; height: 5px; }
+
+  .villa[data-mood="cold"] { --v-mood: #4F7FD1; }
+  .villa[data-mood="cold"] .villa-mouth {
+    height: 7px; border-bottom: 0; border-top: 3px solid var(--v-line);
+    border-radius: 20px 20px 0 0;
+  }
+  .villa[data-mood="cold"] .villa-brow.l { transform: rotate(11deg) translateY(2px); }
+  .villa[data-mood="cold"] .villa-brow.r { transform: rotate(-11deg) translateY(2px); }
+  .villa[data-mood="cold"] .villa-host-head { transform: rotate(-3deg); }
+
+  .villa[data-mood="chilly"] { --v-mood: #3FA0BC; }
+  .villa[data-mood="chilly"] .villa-mouth { height: 0; width: 16px; margin-left: -8px; }
+
+  .villa[data-mood="cool"] { --v-mood: #43AE7C; }
+  .villa[data-mood="cool"] .villa-mouth { height: 6px; }
+
+  .villa[data-mood="warm"] { --v-mood: #D9A93A; }
+  .villa[data-mood="warm"] .villa-mouth { width: 24px; margin-left: -12px; height: 11px; }
+  .villa[data-mood="warm"] .villa-cheek { opacity: 0.2; }
+  .villa[data-mood="warm"] .villa-brow.l { transform: translateY(-2px); }
+  .villa[data-mood="warm"] .villa-brow.r { transform: translateY(-2px); }
+
+  .villa[data-mood="hot"] { --v-mood: #E5812C; }
+  .villa[data-mood="hot"] .villa-mouth { width: 27px; margin-left: -13.5px; height: 13px; }
+  .villa[data-mood="hot"] .villa-cheek { opacity: 0.34; }
+  .villa[data-mood="hot"] .villa-brow.l { transform: rotate(-9deg) translateY(-3px); }
+  .villa[data-mood="hot"] .villa-brow.r { transform: rotate(9deg) translateY(-3px); }
+  .villa[data-mood="hot"] .villa-host-head { transform: rotate(2deg); }
+
+  .villa[data-mood="blazing"] { --v-mood: #E14A2E; }
+  .villa[data-mood="blazing"] .villa-mouth {
+    width: 17px; height: 19px; margin-left: -8.5px;
+    border: 0; border-radius: 50%; background: var(--v-line);
+  }
+  .villa[data-mood="blazing"] .villa-cheek { opacity: 0.46; }
+  .villa[data-mood="blazing"] .villa-eye { transform: scale(1.25); }
+  /* Held to a small lift on purpose — any higher and the brows disappear
+     under the hairline, which is where all the surprise was supposed to be. */
+  .villa[data-mood="blazing"] .villa-brow.l { transform: rotate(-13deg) translateY(-2px); }
+  .villa[data-mood="blazing"] .villa-brow.r { transform: rotate(13deg) translateY(-2px); }
+  .villa[data-mood="blazing"] .villa-host-glow { opacity: 0.6; }
+
+  .villa[data-mood="won"] { --v-mood: #2FA86A; }
+  .villa[data-mood="won"] .villa-mouth {
+    width: 30px; height: 20px; margin-left: -15px;
+    border: 0; border-radius: 4px 4px 26px 26px; background: var(--v-line);
+  }
+  .villa[data-mood="won"] .villa-cheek { opacity: 0.5; }
+  .villa[data-mood="won"] .villa-brow.l { transform: rotate(-6deg) translateY(-2px); }
+  .villa[data-mood="won"] .villa-brow.r { transform: rotate(6deg) translateY(-2px); }
+  .villa[data-mood="won"] .villa-host-glow { opacity: 0.66; }
+  .villa[data-mood="won"] .villa-host-head { transform: rotate(-2deg); }
+
+  .villa[data-mood="lost"] { --v-mood: #7E7A93; }
+  .villa[data-mood="lost"] .villa-mouth {
+    height: 8px; border-bottom: 0; border-top: 3px solid var(--v-line);
+    border-radius: 20px 20px 0 0;
+  }
+  .villa[data-mood="lost"] .villa-host-head { transform: rotate(4deg) translateY(3px); }
+
+  /* A small kick when a new line lands, so the face reads as reacting to
+     the guess rather than as having always looked like that. Written with
+     the standalone `scale`/`translate` properties rather than `transform`
+     on purpose: the mood rules above already own this element's transform
+     to tilt the head, and an animated `transform` would drop that tilt for
+     the half-second it runs and then snap it back. */
+  @media (prefers-reduced-motion: no-preference) {
+    .villa-host-head.reacting { animation: villa-react 0.5s var(--ease); }
+  }
+  @keyframes villa-react {
+    0% { scale: 1; translate: 0 0; }
+    40% { scale: 1.06; translate: 0 -7px; }
+    100% { scale: 1; translate: 0 0; }
+  }
+
+  /* ---------- what the host says ----------
+     Kept out of the 3D subtree entirely: text inside a transformed plane
+     is rasterised at the transformed size and goes soft. */
+  .villa-speech {
+    position: absolute;
+    left: 0.6rem;
+    top: 0.6rem;
+    margin: 0;
+    max-width: min(52%, 14rem);
+    padding: 0.45rem 0.65rem;
+    border-radius: 12px 12px 12px 3px;
+    background: rgba(255, 253, 248, 0.94);
+    color: #241C2E;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    text-wrap: pretty;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .villa-speech.said { animation: villa-said 0.42s var(--ease); }
+  }
+  @keyframes villa-said {
+    0% { opacity: 0; transform: translateY(6px) scale(0.96); }
+    100% { opacity: 1; transform: none; }
+  }
+
+  .villa-badge {
+    position: absolute;
+    right: 0.7rem;
+    bottom: 0.7rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(23, 19, 29, 0.62);
+    color: #F6EFE4;
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .villa-toggle {
+    position: absolute;
+    right: 0.5rem;
+    top: 0.5rem;
+    z-index: 2;
+    min-height: 0;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    border-radius: 50%;
+    border: 0;
+    background: rgba(23, 19, 29, 0.55);
+    color: #F6EFE4;
+    font-size: 0.9rem;
+    line-height: 1;
+    box-shadow: none;
+  }
+  .villa-toggle:hover { background: rgba(23, 19, 29, 0.78); transform: none; }
+
+  .villa-show { align-self: flex-start; }
+
+  /* ---------- quests ---------- */
+  .xp-card {
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--lift-1);
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+  .xp-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+  }
+  .xp-level {
+    font-family: var(--serif);
+    font-size: var(--step-2);
+    line-height: 1.1;
+  }
+  .xp-room {
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-align: right;
+  }
+  .xp-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--sunken);
+    overflow: hidden;
+  }
+  .xp-bar > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 40%, #F5C26B));
+    transition: width var(--slow) var(--ease);
+  }
+  .xp-card .gloss { margin: 0; }
+
+  .quests { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .quest {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .quest.is-done { background: var(--accent-wash); border-color: var(--accent-edge); }
+  .quest-tick {
+    flex: none;
+    width: 1.35rem;
+    height: 1.35rem;
+    margin-top: 0.1rem;
+    border-radius: 50%;
+    border: 2px solid var(--rule);
+    display: grid;
+    place-items: center;
+    font-size: 0.8rem;
+    line-height: 1;
+    color: var(--surface);
+  }
+  .quest.is-done .quest-tick { background: var(--accent); border-color: var(--accent); }
+  .quest-main { flex: 1 1 auto; min-width: 0; }
+  .quest-name { display: block; font-weight: 600; }
+  .quest-note { display: block; color: var(--muted); font-size: var(--step-0); }
+  .quest-side { flex: none; text-align: right; display: flex; flex-direction: column; gap: 0.15rem; }
+  .quest-xp {
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .quest-count {
+    font-family: var(--mono);
+    font-size: var(--micro);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .quest-tier {
+    margin: 0.6rem 0 0.1rem;
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .quest-tier:first-child { margin-top: 0; }
+
+  .villa-rooms { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  .villa-rooms li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: var(--radius);
+    background: var(--sunken);
+    color: var(--muted);
+  }
+  .villa-rooms li.is-open { background: var(--accent-wash); color: var(--ink); }
+  .villa-rooms .room-n {
+    flex: none;
+    font-family: var(--mono);
+    font-size: var(--micro);
+    letter-spacing: 0.06em;
+    color: var(--accent);
+  }
+  .villa-rooms .room-at {
+    margin-left: auto;
+    flex: none;
+    font-family: var(--mono);
+    font-size: var(--micro);
+    color: var(--muted);
+  }
+
   /* ---------- readings (the ladder) ---------- */
   .readings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 
@@ -1676,6 +2541,7 @@
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play" data-i18n="tab-play">play</button>
       <button class="tab" role="tab" id="tab-friends" aria-selected="false" aria-controls="panel-friends"><span data-i18n="tab-friends">friends</span><span class="tab-dot" id="friends-dot" hidden></span></button>
+      <button class="tab" role="tab" id="tab-quests" aria-selected="false" aria-controls="panel-quests"><span data-i18n="tab-quests">quests</span><span class="tab-dot" id="quests-dot" hidden></span></button>
       <button class="tab" role="tab" id="tab-minigames" aria-selected="false" aria-controls="panel-minigames" data-i18n="tab-minigames">minigames</button>
       <button class="tab" role="tab" id="tab-scores" aria-selected="false" aria-controls="panel-scores" data-i18n="tab-scores">scores</button>
       <button class="tab" role="tab" id="tab-solve" aria-selected="false" aria-controls="panel-solve" data-i18n="tab-solve">solver</button>
@@ -1837,6 +2703,114 @@
           <span id="play-clock" hidden></span>
         </div>
 
+        <!-- ---------- the villa ----------
+             The same room in both modes: online and offline share this
+             screen, so nothing here needs to know which one is running.
+             It is presentation only — the host reads the rank the game
+             already computed and says something about it, and can be
+             folded away entirely by the button in its corner. -->
+        <div class="villa" id="villa" data-mood="idle" data-room="0" hidden>
+          <button type="button" class="villa-toggle" id="villa-hide" title="Hide the room" aria-label="Hide the room">▾</button>
+
+          <!-- The room itself says nothing a screen reader needs: every
+               number behind it is already on the ladder and in the count
+               above. What the host says is prose worth reading, so only
+               the drawing is hidden, not the bubble. -->
+          <div class="villa-scene" aria-hidden="true">
+            <div class="villa-room" id="villa-shell">
+              <div class="villa-face villa-ceiling">
+                <div class="villa-boards"></div>
+              </div>
+
+              <div class="villa-face villa-floor">
+                <div class="villa-boards"></div>
+                <div class="villa-rug"></div>
+              </div>
+
+              <div class="villa-face villa-left">
+                <div class="villa-art"></div>
+                <div class="villa-rail"></div>
+                <div class="villa-skirting"></div>
+              </div>
+
+              <div class="villa-face villa-right">
+                <div class="villa-art"></div>
+                <div class="villa-rail"></div>
+                <div class="villa-skirting"></div>
+              </div>
+
+              <div class="villa-face villa-back">
+                <div class="villa-rail"></div>
+                <div class="villa-windows">
+                  <div class="villa-window villa-window-side">
+                    <i class="villa-hill"></i><i class="villa-sea"></i><i class="villa-mullion"></i>
+                  </div>
+                  <div class="villa-window">
+                    <i class="villa-sun"></i><i class="villa-hill"></i><i class="villa-sea"></i><i class="villa-mullion"></i>
+                  </div>
+                  <div class="villa-window villa-window-side">
+                    <i class="villa-hill"></i><i class="villa-sea"></i><i class="villa-mullion"></i>
+                  </div>
+                </div>
+                <div class="villa-skirting"></div>
+              </div>
+
+              <div class="villa-chandelier">
+                <i class="villa-chandelier-stem"></i>
+                <i class="villa-chandelier-ring"></i>
+                <i class="villa-chandelier-drop d1"></i>
+                <i class="villa-chandelier-drop d2"></i>
+                <i class="villa-chandelier-drop d3"></i>
+              </div>
+
+              <div class="villa-lamp">
+                <i class="villa-lamp-shade"></i><i class="villa-lamp-stem"></i><i class="villa-lamp-foot"></i>
+              </div>
+
+              <div class="villa-plant">
+                <i class="villa-frond"></i><i class="villa-frond"></i>
+                <i class="villa-frond"></i><i class="villa-frond"></i>
+                <i class="villa-pot"></i>
+              </div>
+
+              <div class="villa-host">
+                <div class="villa-host-inner">
+                  <div class="villa-host-glow"></div>
+                  <div class="villa-host-body"></div>
+                  <div class="villa-host-arm l"></div>
+                  <div class="villa-host-arm r"></div>
+                  <div class="villa-host-collar"></div>
+                  <div class="villa-host-neck"></div>
+                  <div class="villa-host-head" id="villa-head">
+                    <div class="villa-host-face">
+                      <i class="villa-ear l"></i><i class="villa-ear r"></i>
+                      <i class="villa-brow l"></i><i class="villa-brow r"></i>
+                      <i class="villa-eye l"></i><i class="villa-eye r"></i>
+                      <i class="villa-cheek l"></i><i class="villa-cheek r"></i>
+                      <i class="villa-mouth"></i>
+                    </div>
+                    <div class="villa-host-hair"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="villa-table">
+                <div class="villa-table-stem"></div>
+                <div class="villa-table-base"></div>
+                <div class="villa-table-top"></div>
+                <div class="villa-candle"><i class="villa-flame"></i></div>
+              </div>
+            </div>
+
+            <div class="villa-dusk"></div>
+          </div>
+
+          <p class="villa-speech" id="villa-speech"></p>
+          <span class="villa-badge" id="villa-badge"></span>
+        </div>
+
+        <button type="button" class="linkish villa-show" id="villa-show" data-i18n="show-room" hidden>show the room</button>
+
         <div id="play-verdict"></div>
 
         <aside class="coach" id="coach" hidden>
@@ -1944,6 +2918,42 @@
         <ul class="roster-list" id="scores-coins"></ul>
       </div>
     </div>
+  </section>
+
+  <!-- ============ QUESTS ============
+       Standing jobs, easiest first, each paying experience in proportion
+       to how hard it is. What the experience buys is the villa on the play
+       screen: enough of it and the room gets another life — a rug, then a
+       garden, then marble, then a chandelier, then the terrace at dusk —
+       and each of those arrives with a handful of hints as a housewarming
+       gift. Every counter behind this lives on the device, like the coins
+       do when signed out, so it needs no account and works offline. -->
+  <section class="panel" id="panel-quests" role="tabpanel" aria-labelledby="tab-quests" hidden>
+    <div class="field">
+      <span class="key" data-i18n="your-villa">your villa</span>
+      <p class="gloss" data-i18n="quests-blurb">Quests pay experience, and experience does up the room you play in. Every level is a new floor, a new light, a new view out of the window — and a few hints on the table when you arrive.</p>
+    </div>
+
+    <div class="xp-card">
+      <div class="xp-top">
+        <span class="xp-level" id="xp-level"></span>
+        <span class="xp-room" id="xp-room"></span>
+      </div>
+      <div class="xp-bar"><span id="xp-fill"></span></div>
+      <p class="gloss" id="xp-note"></p>
+    </div>
+
+    <div class="field">
+      <span class="key" data-i18n="the-quests">the quests</span>
+      <p class="gloss" data-i18n="quests-order">Easiest at the top. They get harder going down, and pay more for it.</p>
+    </div>
+
+    <ul class="quests" id="quest-list"></ul>
+
+    <div class="field">
+      <span class="key" data-i18n="what-xp-buys">what the villa becomes</span>
+    </div>
+    <ol class="villa-rooms" id="villa-rooms"></ol>
   </section>
 
   <!-- ============ MINIGAMES ============
@@ -2706,6 +3716,17 @@
      ================================================================ */
   var $ = function (id) { return document.getElementById(id); };
 
+  // Two surfaces live behind the menu button and both want to mark it when
+  // something is waiting — friends (a request or an invite) and quests
+  // (something finished since you last looked). Held as a set rather than
+  // written straight onto the element, because whichever of the two
+  // repainted last would otherwise wipe the other one's mark.
+  var menuDots = { friends: false, quests: false };
+
+  function paintMenuDot() {
+    $("menu-btn-dot").hidden = !menuDots.friends && !menuDots.quests;
+  }
+
   /* ---------- language ----------
      One flat French dictionary, looked up three ways: elements tagged
      data-i18n="key" in the markup look up that key, elements tagged
@@ -2741,6 +3762,87 @@
     "username": "nom d'utilisateur", "password": "mot de passe", "create-account": "Créer un compte",
     "account-id": "Identifiant de compte :", "claim-admin": "Devenir admin", "sign-out": "Se déconnecter",
     "tab-play": "jouer", "tab-minigames": "mini-jeux", "tab-friends": "amis", "tab-scores": "classement", "tab-solve": "solveur", "tab-compare": "comparer", "tab-shop": "boutique", "tab-chat": "discussion",
+    "tab-quests": "quêtes",
+
+    /* ---- quests, experience and the villa ---- */
+    "your-villa": "votre villa", "the-quests": "les quêtes", "what-xp-buys": "ce que devient la villa",
+    "quests-blurb": "Les quêtes rapportent de l'expérience, et l'expérience refait la pièce où vous jouez. " +
+      "Chaque niveau apporte un nouveau sol, une nouvelle lumière, une nouvelle vue par la fenêtre — " +
+      "et quelques indices posés sur la table à votre arrivée.",
+    "quests-order": "Les plus faciles en haut. Elles se corsent en descendant, et rapportent davantage.",
+    "steady": "régulier", "legendary": "légendaire",
+    "show-room": "afficher la pièce", "Hide the room": "Masquer la pièce",
+    "from the start": "dès le départ",
+    "Level {n}": "Niveau {n}",
+    "{xp} XP each": "{xp} XP chacune",
+    "{xp} XP · {more} more and the room becomes {room}.": "{xp} XP · encore {more} et la pièce devient {room}.",
+    "{xp} XP · the villa is finished. Nothing left to buy.": "{xp} XP · la villa est terminée. Plus rien à acheter.",
+    "Arrives with {gift}.": "Arrive avec {gift}.",
+    "Quest done — {name}. {xp} XP.": "Quête terminée — {name}. {xp} XP.",
+    "{n} quests done. {xp} XP.": "{n} quêtes terminées. {xp} XP.",
+    "The room's been done up — {room}.": "La pièce a été refaite — {room}.",
+    "{gift} on the table for you.": "{gift} sur la table pour vous.",
+
+    "First light": "Premier éclat", "Win a round.": "Gagnez une partie.",
+    "Warming up": "Échauffement", "Make 25 guesses, across any rounds.": "Proposez 25 mots, toutes parties confondues.",
+    "Within reach": "À portée", "Land a guess in the top 100.": "Placez une proposition dans le top 100.",
+    "Lights out": "Éteins tout", "Clear a Lights Out board of any size.": "Éteignez une grille d'Éteins tout, quelle que soit sa taille.",
+    "A regular": "Un habitué", "Win 5 rounds.": "Gagnez 5 parties.",
+    "Close quarters": "Au corps à corps", "Land a guess in the top 10.": "Placez une proposition dans le top 10.",
+    "On your own": "Sans aide", "Win a round without spending a hint.": "Gagnez une partie sans dépenser d'indice.",
+    "Economical": "Économe", "Win a round in 15 guesses or fewer.": "Gagnez une partie en 15 propositions ou moins.",
+    "A bigger board": "Une plus grande grille", "Clear Lights Out at 5 × 5 or larger.": "Éteignez une grille de 5 × 5 ou plus.",
+    "Well read": "Grand lecteur", "Make 150 guesses in total.": "Proposez 150 mots au total.",
+    "The hard way": "À la dure", "Win a round on hard.": "Gagnez une partie en difficile.",
+    "Fifteen": "Quinze", "Win 15 rounds.": "Gagnez 15 parties.",
+    "Eight": "Huit", "Win a round in 8 guesses or fewer.": "Gagnez une partie en 8 propositions ou moins.",
+    "Unassisted": "Seul face au mot", "Win 5 rounds without spending a hint.": "Gagnez 5 parties sans dépenser d'indice.",
+    "The full board": "La grille entière", "Clear the 8 × 8 Lights Out board.": "Éteignez la grille de 8 × 8.",
+    "Nightmare": "Cauchemar", "Win a round on nightmare.": "Gagnez une partie en cauchemar.",
+    "Half the clock": "La moitié du temps", "Win with more than half the time still on it.": "Gagnez avec plus de la moitié du temps restant.",
+    "Four": "Quatre", "Win a round in 4 guesses or fewer.": "Gagnez une partie en 4 propositions ou moins.",
+    "Fifty": "Cinquante", "Win 50 rounds.": "Gagnez 50 parties.",
+
+    "a bare room": "une pièce nue",
+    "Bare plaster, a borrowed table, one small window.": "Plâtre nu, une table empruntée, une petite fenêtre.",
+    "a rug and a lamp": "un tapis et une lampe",
+    "Something underfoot, and a lamp lit in the corner.": "Quelque chose sous les pieds, et une lampe allumée dans le coin.",
+    "the green room": "la pièce verte",
+    "A palm by the wall, pictures on it, a candle on the table.": "Un palmier contre le mur, des tableaux dessus, une bougie sur la table.",
+    "the marble hall": "la salle de marbre",
+    "A marble floor, and the windows rise into arches.": "Un sol de marbre, et les fenêtres s'élèvent en arcades.",
+    "the great room": "la grande salle",
+    "A chandelier overhead, and gold running along the walls.": "Un lustre au plafond, et de l'or qui court le long des murs.",
+    "the terrace at dusk": "la terrasse au crépuscule",
+    "The arches give onto the sea, and the sun is going down.": "Les arcades donnent sur la mer, et le soleil descend.",
+
+    /* ---- what the host says ---- */
+    "Take a seat. Say any word and I'll tell you how close it lands.": "Asseyez-vous. Dites n'importe quel mot et je vous dirai à quelle distance il tombe.",
+    "I've written one down. Your move.": "J'en ai écrit un. À vous.",
+    "Sit. Try a word — any word — and I'll say how far off it is.": "Installez-vous. Essayez un mot — n'importe lequel — et je vous dirai s'il est loin.",
+    "Nothing at all. Try another part of the world.": "Rien du tout. Essayez un autre coin du monde.",
+    "Miles away. I'd start again somewhere else entirely.": "À des kilomètres. Je repartirais d'ailleurs, complètement.",
+    "Cold. That word and mine have never met.": "Froid. Ce mot et le mien ne se sont jamais croisés.",
+    "Still cold — but you're facing the right way now.": "Toujours froid — mais vous regardez enfin dans la bonne direction.",
+    "Faint. Very faint.": "Faible. Très faible.",
+    "Not it. Though I can almost see where you're going.": "Ce n'est pas ça. Même si je vois presque où vous allez.",
+    "Now we're getting somewhere. Keep pulling on that.": "Là, on avance. Continuez à tirer ce fil.",
+    "Warmer. Stay in this neighbourhood.": "Ça se réchauffe. Restez dans ce quartier.",
+    "Right part of town. Wrong street.": "Le bon quartier. La mauvaise rue.",
+    "Warm. I wouldn't stray far from that one.": "Chaud. Je ne m'éloignerais pas de celui-là.",
+    "Close. Something that sits next to it, I'd say.": "Tout près. Quelque chose juste à côté, je dirais.",
+    "You're on the right shelf now.": "Vous êtes sur la bonne étagère.",
+    "Hot. It's practically on the table between us.": "Brûlant. C'est presque posé sur la table entre nous.",
+    "You're circling it.": "Vous tournez autour.",
+    "So close I can hear it.": "Si près que je l'entends.",
+    "Burning. One more like that.": "Ça brûle. Encore un comme celui-là.",
+    "It's right there. Reach out.": "Il est juste là. Tendez la main.",
+    "A whisper away. Don't overthink it.": "À un souffle. N'y réfléchissez pas trop.",
+    "That's the one. Well played.": "C'est celui-là. Bien joué.",
+    "There it is. I knew you had it in you.": "Le voilà. Je savais que vous l'aviez en vous.",
+    "Got me. Same time tomorrow?": "Vous m'avez eu. Même heure demain ?",
+    "Ah — that was the one. Next time.": "Ah — c'était celui-là. Une autre fois.",
+    "That's the word. It was a mean one, that.": "Voilà le mot. Il était vache, celui-là.",
 
     /* ---- lights out ---- */
     "lights-out": "éteins tout", "new-board": "Nouvelle grille", "board-size": "taille de la grille",
@@ -3121,6 +4223,10 @@
     // JS, so they'd otherwise stay in whichever language they were drawn.
     if (typeof renderLights === "function" && lights && lights.on.length) renderLights();
     if (typeof renderLsolve === "function" && lsolve && lsolve.on.length) renderLsolve();
+    // Quest names, room names, the host's last line and the XP counter are
+    // all built in JS too, so they need the same treatment.
+    if (typeof renderQuests === "function" && QUESTS) renderQuests();
+    if (typeof paintVillaLang === "function" && QUESTS) paintVillaLang();
   }
 
   $("lang-btn").addEventListener("click", function () {
@@ -3225,6 +4331,7 @@
      ================================================================ */
   var TABS = [
     { tab: "tab-play", panel: "panel-play" },
+    { tab: "tab-quests", panel: "panel-quests" },
     { tab: "tab-minigames", panel: "panel-minigames" },
     { tab: "tab-friends", panel: "panel-friends" },
     { tab: "tab-scores", panel: "panel-scores" },
@@ -4309,7 +5416,11 @@
     // Friends now lives behind the menu, so its own dot (right on the tab,
     // inside the drawer) would go unseen until the drawer's already open —
     // mirror it onto the menu button itself, the thing actually visible.
-    $("menu-btn-dot").hidden = !signedIn || !waiting;
+    // Quests mirror onto the same dot, so it's held as a set rather than
+    // assigned from here: whichever of the two repainted last would
+    // otherwise clear the other one's mark.
+    menuDots.friends = signedIn && !!waiting;
+    paintMenuDot();
 
     if (!signedIn) return;
 
@@ -4781,6 +5892,7 @@
       sfx("win");
       renderLights();
       lightsSay(tf("All out in {n}.", { n: tally(lights.moves, "move", "moves") }));
+      questsSaw("lights", { n: LIGHTS_N });
     }
   });
 
@@ -4960,6 +6072,554 @@
   });
 
   lsolveSetSize(5);
+
+  /* ================================================================
+     THE VILLA, THE HOST, AND WHAT EXPERIENCE BUYS
+     ================================================================
+     Three things that only make sense together.
+
+     The villa is the room the word game is played in — five CSS-3D planes
+     and a few flat cards, built in the stylesheet, driven from here.
+
+     The host is the person sitting across the round table. They read the
+     rank the game already worked out and say something about it. They
+     make no decision the game doesn't already make: if the ladder says 34,
+     the host says "hot", and there is no third source of truth.
+
+     Experience is what quests pay, and what it buys is the room. Level up
+     and the villa gets another life — a rug, a garden, marble, a
+     chandelier, the terrace at dusk — plus a handful of hints on arrival,
+     so the reward is worth something to a player who doesn't care about
+     décor. Hints and not coins on purpose: coins are on the public
+     scoreboard, and a private single-player track shouldn't be able to
+     climb it.
+
+     All of it is kept on the device, the way coins are when signed out.
+     That costs cross-device sync, but it buys working offline with no
+     account and no new database rules — which is the deal the rest of the
+     minigames tab already makes. */
+
+  var QUEST_KEY = "nearword-quests";
+  var VILLA_SHOWN_KEY = "nearword-villa-shown";
+
+  // What a tier pays. This is the whole point of ordering the list: a
+  // quest is worth what it cost you, not what it took you.
+  var TIER_XP = { easy: 25, steady: 60, hard: 120, legendary: 250 };
+  var TIER_ORDER = ["easy", "steady", "hard", "legendary"];
+  var TIER_NAME = { easy: "easy", steady: "steady", hard: "hard", legendary: "legendary" };
+
+  // Two shapes of quest. Most count up to something (`need` above 1, and
+  // the row shows a running total); the rest are one-offs where the only
+  // question is whether it has happened yet, and a counter would just be
+  // "0 / 1" until it turned into "1 / 1".
+  function once(yes) { return yes ? 1 : 0; }
+
+  var QUESTS = [
+    { id: "first-win", tier: "easy", name: "First light", note: "Win a round.",
+      need: 1, of: function (s) { return once(s.wins); } },
+    { id: "warm-up", tier: "easy", name: "Warming up", note: "Make 25 guesses, across any rounds.",
+      need: 25, of: function (s) { return s.guesses; } },
+    { id: "top-100", tier: "easy", name: "Within reach", note: "Land a guess in the top 100.",
+      need: 1, of: function (s) { return once(s.bestRank && s.bestRank <= 100); } },
+    { id: "lights-any", tier: "easy", name: "Lights out", note: "Clear a Lights Out board of any size.",
+      need: 1, of: function (s) { return once(s.lights); } },
+
+    { id: "wins-5", tier: "steady", name: "A regular", note: "Win 5 rounds.",
+      need: 5, of: function (s) { return s.wins; } },
+    { id: "top-10", tier: "steady", name: "Close quarters", note: "Land a guess in the top 10.",
+      need: 1, of: function (s) { return once(s.bestRank && s.bestRank <= 10); } },
+    { id: "clean-1", tier: "steady", name: "On your own", note: "Win a round without spending a hint.",
+      need: 1, of: function (s) { return once(s.cleanWins); } },
+    { id: "fast-15", tier: "steady", name: "Economical", note: "Win a round in 15 guesses or fewer.",
+      need: 1, of: function (s) { return once(s.fewest && s.fewest <= 15); } },
+    { id: "lights-5", tier: "steady", name: "A bigger board", note: "Clear Lights Out at 5 × 5 or larger.",
+      need: 1, of: function (s) { return once(s.lights5); } },
+    { id: "guesses-150", tier: "steady", name: "Well read", note: "Make 150 guesses in total.",
+      need: 150, of: function (s) { return s.guesses; } },
+
+    { id: "hard-win", tier: "hard", name: "The hard way", note: "Win a round on hard.",
+      need: 1, of: function (s) { return once(s.hardWins); } },
+    { id: "wins-15", tier: "hard", name: "Fifteen", note: "Win 15 rounds.",
+      need: 15, of: function (s) { return s.wins; } },
+    { id: "fast-8", tier: "hard", name: "Eight", note: "Win a round in 8 guesses or fewer.",
+      need: 1, of: function (s) { return once(s.fewest && s.fewest <= 8); } },
+    { id: "clean-5", tier: "hard", name: "Unassisted", note: "Win 5 rounds without spending a hint.",
+      need: 5, of: function (s) { return s.cleanWins; } },
+    { id: "lights-8", tier: "hard", name: "The full board", note: "Clear the 8 × 8 Lights Out board.",
+      need: 1, of: function (s) { return once(s.lights8); } },
+
+    { id: "nightmare-win", tier: "legendary", name: "Nightmare", note: "Win a round on nightmare.",
+      need: 1, of: function (s) { return once(s.nightmareWins); } },
+    { id: "half-clock", tier: "legendary", name: "Half the clock", note: "Win with more than half the time still on it.",
+      need: 1, of: function (s) { return once(s.halfClock); } },
+    { id: "fast-4", tier: "legendary", name: "Four", note: "Win a round in 4 guesses or fewer.",
+      need: 1, of: function (s) { return once(s.fewest && s.fewest <= 4); } },
+    { id: "wins-50", tier: "legendary", name: "Fifty", note: "Win 50 rounds.",
+      need: 50, of: function (s) { return s.wins; } }
+  ];
+
+  // Finishing everything pays 2,060, so the last room is reachable with
+  // room to spare rather than needing a clean sweep.
+  var VILLA_LEVELS = [
+    { at: 0, gift: 0, name: "a bare room",
+      note: "Bare plaster, a borrowed table, one small window." },
+    { at: 120, gift: 1, name: "a rug and a lamp",
+      note: "Something underfoot, and a lamp lit in the corner." },
+    { at: 340, gift: 2, name: "the green room",
+      note: "A palm by the wall, pictures on it, a candle on the table." },
+    { at: 700, gift: 2, name: "the marble hall",
+      note: "A marble floor, and the windows rise into arches." },
+    { at: 1150, gift: 3, name: "the great room",
+      note: "A chandelier overhead, and gold running along the walls." },
+    { at: 1750, gift: 4, name: "the terrace at dusk",
+      note: "The arches give onto the sea, and the sun is going down." }
+  ];
+
+  function blankQuestState() {
+    return {
+      xp: 0,
+      done: [],
+      unseen: 0,
+      stats: {
+        wins: 0,          // rounds won, the tutorial excluded
+        guesses: 0,       // guesses made, ever
+        bestRank: 0,      // the closest rank ever reached; 0 means none yet
+        cleanWins: 0,     // wins where no hint was spent
+        fewest: 0,        // fewest guesses in any win; 0 means none yet
+        halfClock: 0,     // ever won with over half the clock left
+        hardWins: 0,
+        nightmareWins: 0,
+        lights: 0,        // Lights Out boards cleared, any size
+        lights5: 0,       // …at 5 × 5 or larger
+        lights8: 0        // …at 8 × 8
+      }
+    };
+  }
+
+  var qstate = blankQuestState();
+
+  // Anything unreadable or half-written is thrown away rather than trusted:
+  // this is a progress track, and a corrupted one that silently reads as
+  // "everything done" would be worse than one that starts over.
+  function loadQuests() {
+    var raw = null, saved = null;
+    try { raw = localStorage.getItem(QUEST_KEY); } catch (e) { return; }
+    if (!raw) return;
+    try { saved = JSON.parse(raw); } catch (e) { return; }
+    if (!saved || typeof saved !== "object") return;
+
+    qstate.xp = Math.max(0, parseInt(saved.xp, 10) || 0);
+    qstate.unseen = Math.max(0, parseInt(saved.unseen, 10) || 0);
+
+    var known = Object.create(null);
+    QUESTS.forEach(function (q) { known[q.id] = true; });
+    qstate.done = (Array.isArray(saved.done) ? saved.done : []).filter(function (id) {
+      return known[id];
+    });
+
+    if (saved.stats) {
+      Object.keys(qstate.stats).forEach(function (k) {
+        var n = parseInt(saved.stats[k], 10);
+        if (!isNaN(n) && n >= 0) qstate.stats[k] = n;
+      });
+    }
+  }
+
+  function saveQuests() {
+    try { localStorage.setItem(QUEST_KEY, JSON.stringify(qstate)); } catch (e) {}
+  }
+
+  function villaLevel() {
+    var i, at = 0;
+    for (i = 0; i < VILLA_LEVELS.length; i++) if (qstate.xp >= VILLA_LEVELS[i].at) at = i;
+    return at;
+  }
+
+  function questDone(id) { return qstate.done.indexOf(id) !== -1; }
+
+  /* ---------- the host ----------
+     Seven readings of one number, each with a few ways of saying it so a
+     long round doesn't turn into the same sentence twelve times. The
+     bands are the ladder's own: what the host calls "hot" is what the
+     ladder paints hot. */
+  function villaBand(rank) {
+    if (rank <= 1) return "won";
+    if (rank <= 10) return "blazing";
+    if (rank <= 50) return "hot";
+    if (rank <= 250) return "warm";
+    if (rank <= 1000) return "cool";
+    if (rank <= 5000) return "chilly";
+    return "cold";
+  }
+
+  var VILLA_LINES = {
+    idle: [
+      "Take a seat. Say any word and I'll tell you how close it lands.",
+      "I've written one down. Your move.",
+      "Sit. Try a word — any word — and I'll say how far off it is."
+    ],
+    cold: [
+      "Nothing at all. Try another part of the world.",
+      "Miles away. I'd start again somewhere else entirely.",
+      "Cold. That word and mine have never met."
+    ],
+    chilly: [
+      "Still cold — but you're facing the right way now.",
+      "Faint. Very faint.",
+      "Not it. Though I can almost see where you're going."
+    ],
+    cool: [
+      "Now we're getting somewhere. Keep pulling on that.",
+      "Warmer. Stay in this neighbourhood.",
+      "Right part of town. Wrong street."
+    ],
+    warm: [
+      "Warm. I wouldn't stray far from that one.",
+      "Close. Something that sits next to it, I'd say.",
+      "You're on the right shelf now."
+    ],
+    hot: [
+      "Hot. It's practically on the table between us.",
+      "You're circling it.",
+      "So close I can hear it."
+    ],
+    blazing: [
+      "Burning. One more like that.",
+      "It's right there. Reach out.",
+      "A whisper away. Don't overthink it."
+    ],
+    won: [
+      "That's the one. Well played.",
+      "There it is. I knew you had it in you.",
+      "Got me. Same time tomorrow?"
+    ],
+    lost: [
+      "Ah — that was the one. Next time.",
+      "That's the word. It was a mean one, that."
+    ]
+  };
+
+  var villaSaidLast = Object.create(null);
+  var villaLaterTimer = null;
+  // The English source of whatever is in the bubble, kept so switching
+  // language can put the same line back in the other one instead of
+  // blanking it or leaving it stranded. Empty for the one-off
+  // announcements, which are already-assembled sentences and short-lived
+  // enough not to be worth rebuilding.
+  var villaSpokenEn = "";
+
+  function villaLine(band) {
+    var list = VILLA_LINES[band] || VILLA_LINES.idle;
+    if (list.length < 2) return list[0];
+    var pick, tries = 0;
+    do {
+      pick = list[Math.floor(Math.random() * list.length)];
+      tries++;
+    } while (pick === villaSaidLast[band] && tries < 8);
+    villaSaidLast[band] = pick;
+    return pick;
+  }
+
+  // Every line goes through here, so a queued announcement can never land
+  // on top of a fresher one: saying anything cancels whatever was waiting.
+  function villaSay(text) {
+    clearTimeout(villaLaterTimer);
+    villaLaterTimer = null;
+    var box = $("villa-speech");
+    if (!box) return;
+    box.textContent = text;
+    if (!$("villa").hidden) {
+      box.classList.remove("said");
+      void box.offsetWidth; // restart the animation on a repeat line
+      box.classList.add("said");
+      var head = $("villa-head");
+      head.classList.remove("reacting");
+      void head.offsetWidth;
+      head.classList.add("reacting");
+    }
+  }
+
+  // One of the host's own lines, as opposed to an announcement: remembered
+  // in English so applyLang can put it back.
+  function villaSayEn(en) {
+    villaSpokenEn = en;
+    villaSay(t(en));
+  }
+
+  function villaSayLater(text, ms) {
+    clearTimeout(villaLaterTimer);
+    villaLaterTimer = setTimeout(function () {
+      villaSpokenEn = "";
+      villaSay(text);
+    }, ms);
+  }
+
+  function villaMood(band) {
+    var el = $("villa");
+    if (el) el.setAttribute("data-mood", band);
+  }
+
+  function villaReact(rank) {
+    var band = villaBand(rank);
+    villaMood(band);
+    villaSayEn(villaLine(band));
+  }
+
+  function villaIdle() {
+    villaMood("idle");
+    villaSayEn(villaLine("idle"));
+  }
+
+  function villaLost() {
+    villaMood("lost");
+    villaSayEn(villaLine("lost"));
+  }
+
+  // Called from applyLang: everything on the room that was written in JS
+  // and would otherwise sit in whichever language it was drawn in.
+  function paintVillaLang() {
+    if (!$("villa")) return;
+    paintVillaRoom();
+    paintVillaShown();
+    if (villaSpokenEn) $("villa-speech").textContent = t(villaSpokenEn);
+  }
+
+  /* ---------- painting the room ----------
+     Tiers are additive classes (r1 … r5) rather than one class per level,
+     so each tier's rules only have to describe the one thing it adds and
+     never restate what the tier below already did. */
+  function paintVillaRoom() {
+    var el = $("villa");
+    if (!el) return;
+    var lvl = villaLevel(), cls = "villa", i;
+    for (i = 1; i <= lvl; i++) cls += " r" + i;
+    el.className = cls;
+    el.setAttribute("data-room", String(lvl));
+    $("villa-badge").textContent = t(VILLA_LEVELS[lvl].name);
+  }
+
+  function villaShown() {
+    try { return localStorage.getItem(VILLA_SHOWN_KEY) !== "0"; } catch (e) { return true; }
+  }
+
+  function paintVillaShown() {
+    var on = villaShown();
+    $("villa").hidden = !on;
+    $("villa-show").hidden = on;
+    $("villa-hide").title = t("Hide the room");
+    $("villa-hide").setAttribute("aria-label", t("Hide the room"));
+  }
+
+  $("villa-hide").addEventListener("click", function () {
+    try { localStorage.setItem(VILLA_SHOWN_KEY, "0"); } catch (e) {}
+    paintVillaShown();
+  });
+  $("villa-show").addEventListener("click", function () {
+    try { localStorage.setItem(VILLA_SHOWN_KEY, "1"); } catch (e) {}
+    paintVillaShown();
+    paintVillaRoom();
+    // The bubble only animates while the room is on screen, so a line said
+    // while it was folded away has to be replayed by hand.
+    if (villaSpokenEn) villaSay(t(villaSpokenEn));
+  });
+
+  /* ---------- recording what happened ----------
+     One entry point, called from the places that already know something
+     happened — a guess, a win, a cleared board — so no counter is derived
+     twice from two different readings of the same event. */
+  function questsSaw(what, detail) {
+    var s = qstate.stats;
+    detail = detail || {};
+
+    if (what === "guess") {
+      s.guesses += 1;
+      if (detail.rank && (!s.bestRank || detail.rank < s.bestRank)) s.bestRank = detail.rank;
+    } else if (what === "win") {
+      s.wins += 1;
+      if (!detail.hinted) s.cleanWins += 1;
+      if (detail.guesses && (!s.fewest || detail.guesses < s.fewest)) s.fewest = detail.guesses;
+      if (detail.halfClock) s.halfClock = 1;
+      if (detail.level === "hard") s.hardWins += 1;
+      if (detail.level === "nightmare") s.nightmareWins += 1;
+    } else if (what === "lights") {
+      s.lights += 1;
+      if (detail.n >= 5) s.lights5 += 1;
+      if (detail.n >= 8) s.lights8 += 1;
+    }
+
+    // The check below only writes when it actually pays something out, so
+    // the save has to happen here too — otherwise a round's worth of
+    // progress toward a quest would vanish on the next reload, and only
+    // the guess that happened to finish one would ever be remembered.
+    questsCheck();
+    saveQuests();
+  }
+
+  // Awards anything that has just come true, hands over the housewarming
+  // hints for any level crossed, and says so. Safe to call as often as it
+  // likes: a quest already in `done` is never paid twice. `quiet` is for
+  // the pass at startup — a build that adds a quest somebody has already
+  // met the terms of should pay for it, but not by chiming and talking
+  // before the page has even been touched.
+  function questsCheck(quiet) {
+    var before = villaLevel(), fresh = [], i, q;
+
+    for (i = 0; i < QUESTS.length; i++) {
+      q = QUESTS[i];
+      if (questDone(q.id)) continue;
+      if (q.of(qstate.stats) < q.need) continue;
+      qstate.done.push(q.id);
+      qstate.xp += TIER_XP[q.tier] || 0;
+      fresh.push(q);
+    }
+
+    if (!fresh.length) return;
+
+    var after = villaLevel(), gift = 0;
+    for (i = before + 1; i <= after; i++) gift += VILLA_LEVELS[i].gift || 0;
+    if (gift) store(HINT_KEY, hints() + gift);
+
+    qstate.unseen += fresh.length;
+    saveQuests();
+    paintVillaRoom();
+    renderQuests();
+    paintQuestDot();
+    if (quiet) return;
+    sfx("hint");
+
+    // Said a beat late on purpose: a quest finished by the winning guess
+    // would otherwise wipe out "that's the one" before it had been read.
+    var line = fresh.length === 1
+      ? tf("Quest done — {name}. {xp} XP.", { name: t(fresh[0].name), xp: TIER_XP[fresh[0].tier] })
+      : tf("{n} quests done. {xp} XP.", {
+          n: fresh.length,
+          xp: fresh.reduce(function (sum, item) { return sum + (TIER_XP[item.tier] || 0); }, 0)
+        });
+
+    if (after > before) {
+      line += " " + tf("The room's been done up — {room}.", { room: t(VILLA_LEVELS[after].name) });
+      if (gift) line += " " + tf("{gift} on the table for you.", { gift: tally(gift, "hint", "hints") });
+    }
+
+    villaSayLater(line, 1700);
+  }
+
+  function paintQuestDot() {
+    menuDots.quests = qstate.unseen > 0;
+    $("quests-dot").hidden = !menuDots.quests;
+    paintMenuDot();
+  }
+
+  /* ---------- the quests tab ---------- */
+  function renderQuests() {
+    var list = $("quest-list");
+    if (!list) return;
+
+    var lvl = villaLevel();
+    var next = VILLA_LEVELS[lvl + 1] || null;
+    var floor = VILLA_LEVELS[lvl].at;
+
+    $("xp-level").textContent = tf("Level {n}", { n: lvl + 1 });
+    $("xp-room").textContent = t(VILLA_LEVELS[lvl].name);
+    $("xp-fill").style.width = (next
+      ? Math.max(2, Math.min(100, Math.round(((qstate.xp - floor) / (next.at - floor)) * 100)))
+      : 100) + "%";
+    $("xp-note").textContent = next
+      ? tf("{xp} XP · {more} more and the room becomes {room}.", {
+          xp: num(qstate.xp), more: num(next.at - qstate.xp), room: t(next.name)
+        })
+      : tf("{xp} XP · the villa is finished. Nothing left to buy.", { xp: num(qstate.xp) });
+
+    list.textContent = "";
+    TIER_ORDER.forEach(function (tier) {
+      var head = document.createElement("li");
+      head.className = "quest-tier";
+      head.textContent = t(TIER_NAME[tier]) + " · " + tf("{xp} XP each", { xp: TIER_XP[tier] });
+      list.appendChild(head);
+
+      QUESTS.filter(function (q) { return q.tier === tier; }).forEach(function (q) {
+        var have = Math.min(q.of(qstate.stats), q.need);
+        var done = questDone(q.id);
+
+        var li = document.createElement("li");
+        li.className = "quest" + (done ? " is-done" : "");
+
+        var tick = document.createElement("span");
+        tick.className = "quest-tick";
+        tick.textContent = done ? "✓" : "";
+        li.appendChild(tick);
+
+        var main = document.createElement("span");
+        main.className = "quest-main";
+        var name = document.createElement("span");
+        name.className = "quest-name";
+        name.textContent = t(q.name);
+        main.appendChild(name);
+        var note = document.createElement("span");
+        note.className = "quest-note";
+        note.textContent = t(q.note);
+        main.appendChild(note);
+        li.appendChild(main);
+
+        var side = document.createElement("span");
+        side.className = "quest-side";
+        var xp = document.createElement("span");
+        xp.className = "quest-xp";
+        xp.textContent = "+" + TIER_XP[q.tier] + " XP";
+        side.appendChild(xp);
+        // A running total only says something when there is a run to
+        // total. A one-off is answered by the tick beside it.
+        if (q.need > 1 && !done) {
+          var count = document.createElement("span");
+          count.className = "quest-count";
+          count.textContent = num(have) + " / " + num(q.need);
+          side.appendChild(count);
+        }
+        li.appendChild(side);
+
+        list.appendChild(li);
+      });
+    });
+
+    var rooms = $("villa-rooms");
+    rooms.textContent = "";
+    VILLA_LEVELS.forEach(function (room, i) {
+      var li = document.createElement("li");
+      if (i <= lvl) li.className = "is-open";
+
+      var n = document.createElement("span");
+      n.className = "room-n";
+      n.textContent = String(i + 1);
+      li.appendChild(n);
+
+      var body = document.createElement("span");
+      body.textContent = t(room.name) + " — " + t(room.note) +
+        (room.gift ? " " + tf("Arrives with {gift}.", { gift: tally(room.gift, "hint", "hints") }) : "");
+      li.appendChild(body);
+
+      var at = document.createElement("span");
+      at.className = "room-at";
+      at.textContent = i === 0 ? t("from the start") : num(room.at) + " XP";
+      li.appendChild(at);
+
+      rooms.appendChild(li);
+    });
+  }
+
+  $("tab-quests").addEventListener("click", function () {
+    qstate.unseen = 0;
+    saveQuests();
+    paintQuestDot();
+    renderQuests();
+  });
+
+  loadQuests();
+  questsCheck(true);
+  paintVillaRoom();
+  paintVillaShown();
+  renderQuests();
+  paintQuestDot();
+  villaMood("idle");
 
   /* ---------- global chat ----------
      Open to every signed-in account, not just admins. Each message can be
@@ -6565,6 +8225,9 @@
     play.live = null;
     play.liveRows = null;
     play.justGuessed = null;
+    // Per-round, not per-account: "won without a hint" is a claim about
+    // this round, so it resets with the round rather than accumulating.
+    play.hinted = false;
     lastHint = { after: -1, word: null };
 
     // The solver would answer the very question the game is asking, so it steps
@@ -6589,6 +8252,11 @@
     $("play-quit").hidden = false;
     $("play-verdict").textContent = "";
     say($("play-notice"), "");
+    // The room is the same in both modes — online and offline share this
+    // screen, and the host has nothing to say about which one is running.
+    paintVillaShown();
+    paintVillaRoom();
+    villaIdle();
     refreshPlay();
     $("play-input").focus();
   }
@@ -6949,6 +8617,13 @@
   function finish(won, who, ranOut, racedBy) {
     play.done = true;
     clearTimeout(typingSyncTimer);
+    // Read before stopClock() and the tour flag are cleared below, both of
+    // which the quest counters need. The tutorial is left out of them for
+    // the same reason it's left off the scoreboard: it's a guided round on
+    // a word picked to be findable, not a result.
+    var wasTour = tour.on;
+    var timeLeft = clock.running ? clock.left : 0;
+    var fullClock = LIMITS[play.level] || LIMITS.normal;
     stopClock();
     tour.on = false;
     $("coach").hidden = true;
@@ -6959,7 +8634,19 @@
       earnCoin();
       // stopClock() above only clears the interval, so `left` still holds
       // whatever was on the clock at the moment it was solved.
-      if (clock.running) recordWinTime((LIMITS[play.level] || LIMITS.normal) - clock.left);
+      if (clock.running) recordWinTime(fullClock - clock.left);
+    }
+
+    if (won) { villaMood("won"); villaSayEn(villaLine("won")); }
+    else villaLost();
+
+    if (won && !wasTour) {
+      questsSaw("win", {
+        guesses: play.rows.length,
+        hinted: !!play.hinted,
+        halfClock: timeLeft > fullClock / 2,
+        level: play.level
+      });
     }
     if (won && ownsFlash()) playWinFlash(show(play.secret));
     $("play-controls").hidden = true;
@@ -7099,6 +8786,13 @@
     $("play-input").value = "";
     clearTimeout(typingSyncTimer);
     if (play.mode === "online" && window.LiveRoom) window.LiveRoom.updateTyping("");
+
+    // The host reads the rank the game just worked out — no second opinion,
+    // no separate scale. A rank the ladder paints hot is a rank the host
+    // calls hot. Skipped during the tutorial, which is running its own
+    // script and doesn't need somebody talking over it.
+    if (!tour.on) villaReact(rank);
+    questsSaw("guess", { rank: rank });
 
     // Marked so the ladder can single this row out; cleared once the animation
     // has run, or a later repaint would set it off again.
@@ -7241,6 +8935,9 @@
       sfx("hint");
       store(HINT_KEY, hints() - 1);
       lastHint = { after: rows.length, word: next };
+      // A hint that was free (the repeat above) or that had nothing left
+      // to say never got here, so it never spoils an unaided win.
+      play.hinted = true;
     }
 
     say($("play-notice"), next
