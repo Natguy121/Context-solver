@@ -2296,49 +2296,54 @@
     </div>
 
     <!-- ---------- the solver ----------
-         Same shape as the word game's solver tab: a tool for a puzzle
-         being played somewhere else. Tap in the lights that are on, then
-         walk the fix one press at a time. Tapping here sets a single
-         light rather than flipping a cross — you're describing a board,
-         not playing one. -->
-    <div class="field">
-      <span class="key" data-i18n="lights-solver">lights out solver</span>
-      <p class="gloss" data-i18n="lsolve-blurb">Playing Lights Out somewhere else? Tap the lights that are on over there, then step through the fix one press at a time.</p>
-    </div>
-
-    <div class="field">
-      <span class="key" data-i18n="board-size">board size</span>
-      <div class="segmented" id="lsolve-sizes">
-        <button type="button" aria-pressed="false" data-size="3">3 × 3</button>
-        <button type="button" aria-pressed="false" data-size="4">4 × 4</button>
-        <button type="button" aria-pressed="true" data-size="5">5 × 5</button>
-        <button type="button" aria-pressed="false" data-size="6">6 × 6</button>
-        <button type="button" aria-pressed="false" data-size="7">7 × 7</button>
-        <button type="button" aria-pressed="false" data-size="8">8 × 8</button>
+         Deliberately not offered open: this hands back a full solution,
+         which has no business sitting one scroll below the board you're
+         meant to be solving yourself. Collapsed behind a "somewhere
+         else" summary, it takes a deliberate click to reach — a tool
+         for a puzzle being played on some other board, not this one.
+         Tapping here sets a single light rather than flipping a cross —
+         you're describing a board, not playing one. -->
+    <details class="colophon" id="lsolve-details">
+      <summary data-i18n="lsolve-toggle">Stuck on a Lights Out puzzle somewhere else?</summary>
+      <div class="field">
+        <span class="key" data-i18n="lights-solver">lights out solver</span>
+        <p class="gloss" data-i18n="lsolve-blurb">Tap the lights that are on over there, then step through the fix one press at a time.</p>
       </div>
-    </div>
 
-    <div class="lights-head">
-      <span id="lsolve-mode"></span>
-      <span id="lsolve-step-note"></span>
-    </div>
+      <div class="field">
+        <span class="key" data-i18n="board-size">board size</span>
+        <div class="segmented" id="lsolve-sizes">
+          <button type="button" aria-pressed="false" data-size="3">3 × 3</button>
+          <button type="button" aria-pressed="false" data-size="4">4 × 4</button>
+          <button type="button" aria-pressed="true" data-size="5">5 × 5</button>
+          <button type="button" aria-pressed="false" data-size="6">6 × 6</button>
+          <button type="button" aria-pressed="false" data-size="7">7 × 7</button>
+          <button type="button" aria-pressed="false" data-size="8">8 × 8</button>
+        </div>
+      </div>
 
-    <div id="lsolve-grid" class="lights-grid"></div>
+      <div class="lights-head">
+        <span id="lsolve-mode"></span>
+        <span id="lsolve-step-note"></span>
+      </div>
 
-    <p class="notice" id="lsolve-notice" aria-live="polite" hidden></p>
+      <div id="lsolve-grid" class="lights-grid"></div>
 
-    <div class="row" id="lsolve-edit-controls">
-      <button type="button" class="grow" id="lsolve-go" data-i18n="solve-it">Solve it</button>
-      <button type="button" class="ghost grow" id="lsolve-clear" data-i18n="clear-board">Clear</button>
-    </div>
+      <p class="notice" id="lsolve-notice" aria-live="polite" hidden></p>
 
-    <div class="row" id="lsolve-step-controls" hidden>
-      <button type="button" class="ghost grow" id="lsolve-back" data-i18n="step-back">Back</button>
-      <button type="button" class="grow" id="lsolve-next" data-i18n="step-next">Next</button>
-    </div>
-    <div class="row" id="lsolve-restart" hidden>
-      <button type="button" class="ghost grow" id="lsolve-edit" data-i18n="edit-board">Edit the board</button>
-    </div>
+      <div class="row" id="lsolve-edit-controls">
+        <button type="button" class="grow" id="lsolve-go" data-i18n="solve-it">Solve it</button>
+        <button type="button" class="ghost grow" id="lsolve-clear" data-i18n="clear-board">Clear</button>
+      </div>
+
+      <div class="row" id="lsolve-step-controls" hidden>
+        <button type="button" class="ghost grow" id="lsolve-back" data-i18n="step-back">Back</button>
+        <button type="button" class="grow" id="lsolve-next" data-i18n="step-next">Next</button>
+      </div>
+      <div class="row" id="lsolve-restart" hidden>
+        <button type="button" class="ghost grow" id="lsolve-edit" data-i18n="edit-board">Edit the board</button>
+      </div>
+    </details>
   </section>
 
   <!-- ============ SOLVER ============ -->
@@ -3154,7 +3159,8 @@
     /* ---- lights out ---- */
     "lights-out": "éteins tout", "new-board": "Nouvelle grille", "board-size": "taille de la grille",
     "lights-solver": "solveur éteins tout",
-    "lsolve-blurb": "Vous jouez à Éteins tout ailleurs ? Touchez les lumières allumées là-bas, puis suivez la solution appui par appui.",
+    "lsolve-toggle": "Coincé sur une grille d'Éteins tout ailleurs ?",
+    "lsolve-blurb": "Touchez les lumières allumées là-bas, puis suivez la solution appui par appui.",
     "solve-it": "Résoudre", "clear-board": "Effacer",
     "step-back": "Retour", "step-next": "Suivant", "edit-board": "Modifier la grille",
     "lights-blurb": "Appuyer sur une lumière l'inverse, ainsi que les quatre autour, en croix. Éteignez-les toutes.",
